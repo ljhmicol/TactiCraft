@@ -8,7 +8,7 @@ import { OverloadLayer } from '@/components/pitch/OverloadLayer'
 import { Pitch } from '@/components/pitch/Pitch'
 import { PressingLine } from '@/components/pitch/PressingLine'
 import { PrintOpponentNode } from '@/components/pitch/PrintOpponentNode'
-import { PrintPlayerNode } from '@/components/pitch/PrintPlayerNode'
+import { SharePlayerNode } from '@/components/pitch/SharePlayerNode'
 import { useAnalysis } from '@/hooks/useAnalyses'
 import { cn } from '@/lib/utils'
 import type { LayerToggles, PhaseData, PhaseType } from '@/types/analysis'
@@ -23,9 +23,9 @@ type ViewKey = { kind: 'phase'; phase: PhaseType } | { kind: 'cp'; id: string }
  * `useAnalysisStore`를 전혀 쓰지 않는다 — 이 페이지가 보여주는 분석은 지금
  * 브라우저에 "열려 있는" 분석과 무관할 수 있어서(다른 사람이 링크로 바로
  * 들어옴), 스토어에 얹으면 그 사람이 우연히 편집기를 열었을 때 남의 분석이
- * 뜨는 문제가 생긴다. 대신 드래그 불가능한 정지 렌더 컴포넌트
- * (`PrintPlayerNode`/`PrintOpponentNode`, GIF 내보내기에서 쓰던 것과 동일)로
- * 그린다.
+ * 뜨는 문제가 생긴다. 대신 드래그 불가능한 읽기 전용 컴포넌트로 그린다 —
+ * 자팀은 `SharePlayerNode`(run 화살표 반복 루프는 재현하되 드래그는 없음),
+ * 상대팀은 `PrintOpponentNode`(GIF 내보내기와 공용).
  */
 export function SharePage() {
   const { id } = useParams<{ id: string }>()
@@ -52,6 +52,10 @@ export function SharePage() {
   const title =
     view.kind === 'cp' ? (changingPoints.find((cp) => cp.id === view.id)?.label ?? '') : PHASE_LABELS[view.phase]
   const bodyText = view.kind === 'phase' && view.phase === 'base' ? analysis.summary : phase.comment
+  // 기본 국면은 정지 상태여야 한다(에디터의 PlayerNode와 동일 규칙) — 그 외
+  // (공격/수비/체인징 포인트)에서만 run 화살표 반복 루프를 켠다.
+  const runAnnotations =
+    view.kind === 'phase' && view.phase === 'base' ? undefined : phase.annotations.filter((a) => a.type === 'run')
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4 p-6">
@@ -114,12 +118,13 @@ export function SharePage() {
             const pos = phase.positions.find((p) => p.playerId === player.id)
             if (!pos) return null
             return (
-              <PrintPlayerNode
+              <SharePlayerNode
                 key={player.id}
                 player={player}
                 position={pos}
                 formation={analysis.formation}
                 index={index}
+                runAnnotations={runAnnotations}
               />
             )
           })}
