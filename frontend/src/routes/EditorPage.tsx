@@ -16,6 +16,7 @@ import { SaveButton } from '@/components/editor/SaveButton'
 import { ShareLinkButton } from '@/components/editor/ShareLinkButton'
 import { Timeline } from '@/components/editor/Timeline'
 import { ToolPalette } from '@/components/editor/ToolPalette'
+import { UndoRedoButtons } from '@/components/editor/UndoRedoButtons'
 import { ExportControls } from '@/components/export/ExportControls'
 import { AnnotationLayer } from '@/components/pitch/AnnotationLayer'
 import { ChannelGrid } from '@/components/pitch/ChannelGrid'
@@ -137,6 +138,9 @@ export function EditorPage() {
             <PhaseTabs />
           </div>
           <Timeline />
+          <div className="flex w-full max-w-md justify-end">
+            <UndoRedoButtons />
+          </div>
           <ToolPalette />
           <div className="h-[65vh]" data-testid="editor-pitch" onPointerDown={() => setSelectedAnnotationId(null)}>
             <Pitch>

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { FORMATIONS } from '@/lib/formations'
 import { analysisSchema } from '@/lib/schema'
@@ -318,5 +318,125 @@ describe('analysisStore — 타임라인(체인징 포인트)', () => {
     void _drop
     const result = analysisSchema.safeParse(withoutChangingPoints)
     expect(result.success).toBe(true)
+  })
+})
+
+/**
+ * TO-DO 27 — 되돌리기/다시하기. analysis 변경은 500ms 디바운스로 자동 감지돼
+ * 히스토리에 쌓이므로(analysisStore.ts 하단 subscribe), 실제 타이밍을
+ * 제어하려고 fake timer를 쓴다.
+ */
+describe('analysisStore — undo/redo', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    const analysis = createEmptyAnalysis('4-3-3', {
+      matchName: '테스트',
+      homeTeam: '홈',
+      awayTeam: '원정',
+      matchDate: '2026-09-09',
+      analyzedTeam: 'home',
+    })
+    useAnalysisStore.getState().loadAnalysis(analysis)
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('편집이 없으면 undo/redo 둘 다 아무 일도 하지 않는다', () => {
+    const before = useAnalysisStore.getState().analysis
+    useAnalysisStore.getState().undo()
+    useAnalysisStore.getState().redo()
+    expect(useAnalysisStore.getState().analysis).toBe(before)
+    expect(useAnalysisStore.getState().past).toHaveLength(0)
+    expect(useAnalysisStore.getState().future).toHaveLength(0)
+  })
+
+  it('편집 후 디바운스가 끝나면 past에 1개 쌓이고, undo로 되돌아간다', () => {
+    const playerId = useAnalysisStore.getState().analysis!.players[0].id
+    const before = useAnalysisStore.getState().analysis!.phases.base.positions.find((p) => p.playerId === playerId)
+
+    useAnalysisStore.getState().movePlayer(playerId, 12, 34)
+    vi.advanceTimersByTime(600)
+    expect(useAnalysisStore.getState().past).toHaveLength(1)
+
+    useAnalysisStore.getState().undo()
+    const after = useAnalysisStore.getState().analysis!.phases.base.positions.find((p) => p.playerId === playerId)
+    expect(after).toEqual(before)
+    expect(useAnalysisStore.getState().future).toHaveLength(1)
+  })
+
+  it('디바운스 창 안에서 연달아 바뀌면 히스토리 1개로 합쳐진다(드래그 매 프레임이 각각 안 쌓임)', () => {
+    const playerId = useAnalysisStore.getState().analysis!.players[0].id
+    for (let i = 0; i < 10; i++) {
+      useAnalysisStore.getState().movePlayer(playerId, 10 + i, 50)
+      vi.advanceTimersByTime(100) // 500ms 미만이라 계속 같은 burst
+    }
+    vi.advanceTimersByTime(600) // burst 종료
+    expect(useAnalysisStore.getState().past).toHaveLength(1)
+  })
+
+  it('undo 직후 redo하면 되돌리기 전 상태로 복원된다', () => {
+    const playerId = useAnalysisStore.getState().analysis!.players[0].id
+    useAnalysisStore.getState().movePlayer(playerId, 12, 34)
+    vi.advanceTimersByTime(600)
+
+    useAnalysisStore.getState().undo()
+    useAnalysisStore.getState().redo()
+
+    const pos = useAnalysisStore.getState().analysis!.phases.base.positions.find((p) => p.playerId === playerId)
+    expect(pos).toEqual({ playerId, x: 12, y: 34 })
+    expect(useAnalysisStore.getState().future).toHaveLength(0)
+  })
+
+  it('undo 이후 새로 편집하면 future(다시하기)가 비워진다', () => {
+    const playerId = useAnalysisStore.getState().analysis!.players[0].id
+    useAnalysisStore.getState().movePlayer(playerId, 12, 34)
+    vi.advanceTimersByTime(600)
+    useAnalysisStore.getState().undo()
+    expect(useAnalysisStore.getState().future).toHaveLength(1)
+
+    useAnalysisStore.getState().movePlayer(playerId, 70, 80)
+    vi.advanceTimersByTime(600)
+    expect(useAnalysisStore.getState().future).toHaveLength(0)
+  })
+
+  it('undo를 누르면 디바운스를 기다리던 직전 burst도 즉시 커밋된다', () => {
+    const playerId = useAnalysisStore.getState().analysis!.players[0].id
+    const before = useAnalysisStore.getState().analysis!.phases.base.positions.find((p) => p.playerId === playerId)
+
+    useAnalysisStore.getState().movePlayer(playerId, 99, 99)
+    // 디바운스 타이머가 아직 안 끝난 상태에서 바로 undo
+    useAnalysisStore.getState().undo()
+
+    const after = useAnalysisStore.getState().analysis!.phases.base.positions.find((p) => p.playerId === playerId)
+    expect(after).toEqual(before)
+  })
+
+  it('applySavedMeta는 히스토리에 기록되지 않는다', () => {
+    useAnalysisStore.getState().applySavedMeta({ id: 1, createdAt: '2026-09-09T00:00:00', updatedAt: '2026-09-09T00:00:00' })
+    vi.advanceTimersByTime(600)
+    expect(useAnalysisStore.getState().past).toHaveLength(0)
+  })
+
+  it('loadAnalysis/closeAnalysis는 히스토리를 초기화한다', () => {
+    const playerId = useAnalysisStore.getState().analysis!.players[0].id
+    useAnalysisStore.getState().movePlayer(playerId, 12, 34)
+    vi.advanceTimersByTime(600)
+    expect(useAnalysisStore.getState().past).toHaveLength(1)
+
+    const another = createEmptyAnalysis('4-4-2', {
+      matchName: '다른 분석',
+      homeTeam: '홈2',
+      awayTeam: '원정2',
+      matchDate: '2026-09-09',
+      analyzedTeam: 'home',
+    })
+    useAnalysisStore.getState().loadAnalysis(another)
+    expect(useAnalysisStore.getState().past).toHaveLength(0)
+    expect(useAnalysisStore.getState().future).toHaveLength(0)
+
+    useAnalysisStore.getState().closeAnalysis()
+    expect(useAnalysisStore.getState().past).toHaveLength(0)
   })
 })

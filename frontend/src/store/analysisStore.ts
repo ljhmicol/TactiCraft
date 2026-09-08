@@ -55,6 +55,16 @@ export function createEmptyAnalysis(formation: string, match: MatchInfo): Analys
 export const PHASE_TRANSITION_MS = 600
 
 /**
+ * 되돌리기/다시하기(TO-DO 27번) 설정값. `analysis`가 바뀔 때마다 매번
+ * 히스토리를 쌓으면(드래그 중 매 프레임, 코멘트 입력 중 매 키 입력) 되돌리기
+ * 한 번에 거의 안 움직인 것처럼 느껴진다 — 그래서 "조용해질 때까지"
+ * 기다렸다가 그 burst 시작 시점의 스냅샷 하나만 커밋한다(debounce, 아래
+ * subscribe 참고). HISTORY_LIMIT은 메모리 상한.
+ */
+const HISTORY_DEBOUNCE_MS = 500
+const HISTORY_LIMIT = 50
+
+/**
  * 지금 피치에 보여야 할 데이터 — 타임라인 체인징 포인트를 고른 상태면 그것,
  * 아니면 평소대로 currentPhase (TO-DO 5번). movePlayer 등 모든 편집 액션이
  * "지금 국면"이 아니라 "지금 보이는 곳"에 쓰도록 이 두 헬퍼로 통일한다.
@@ -103,6 +113,8 @@ interface AnalysisStore {
   editingPlayerId: string | null // 피치의 선수 클릭으로 연 편집 다이얼로그
   isPressingLineDragging: boolean // 압박 라인을 드래그하는 동안 true — PlayerNode가 모프 애니메이션 없이 즉시 따라오게 함(2026-09-08)
   selectedChangingPointId: string | null // 타임라인에서 고른 체인징 포인트 — null이면 평소대로 currentPhase를 보여준다 (TO-DO 5번)
+  past: Analysis[] // 되돌리기 스택 (TO-DO 27번) — 오래된 것이 배열 앞쪽
+  future: Analysis[] // 다시하기 스택 — undo 한 번마다 여기로 하나씩 옮겨진다
 
   loadAnalysis: (a: Analysis) => void
   closeAnalysis: () => void // 로고 클릭 등 "처음 화면으로" — 로드된 분석을 비운다(2026-09-07)
@@ -136,6 +148,8 @@ interface AnalysisStore {
   applyFormation: (name: string) => void // FR-06
   applySavedMeta: (meta: { id: number; createdAt: string; updatedAt: string }) => void // 저장 성공 후 id/시각만 반영
   setPressingLineDragging: (v: boolean) => void
+  undo: () => void
+  redo: () => void
 }
 
 const defaultLayers: LayerToggles = {
@@ -149,6 +163,32 @@ const defaultLayers: LayerToggles = {
 
 let morphTimer: ReturnType<typeof setTimeout> | undefined
 
+// 되돌리기/다시하기 내부 상태(TO-DO 27번) — 스토어 밖의 모듈 스코프 변수다.
+// morphTimer와 같은 이유: 컴포넌트 리렌더와 무관하게 "지금 burst 진행 중인지"
+// 자체를 추적해야 하고, 이 값 자체를 화면에 보여줄 필요는 없다.
+let suppressHistory = false // true인 동안은 analysis가 바뀌어도 히스토리에 기록하지 않는다
+let historyTimer: ReturnType<typeof setTimeout> | undefined
+let pendingSnapshot: Analysis | null = null // 지금 burst가 "시작하기 전" 상태 — burst가 끝나면 이 값 하나만 past에 쌓인다
+
+/** pendingSnapshot 하나를 past에 커밋하고 future(다시하기 스택)는 비운다 —
+ * 새 편집이 생겼으니 그 전의 "되돌렸다가 다시하기"는 더는 의미가 없다. */
+function commitPendingSnapshot() {
+  if (!pendingSnapshot) return
+  const snapshot = pendingSnapshot
+  pendingSnapshot = null
+  useAnalysisStore.setState((s) => ({ past: [...s.past, snapshot].slice(-HISTORY_LIMIT), future: [] }))
+}
+
+/** 디바운스 타이머를 기다리지 않고 지금까지 모인 burst를 즉시 커밋한다 —
+ * undo를 누른 순간에도 직전 burst(예: 막 끝난 드래그)가 유실되지 않게 한다. */
+function flushPendingHistory() {
+  if (historyTimer) {
+    clearTimeout(historyTimer)
+    historyTimer = undefined
+  }
+  commitPendingSnapshot()
+}
+
 export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
   analysis: null,
   currentPhase: 'base',
@@ -161,8 +201,13 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
   editingPlayerId: null,
   isPressingLineDragging: false,
   selectedChangingPointId: null,
+  past: [],
+  future: [],
 
-  loadAnalysis: (a) =>
+  loadAnalysis: (a) => {
+    pendingSnapshot = null
+    if (historyTimer) clearTimeout(historyTimer)
+    suppressHistory = true
     set({
       analysis: a,
       currentPhase: 'base',
@@ -170,9 +215,16 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
       isDirty: false,
       editingPlayerId: null,
       selectedChangingPointId: null,
-    }),
+      past: [],
+      future: [],
+    })
+    suppressHistory = false
+  },
 
-  closeAnalysis: () =>
+  closeAnalysis: () => {
+    pendingSnapshot = null
+    if (historyTimer) clearTimeout(historyTimer)
+    suppressHistory = true
     set({
       analysis: null,
       currentPhase: 'base',
@@ -183,7 +235,11 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
       editingPlayerId: null,
       isPressingLineDragging: false,
       selectedChangingPointId: null,
-    }),
+      past: [],
+      future: [],
+    })
+    suppressHistory = false
+  },
 
   setPhase: (p) => set({ currentPhase: p }),
 
@@ -477,6 +533,57 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
   applySavedMeta: (meta) => {
     const { analysis } = get()
     if (!analysis) return
+    // id/생성·수정 시각만 얹는 메타데이터 갱신이라 "되돌릴 만한 편집"이 아니다
+    // — 히스토리에 안 남긴다(저장할 때마다 되돌리기 스택이 오염되면 안 됨).
+    suppressHistory = true
     set({ analysis: { ...analysis, ...meta }, isDirty: false })
+    suppressHistory = false
+  },
+
+  undo: () => {
+    flushPendingHistory()
+    const { past, analysis } = get()
+    if (past.length === 0 || !analysis) return
+    const previous = past[past.length - 1]
+    suppressHistory = true
+    set((s) => ({
+      analysis: previous,
+      past: s.past.slice(0, -1),
+      future: [...s.future, analysis],
+      isDirty: true,
+    }))
+    suppressHistory = false
+  },
+
+  redo: () => {
+    const { future, analysis } = get()
+    if (future.length === 0 || !analysis) return
+    const next = future[future.length - 1]
+    suppressHistory = true
+    set((s) => ({
+      analysis: next,
+      future: s.future.slice(0, -1),
+      past: [...s.past, analysis],
+      isDirty: true,
+    }))
+    suppressHistory = false
   },
 }))
+
+/**
+ * `analysis` 변경을 자동으로 감지해 되돌리기 히스토리를 쌓는다(TO-DO
+ * 27번) — movePlayer 등 20여 개 편집 액션 하나하나에 히스토리 기록 코드를
+ * 넣는 대신, 여기 한 곳에서 "무엇이 바뀌었든" 처리한다. 드래그·타이핑처럼
+ * 같은 burst 안에서 연달아 여러 번 바뀌는 경우 HISTORY_DEBOUNCE_MS 동안
+ * 조용해질 때까지 기다렸다가 그 burst가 시작하기 전 상태 하나만 커밋한다.
+ */
+useAnalysisStore.subscribe((state, prevState) => {
+  if (state.analysis === prevState.analysis) return
+  if (suppressHistory) return
+  if (pendingSnapshot === null) pendingSnapshot = prevState.analysis
+  if (historyTimer) clearTimeout(historyTimer)
+  historyTimer = setTimeout(() => {
+    historyTimer = undefined
+    commitPendingSnapshot()
+  }, HISTORY_DEBOUNCE_MS)
+})
