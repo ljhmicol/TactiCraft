@@ -34,6 +34,31 @@ export function useSaveAnalysis() {
   })
 }
 
+/**
+ * 원본은 그대로 두고 새 id로 복제 저장한다(TO-DO 25번, "다른 이름으로
+ * 저장"). id/createdAt/updatedAt을 비운 채 항상 POST하는 점이
+ * `useSaveAnalysis`와 다르다 — 저장된 분석이든 아니든 항상 새 행을 만든다.
+ * 목록에서 원본과 구분되게 매치명 끝에 "(복제)"를 붙인다.
+ */
+export function useDuplicateAnalysis() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (analysis: Analysis) => {
+      const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...payload } = analysis
+      void _id
+      void _createdAt
+      void _updatedAt
+      return createAnalysis({
+        ...payload,
+        match: { ...payload.match, matchName: `${payload.match.matchName || '분석'} (복제)` },
+      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ANALYSES_KEY })
+    },
+  })
+}
+
 export function useDeleteAnalysis() {
   const queryClient = useQueryClient()
   return useMutation({

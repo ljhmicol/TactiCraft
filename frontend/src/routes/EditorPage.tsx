@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import { BottomActionBar } from '@/components/editor/BottomActionBar'
 import { RecentAnalyses } from '@/components/editor/RecentAnalyses'
 import { CommentPanel } from '@/components/editor/CommentPanel'
+import { DuplicateButton } from '@/components/editor/DuplicateButton'
 import { JsonIO } from '@/components/editor/JsonIO'
 import { LayerToggleChips } from '@/components/editor/LayerToggleChips'
 import { MatchInfoForm } from '@/components/editor/MatchInfoForm'
@@ -123,6 +124,7 @@ export function EditorPage() {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <SaveButton analysis={analysis} />
+          <DuplicateButton analysis={analysis} />
           <ShareLinkButton analysis={analysis} />
           <ExportControls analysis={analysis} phase={currentPhase} />
           <JsonIO analysis={analysis} />
