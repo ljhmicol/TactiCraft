@@ -47,10 +47,11 @@ const phaseDataSchema = z.object({
   annotations: z.array(annotationSchema).default([]),
 })
 
-// 타임라인(매치 체인징 포인트, TO-DO 5번) — phaseDataSchema와 모양이 같고 id/label만 추가된다.
+// 타임라인(매치 체인징 포인트, TO-DO 5번) — phaseDataSchema와 모양이 같고 id/label/minute이 추가된다.
 const changingPointSchema = phaseDataSchema.extend({
   id: z.string(),
   label: z.string().min(1, '체인징 포인트 라벨을 입력해야 합니다'),
+  minute: z.number().min(0).max(120).optional(),
 })
 
 export const analysisSchema = z

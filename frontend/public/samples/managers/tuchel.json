@@ -94,6 +94,7 @@
     {
       "id": "tuc-cp1",
       "label": "3·4위전 프랑스전 후반 추격골 직전 (6-4 승리)",
+      "minute": 78,
       "positions": [
         { "playerId": "p1", "x": 50, "y": 72 },
         { "playerId": "p5", "x": 52, "y": 44 },

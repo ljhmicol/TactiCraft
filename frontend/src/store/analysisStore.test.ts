@@ -288,6 +288,18 @@ describe('analysisStore — 타임라인(체인징 포인트)', () => {
     expect(useAnalysisStore.getState().analysis!.changingPoints![0].label).toBe('전반 23분 추격 상황')
   })
 
+  it('새로 만든 체인징 포인트는 minute이 없다가, setChangingPointMinute으로 지정·해제할 수 있다', () => {
+    useAnalysisStore.getState().addChangingPoint('전반 23분')
+    const cpId = useAnalysisStore.getState().selectedChangingPointId!
+    expect(useAnalysisStore.getState().analysis!.changingPoints![0].minute).toBeUndefined()
+
+    useAnalysisStore.getState().setChangingPointMinute(cpId, 23)
+    expect(useAnalysisStore.getState().analysis!.changingPoints![0].minute).toBe(23)
+
+    useAnalysisStore.getState().setChangingPointMinute(cpId, undefined)
+    expect(useAnalysisStore.getState().analysis!.changingPoints![0].minute).toBeUndefined()
+  })
+
   it('결과가 analysisSchema를 통과한다', () => {
     useAnalysisStore.getState().addChangingPoint('전반 23분')
     useAnalysisStore.getState().movePlayer(useAnalysisStore.getState().analysis!.players[0].id, 40, 60)

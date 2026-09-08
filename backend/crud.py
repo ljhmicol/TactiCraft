@@ -152,7 +152,7 @@ def upsert_analysis(
         row.phases.append(_build_phase(phase_type, payload.phases[phase_type], player_map))
 
     # 타임라인(TO-DO 5번) — 각 체인징 포인트는 자기 전용 Phase 행(phase_type=
-    # "cp:<client_id>")을 갖고, ChangingPoint 행이 라벨·순서만 얹는다.
+    # "cp:<client_id>")을 갖고, ChangingPoint 행이 라벨·시간·순서만 얹는다.
     for i, cp_in in enumerate(payload.changing_points):
         cp_phase = _build_phase(f"cp:{cp_in.id}", cp_in, player_map)
         row.phases.append(cp_phase)
@@ -161,6 +161,7 @@ def upsert_analysis(
             models.ChangingPoint(
                 client_id=cp_in.id,
                 label=cp_in.label,
+                minute=cp_in.minute,
                 order_index=i,
                 phase=cp_phase,
             )
@@ -215,6 +216,7 @@ def to_analysis_dict(row: models.Analysis) -> dict:
         {
             "id": cp.client_id,
             "label": cp.label,
+            "minute": cp.minute,
             **_phase_dict(cp.phase, client_id_by_pk),
         }
         for cp in row.changing_points

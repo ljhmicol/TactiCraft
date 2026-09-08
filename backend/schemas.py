@@ -93,11 +93,12 @@ class PhaseIn(BaseModel):
 
 class ChangingPointIn(PhaseIn):
     """타임라인(매치 체인징 포인트, TO-DO 5번). phases의 base/attack/defense와
-    모양이 같고(PhaseIn 그대로 상속 — positions 11개 검증도 물려받는다) id/label만
-    추가된다. phases 딕셔너리와는 완전히 별개의 목록이다."""
+    모양이 같고(PhaseIn 그대로 상속 — positions 11개 검증도 물려받는다) id/label/
+    minute이 추가된다. phases 딕셔너리와는 완전히 별개의 목록이다."""
 
     id: str = Field(min_length=1)
     label: str = Field(min_length=1)
+    minute: Optional[float] = Field(default=None, ge=0, le=120)
 
 
 class AnalysisIn(BaseModel):

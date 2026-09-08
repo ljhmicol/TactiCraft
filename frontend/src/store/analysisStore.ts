@@ -124,6 +124,7 @@ interface AnalysisStore {
   setSummary: (text: string) => void
   addChangingPoint: (label: string) => void // 지금 보이는 곳을 스냅샷으로 복제해 새 체인징 포인트 생성 + 선택 (TO-DO 5번)
   renameChangingPoint: (id: string, label: string) => void
+  setChangingPointMinute: (id: string, minute: number | undefined) => void
   removeChangingPoint: (id: string) => void
   moveChangingPoint: (id: string, direction: 'left' | 'right') => void // 타임라인 순서 바꾸기
   selectChangingPoint: (id: string | null) => void // null이면 다시 국면 탭 보기로
@@ -358,6 +359,18 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
       analysis: {
         ...analysis,
         changingPoints: analysis.changingPoints.map((cp) => (cp.id === id ? { ...cp, label } : cp)),
+      },
+      isDirty: true,
+    })
+  },
+
+  setChangingPointMinute: (id, minute) => {
+    const { analysis } = get()
+    if (!analysis?.changingPoints) return
+    set({
+      analysis: {
+        ...analysis,
+        changingPoints: analysis.changingPoints.map((cp) => (cp.id === id ? { ...cp, minute } : cp)),
       },
       isDirty: true,
     })

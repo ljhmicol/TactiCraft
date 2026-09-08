@@ -154,9 +154,11 @@ class ChangingPoint(Base):
     """타임라인(매치 체인징 포인트, TO-DO 5번). 기본/공격/수비 3국면과는 별개의
     선택적 확장 — 좌표/화살표/코멘트는 기존 Phase/Position/Annotation 테이블을
     그대로 재사용하고(phase_type을 'cp:<client_id>'로 둬 UniqueConstraint를
-    만족시킨다), 이 테이블은 라벨과 순서만 얹는 얇은 메타데이터다. 새 테이블이라
+    만족시킨다), 이 테이블은 라벨·시간·순서만 얹는 얇은 메타데이터다. 새 테이블이라
     create_all이 자동 생성한다 — annotations 테이블과 같은 이유로 ALTER TABLE
-    불필요(models.py 상단 Annotation 클래스 주석 참조).
+    불필요(models.py 상단 Annotation 클래스 주석 참조). 단 minute 컬럼은 이 테이블이
+    이미 만들어진 뒤(2026-09-09 이전 배포)에 추가됐으므로 main.py에서
+    _ensure_column으로 채운다 — tactical_role/curved와 같은 이유.
     """
 
     __tablename__ = "changing_points"
@@ -168,6 +170,7 @@ class ChangingPoint(Base):
     )
     client_id = Column(String, nullable=False)  # JSON changingPoints[].id 보존
     label = Column(String, nullable=False)
+    minute = Column(Float)  # 경기 시간(분), 0~120 — 없으면 "시간 미정"
     order_index = Column(Integer, nullable=False, default=0)  # 배열 순서 보존
     phase_id = Column(
         Integer, ForeignKey("phases.id", ondelete="CASCADE"), nullable=False, unique=True

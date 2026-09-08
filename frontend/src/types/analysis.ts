@@ -57,7 +57,8 @@ export interface PhaseData {
  */
 export interface ChangingPoint extends PhaseData {
   id: string // 프론트가 생성 (nanoid)
-  label: string // 자유 텍스트, 예: "전반 23분"
+  label: string // 자유 텍스트, 예: "전반 23분 추격 상황"
+  minute?: number // 경기 시간(분), 0~120 — 없으면 시간축에 못 놓고 "시간 미정"으로 취급(2026-09-09)
 }
 
 export interface Analysis {

@@ -94,6 +94,7 @@
     {
       "id": "anc-cp1",
       "label": "16강 노르웨이전 후반 동점 추격 (1-2 패배)",
+      "minute": 84,
       "positions": [
         { "playerId": "p1", "x": 50, "y": 70 },
         { "playerId": "p5", "x": 15, "y": 30 },
