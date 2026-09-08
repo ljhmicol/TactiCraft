@@ -6,6 +6,7 @@ import { AnalysesPage } from '@/routes/AnalysesPage'
 import { AnalysisDetailPage } from '@/routes/AnalysisDetailPage'
 import { EditorPage } from '@/routes/EditorPage'
 import { NewAnalysisPage } from '@/routes/NewAnalysisPage'
+import { SharePage } from '@/routes/SharePage'
 import { VersusPage } from '@/routes/VersusPage'
 import { useAnalysisStore } from '@/store/analysisStore'
 
@@ -54,6 +55,7 @@ function App() {
           <Route path="/new" element={<NewAnalysisPage />} />
           <Route path="/analyses" element={<AnalysesPage />} />
           <Route path="/analyses/:id" element={<AnalysisDetailPage />} />
+          <Route path="/share/:id" element={<SharePage />} />
           <Route path="/versus" element={<VersusPage />} />
         </Routes>
       </BrowserRouter>

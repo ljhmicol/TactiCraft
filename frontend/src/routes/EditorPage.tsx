@@ -12,6 +12,7 @@ import { PhaseTabs } from '@/components/editor/PhaseTabs'
 import { PlayerEditDialog } from '@/components/editor/PlayerEditDialog'
 import { PlayerForm } from '@/components/editor/PlayerForm'
 import { SaveButton } from '@/components/editor/SaveButton'
+import { ShareLinkButton } from '@/components/editor/ShareLinkButton'
 import { Timeline } from '@/components/editor/Timeline'
 import { ToolPalette } from '@/components/editor/ToolPalette'
 import { ExportControls } from '@/components/export/ExportControls'
@@ -122,6 +123,7 @@ export function EditorPage() {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <SaveButton analysis={analysis} />
+          <ShareLinkButton analysis={analysis} />
           <ExportControls analysis={analysis} phase={currentPhase} />
           <JsonIO analysis={analysis} />
         </div>
