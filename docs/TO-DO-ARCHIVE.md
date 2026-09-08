@@ -2,6 +2,13 @@
 
 사용자 확인까지 완료(`[C]`)된 항목의 보관소. `TO-DO-LIST.md`에서 이동해 온다. 기록은 최신이 위로 오게 추가한다.
 
+- [C] **25/26/27. 분석 복제·공유 링크 PNG 다운로드·되돌리기(Undo/Redo)** (2026-09-09 사용자 확인: "다 잘된다")
+  - 로그인(11번) 착수 전에 "로그인 외 추가할 기능"을 브레인스토밍해 셋을 신규 등록, 작업량이 작고 서로 독립적이라 로그인보다 먼저 처리
+  - **25. 분석 복제**: `useDuplicateAnalysis`(`analysis.id` 유무와 무관하게 항상 POST) + `DuplicateButton.tsx`. 매치명에 "(복제)" 접미사, 복제 후 에디터가 그 새 사본으로 전환(`loadAnalysis`)
+  - **26. 공유 링크 PNG 다운로드**: `SharePngCard.tsx` 신규(에디터의 `ShareCard`와 달리 레이어를 props로 받고 `SharePlayerNode`/`PrintOpponentNode`로 그림 — TO-DO 8번에서 만든 읽기 전용 컴포넌트 재사용). `lib/exportImage.ts`의 `exportCard`는 그대로 재사용 가능(store `isMorphing`만 참조하는데 공유 페이지에선 항상 false)
+  - **27. 되돌리기/다시하기**: 새 라이브러리 없이 `useAnalysisStore.subscribe(...)` 하나로 `analysis` 참조 변경을 전부 감지, 500ms 디바운스로 드래그 매 프레임·타이핑 매 키 입력을 burst 하나로 묶어 `past`에 커밋(`HISTORY_LIMIT=50`). `loadAnalysis`/`closeAnalysis`/`applySavedMeta`는 `suppressHistory` 플래그로 히스토리 제외. `UndoRedoButtons.tsx` — 버튼 + Ctrl/Cmd+Z 단축키(텍스트 입력 필드 포커스 중엔 브라우저 자체 되돌리기 우선)
+  - 커밋 `60a3747`(25), `20aebe8`(26), `b83de21`(27)
+
 - [C] **8. 공유 링크 (읽기 전용 URL)** (2026-09-09 사용자 확인: "확인했어")
   - 저장된 분석을 `/share/:id`로 읽기 전용 공개. 로그인이 없는 지금 `GET /api/analyses/:id`가 이미 사실상 공개 엔드포인트라 백엔드 변경 없이 프론트 전용으로 구현 — 새 공개 범위를 만든 게 아니라 그걸 "보여주기 좋은 페이지"로 감싼 것. `useAnalysisStore`를 쓰지 않는 완전히 별도 화면(남의 분석이 "지금 편집 중인 분석"과 섞이면 안 됨)이라 드래그 불가능한 읽기 전용 노드(`SharePlayerNode`/`PrintOpponentNode`)로 그린다. 편집기 툴바에 "공유 링크" 버튼 추가(저장 전엔 비활성화, 저장 후 URL 클립보드 복사)
   - 1차 확인 후 버그 발견·수정: 공격/수비 국면에서 run 화살표 반복 루프 애니메이션이 안 보임 — 처음엔 GIF 내보내기용 완전 정지 컴포넌트(`PrintPlayerNode`)를 재사용했는데, 그건 결정론적 프레임 캡처가 목적이라 애니메이션이 없는 게 맞는 설계였다. `PrintPlayerNode`(GIF 전용)는 그대로 두고, 에디터의 `PlayerNode`와 같은 run-loop 로직을 스토어 의존성 없이 재현하는 `SharePlayerNode`를 새로 만들어 교체
