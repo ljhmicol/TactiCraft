@@ -231,6 +231,12 @@ describe('analysisStore — 타임라인(체인징 포인트)', () => {
     expect(cp.comment).toBe('') // 코멘트는 새로 쓰도록 비워서 시작한다
   })
 
+  it('addChangingPoint에 minute을 주면 그 값으로 바로 만들어진다(타임라인 바 클릭 추가)', () => {
+    useAnalysisStore.getState().addChangingPoint('킥오프', 23)
+    const { analysis } = useAnalysisStore.getState()
+    expect(analysis!.changingPoints![0].minute).toBe(23)
+  })
+
   it('체인징 포인트를 선택한 동안 movePlayer/addAnnotation은 그 포인트에만 반영되고 국면은 그대로 둔다', () => {
     useAnalysisStore.getState().addChangingPoint('전반 23분')
     const cpId = useAnalysisStore.getState().selectedChangingPointId!

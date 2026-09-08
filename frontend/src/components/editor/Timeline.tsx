@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react'
+import type { MouseEvent } from 'react'
 
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -42,6 +43,17 @@ export function Timeline() {
 
   const toggleSelect = (cp: ChangingPoint) => selectChangingPoint(cp.id === selectedChangingPointId ? null : cp.id)
 
+  // 시간축 바를 직접 클릭하면 그 위치의 분(minute)으로 새 시점을 만든다 — 점(버튼)을
+  // 클릭한 경우는 선택 동작이라 여기서 무시한다(2026-09-09, "타임라인바에서 선택을
+  // 하면 타임라인을 추가할 수 있게도 만들어줘" 요청).
+  const handleTrackClick = (e: MouseEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest('button')) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
+    const minute = Math.round(ratio * AXIS_MAX_MINUTE)
+    addChangingPoint(`체인징 포인트 ${changingPoints.length + 1}`, minute)
+  }
+
   return (
     <div className="w-full max-w-md space-y-1 rounded-md border border-border p-2">
       <div className="flex items-center justify-between">
@@ -57,7 +69,12 @@ export function Timeline() {
         </button>
       </div>
 
-      <div className="relative mx-1 mb-5 mt-4 h-1.5 rounded-full bg-muted">
+      <div
+        className="relative mx-1 mb-5 mt-4 cursor-pointer py-1.5"
+        onClick={handleTrackClick}
+        title="클릭하면 그 시간에 새 시점을 추가합니다"
+      >
+        <div className="h-1.5 rounded-full bg-muted" />
         {AXIS_LINES.map((m) => (
           <div
             key={m}

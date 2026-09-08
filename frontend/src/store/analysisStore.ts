@@ -122,7 +122,7 @@ interface AnalysisStore {
   setPressingLineLevel: (level: PressingLineLevel) => void // GK 제외 전원을 평행이동해 압박 라인을 5단계로 지정 (간격 비율 유지)
   setComment: (text: string) => void // 지금 보이는 곳(국면 또는 체인징 포인트)의 코멘트
   setSummary: (text: string) => void
-  addChangingPoint: (label: string) => void // 지금 보이는 곳을 스냅샷으로 복제해 새 체인징 포인트 생성 + 선택 (TO-DO 5번)
+  addChangingPoint: (label: string, minute?: number) => void // 지금 보이는 곳을 스냅샷으로 복제해 새 체인징 포인트 생성 + 선택 (TO-DO 5번). minute을 주면 시간축의 그 위치에 바로 놓인다(2026-09-09, 시간축 클릭 추가)
   renameChangingPoint: (id: string, label: string) => void
   setChangingPointMinute: (id: string, minute: number | undefined) => void
   removeChangingPoint: (id: string) => void
@@ -331,13 +331,14 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
     })
   },
 
-  addChangingPoint: (label) => {
+  addChangingPoint: (label, minute) => {
     const { analysis, currentPhase, selectedChangingPointId } = get()
     if (!analysis) return
     const source = getActivePhaseData(analysis, currentPhase, selectedChangingPointId)
     const newPoint: ChangingPoint = {
       id: nanoid(),
       label,
+      minute,
       positions: source.positions.map((p) => ({ ...p })),
       opponentPositions: source.opponentPositions?.map((p) => ({ ...p })),
       pressingLineY: source.pressingLineY,
