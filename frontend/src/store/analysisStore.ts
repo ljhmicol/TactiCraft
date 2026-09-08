@@ -7,9 +7,11 @@ import { findGkPlayerId, shiftPositionsToPressingLevel } from '@/lib/pressingLin
 import type {
   Analysis,
   AnnotationType,
+  ChangingPoint,
   DrawTool,
   LayerToggles,
   MatchInfo,
+  PhaseData,
   PhaseType,
   Player,
   Point,
@@ -52,6 +54,43 @@ export function createEmptyAnalysis(formation: string, match: MatchInfo): Analys
 /** 국면 전환 애니메이션 사양 (2단계 §8). */
 export const PHASE_TRANSITION_MS = 600
 
+/**
+ * 지금 피치에 보여야 할 데이터 — 타임라인 체인징 포인트를 고른 상태면 그것,
+ * 아니면 평소대로 currentPhase (TO-DO 5번). movePlayer 등 모든 편집 액션이
+ * "지금 국면"이 아니라 "지금 보이는 곳"에 쓰도록 이 두 헬퍼로 통일한다.
+ */
+function getActivePhaseData(
+  analysis: Analysis,
+  currentPhase: PhaseType,
+  selectedChangingPointId: string | null,
+): PhaseData {
+  if (selectedChangingPointId) {
+    const cp = analysis.changingPoints?.find((c) => c.id === selectedChangingPointId)
+    if (cp) return cp
+  }
+  return analysis.phases[currentPhase]
+}
+
+function withActivePhaseUpdate(
+  analysis: Analysis,
+  currentPhase: PhaseType,
+  selectedChangingPointId: string | null,
+  updater: (phase: PhaseData) => PhaseData,
+): Analysis {
+  if (selectedChangingPointId && analysis.changingPoints?.some((c) => c.id === selectedChangingPointId)) {
+    return {
+      ...analysis,
+      changingPoints: analysis.changingPoints.map((cp) =>
+        cp.id === selectedChangingPointId ? { ...cp, ...updater(cp) } : cp,
+      ),
+    }
+  }
+  return {
+    ...analysis,
+    phases: { ...analysis.phases, [currentPhase]: updater(analysis.phases[currentPhase]) },
+  }
+}
+
 interface AnalysisStore {
   analysis: Analysis | null
   currentPhase: PhaseType
@@ -63,25 +102,31 @@ interface AnalysisStore {
   curvedDraw: boolean // 다음에 그릴 화살표를 곡선으로 — 화면 설정, 저장 대상 아님(2026-09-07)
   editingPlayerId: string | null // 피치의 선수 클릭으로 연 편집 다이얼로그
   isPressingLineDragging: boolean // 압박 라인을 드래그하는 동안 true — PlayerNode가 모프 애니메이션 없이 즉시 따라오게 함(2026-09-08)
+  selectedChangingPointId: string | null // 타임라인에서 고른 체인징 포인트 — null이면 평소대로 currentPhase를 보여준다 (TO-DO 5번)
 
   loadAnalysis: (a: Analysis) => void
   closeAnalysis: () => void // 로고 클릭 등 "처음 화면으로" — 로드된 분석을 비운다(2026-09-07)
   setPhase: (p: PhaseType) => void
-  switchPhase: (p: PhaseType) => void // 국면 탭 클릭 — isMorphing/Ghost 타이밍까지 함께 처리
+  switchPhase: (p: PhaseType) => void // 국면 탭 클릭 — isMorphing/Ghost 타이밍까지 함께 처리, 체인징 포인트 보기는 해제
   setIsMorphing: (v: boolean) => void
-  movePlayer: (playerId: string, x: number, y: number) => void // 현재 국면에만 반영
+  movePlayer: (playerId: string, x: number, y: number) => void // 지금 보이는 곳(국면 또는 체인징 포인트)에만 반영
   moveOpponent: (slot: number, x: number, y: number) => void
   setDrawTool: (t: DrawTool) => void
   toggleCurvedDraw: () => void
   setEditingPlayer: (id: string | null) => void
-  addAnnotation: (type: AnnotationType, from: Point, to: Point, curved?: boolean) => void // 현재 국면에 추가
+  addAnnotation: (type: AnnotationType, from: Point, to: Point, curved?: boolean) => void // 지금 보이는 곳에 추가
   removeAnnotation: (id: string) => void
-  addOpponents: () => void // 현재 국면에 상대팀 11명 기본 배치 추가 (자팀 포메이션을 하프라인 기준 대칭)
+  addOpponents: () => void // 지금 보이는 곳에 상대팀 11명 기본 배치 추가 (자팀 포메이션을 하프라인 기준 대칭)
   addOpponentsFromFormation: (formationName: string) => void // 자팀 대신 지정한 포메이션 템플릿을 대칭 배치 (TO-DO 4번)
   removeOpponents: () => void
   setPressingLineLevel: (level: PressingLineLevel) => void // GK 제외 전원을 평행이동해 압박 라인을 5단계로 지정 (간격 비율 유지)
-  setComment: (phase: PhaseType, text: string) => void
+  setComment: (text: string) => void // 지금 보이는 곳(국면 또는 체인징 포인트)의 코멘트
   setSummary: (text: string) => void
+  addChangingPoint: (label: string) => void // 지금 보이는 곳을 스냅샷으로 복제해 새 체인징 포인트 생성 + 선택 (TO-DO 5번)
+  renameChangingPoint: (id: string, label: string) => void
+  removeChangingPoint: (id: string) => void
+  moveChangingPoint: (id: string, direction: 'left' | 'right') => void // 타임라인 순서 바꾸기
+  selectChangingPoint: (id: string | null) => void // null이면 다시 국면 탭 보기로
   setMatchInfo: (patch: Partial<MatchInfo>) => void
   updatePlayer: (playerId: string, patch: Partial<Omit<Player, 'id'>>) => void
   addPlayer: () => void // 벤치 선수 추가 — 항상 배열 끝에 붙인다 (선발 인덱스 0~10 보존, TO-DO 14)
@@ -114,9 +159,17 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
   curvedDraw: false,
   editingPlayerId: null,
   isPressingLineDragging: false,
+  selectedChangingPointId: null,
 
   loadAnalysis: (a) =>
-    set({ analysis: a, currentPhase: 'base', previousPhase: null, isDirty: false, editingPlayerId: null }),
+    set({
+      analysis: a,
+      currentPhase: 'base',
+      previousPhase: null,
+      isDirty: false,
+      editingPlayerId: null,
+      selectedChangingPointId: null,
+    }),
 
   closeAnalysis: () =>
     set({
@@ -128,17 +181,20 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
       curvedDraw: false,
       editingPlayerId: null,
       isPressingLineDragging: false,
+      selectedChangingPointId: null,
     }),
 
   setPhase: (p) => set({ currentPhase: p }),
 
   switchPhase: (next) => {
-    const { currentPhase } = get()
-    if (next === currentPhase) return
+    const { currentPhase, selectedChangingPointId } = get()
+    // 체인징 포인트를 보던 중이면 같은 국면 탭을 다시 눌러도(next === currentPhase)
+    // 국면 탭 보기로 돌아가야 하므로 그 경우엔 조기 반환하지 않는다.
+    if (next === currentPhase && !selectedChangingPointId) return
 
     clearTimeout(morphTimer)
 
-    set({ previousPhase: currentPhase, currentPhase: next, isMorphing: true })
+    set({ previousPhase: currentPhase, currentPhase: next, isMorphing: true, selectedChangingPointId: null })
 
     morphTimer = setTimeout(() => set({ isMorphing: false }), PHASE_TRANSITION_MS)
   },
@@ -146,38 +202,26 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
   setIsMorphing: (v) => set({ isMorphing: v }),
 
   movePlayer: (playerId, x, y) => {
-    const { analysis, currentPhase } = get()
+    const { analysis, currentPhase, selectedChangingPointId } = get()
     if (!analysis) return
-    const phase = analysis.phases[currentPhase]
     set({
-      analysis: {
-        ...analysis,
-        phases: {
-          ...analysis.phases,
-          [currentPhase]: {
-            ...phase,
-            positions: phase.positions.map((pos) => (pos.playerId === playerId ? { ...pos, x, y } : pos)),
-          },
-        },
-      },
+      analysis: withActivePhaseUpdate(analysis, currentPhase, selectedChangingPointId, (phase) => ({
+        ...phase,
+        positions: phase.positions.map((pos) => (pos.playerId === playerId ? { ...pos, x, y } : pos)),
+      })),
       isDirty: true,
     })
   },
 
   moveOpponent: (slot, x, y) => {
-    const { analysis, currentPhase } = get()
+    const { analysis, currentPhase, selectedChangingPointId } = get()
     if (!analysis) return
-    const phase = analysis.phases[currentPhase]
-    const opp = phase.opponentPositions ? [...phase.opponentPositions] : []
-    opp[slot] = { x, y }
     set({
-      analysis: {
-        ...analysis,
-        phases: {
-          ...analysis.phases,
-          [currentPhase]: { ...phase, opponentPositions: opp },
-        },
-      },
+      analysis: withActivePhaseUpdate(analysis, currentPhase, selectedChangingPointId, (phase) => {
+        const opp = phase.opponentPositions ? [...phase.opponentPositions] : []
+        opp[slot] = { x, y }
+        return { ...phase, opponentPositions: opp }
+      }),
       isDirty: true,
     })
   },
@@ -191,109 +235,161 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
   setPressingLineDragging: (v) => set({ isPressingLineDragging: v }),
 
   addAnnotation: (type, from, to, curved) => {
-    const { analysis, currentPhase } = get()
+    const { analysis, currentPhase, selectedChangingPointId } = get()
     if (!analysis) return
-    const phase = analysis.phases[currentPhase]
     set({
-      analysis: {
-        ...analysis,
-        phases: {
-          ...analysis.phases,
-          [currentPhase]: {
-            ...phase,
-            annotations: [...phase.annotations, { id: nanoid(), type, from, to, curved: curved || undefined }],
-          },
-        },
-      },
+      analysis: withActivePhaseUpdate(analysis, currentPhase, selectedChangingPointId, (phase) => ({
+        ...phase,
+        annotations: [...phase.annotations, { id: nanoid(), type, from, to, curved: curved || undefined }],
+      })),
       isDirty: true,
     })
   },
 
   removeAnnotation: (id) => {
-    const { analysis, currentPhase } = get()
+    const { analysis, currentPhase, selectedChangingPointId } = get()
     if (!analysis) return
-    const phase = analysis.phases[currentPhase]
     set({
-      analysis: {
-        ...analysis,
-        phases: {
-          ...analysis.phases,
-          [currentPhase]: { ...phase, annotations: phase.annotations.filter((a) => a.id !== id) },
-        },
-      },
+      analysis: withActivePhaseUpdate(analysis, currentPhase, selectedChangingPointId, (phase) => ({
+        ...phase,
+        annotations: phase.annotations.filter((a) => a.id !== id),
+      })),
       isDirty: true,
     })
   },
 
   addOpponents: () => {
-    const { analysis, currentPhase } = get()
+    const { analysis, currentPhase, selectedChangingPointId } = get()
     if (!analysis) return
-    const phase = analysis.phases[currentPhase]
-    // 자팀 포메이션을 하프라인 기준으로 대칭 이동한 좌표를 기본값으로 준다 (y' = 100 - y).
-    const opp = phase.positions.map((p) => ({ x: p.x, y: 100 - p.y }))
     set({
-      analysis: { ...analysis, phases: { ...analysis.phases, [currentPhase]: { ...phase, opponentPositions: opp } } },
+      // 자팀 포메이션을 하프라인 기준으로 대칭 이동한 좌표를 기본값으로 준다 (y' = 100 - y).
+      analysis: withActivePhaseUpdate(analysis, currentPhase, selectedChangingPointId, (phase) => ({
+        ...phase,
+        opponentPositions: phase.positions.map((p) => ({ x: p.x, y: 100 - p.y })),
+      })),
       isDirty: true,
     })
   },
 
   addOpponentsFromFormation: (formationName) => {
-    const { analysis, currentPhase } = get()
+    const { analysis, currentPhase, selectedChangingPointId } = get()
     if (!analysis) return
     const coords = FORMATIONS[formationName]
     if (!coords) return
-    const phase = analysis.phases[currentPhase]
-    // addOpponents와 같은 대칭 이동(y' = 100 - y) — 자팀 현재 배치 대신
-    // 상대가 고를 수 있는 다른 포메이션 템플릿(예: 4-4-2 로우블록)을 그
-    // 대칭으로 배치한다(TO-DO 4번, "지금은 11개 점을 일일이 찍어야 함").
-    const opp = coords.map((p) => ({ x: p.x, y: 100 - p.y }))
     set({
-      analysis: { ...analysis, phases: { ...analysis.phases, [currentPhase]: { ...phase, opponentPositions: opp } } },
+      // addOpponents와 같은 대칭 이동(y' = 100 - y) — 자팀 현재 배치 대신
+      // 상대가 고를 수 있는 다른 포메이션 템플릿(예: 4-4-2 로우블록)을 그
+      // 대칭으로 배치한다(TO-DO 4번, "지금은 11개 점을 일일이 찍어야 함").
+      analysis: withActivePhaseUpdate(analysis, currentPhase, selectedChangingPointId, (phase) => ({
+        ...phase,
+        opponentPositions: coords.map((p) => ({ x: p.x, y: 100 - p.y })),
+      })),
       isDirty: true,
     })
   },
 
   removeOpponents: () => {
-    const { analysis, currentPhase } = get()
+    const { analysis, currentPhase, selectedChangingPointId } = get()
     if (!analysis) return
-    const phase = analysis.phases[currentPhase]
-    const { opponentPositions: _drop, ...rest } = phase
-    void _drop
     set({
-      analysis: { ...analysis, phases: { ...analysis.phases, [currentPhase]: rest } },
+      analysis: withActivePhaseUpdate(analysis, currentPhase, selectedChangingPointId, (phase) => {
+        const { opponentPositions: _drop, ...rest } = phase
+        void _drop
+        return rest
+      }),
       isDirty: true,
     })
   },
 
   setPressingLineLevel: (level) => {
-    const { analysis, currentPhase } = get()
+    const { analysis, currentPhase, selectedChangingPointId } = get()
     if (!analysis) return
-    const phase = analysis.phases[currentPhase]
+    const phase = getActivePhaseData(analysis, currentPhase, selectedChangingPointId)
     const gkId = findGkPlayerId(analysis.players, analysis.formation)
     const result = shiftPositionsToPressingLevel(phase.positions, gkId, level)
     if (!result) return
     set({
+      analysis: withActivePhaseUpdate(analysis, currentPhase, selectedChangingPointId, (p) => ({
+        ...p,
+        positions: result.positions,
+        pressingLineY: result.pressingLineY,
+      })),
+      isDirty: true,
+    })
+  },
+
+  setComment: (text) => {
+    const { analysis, currentPhase, selectedChangingPointId } = get()
+    if (!analysis) return
+    set({
+      analysis: withActivePhaseUpdate(analysis, currentPhase, selectedChangingPointId, (phase) => ({
+        ...phase,
+        comment: text,
+      })),
+      isDirty: true,
+    })
+  },
+
+  addChangingPoint: (label) => {
+    const { analysis, currentPhase, selectedChangingPointId } = get()
+    if (!analysis) return
+    const source = getActivePhaseData(analysis, currentPhase, selectedChangingPointId)
+    const newPoint: ChangingPoint = {
+      id: nanoid(),
+      label,
+      positions: source.positions.map((p) => ({ ...p })),
+      opponentPositions: source.opponentPositions?.map((p) => ({ ...p })),
+      pressingLineY: source.pressingLineY,
+      // 코멘트·화살표는 그 시점 고유의 내용이라 새로 쓰게 비워 둔다 — 좌표만 시작점으로 물려받는다.
+      comment: '',
+      annotations: [],
+    }
+    set({
+      analysis: { ...analysis, changingPoints: [...(analysis.changingPoints ?? []), newPoint] },
+      selectedChangingPointId: newPoint.id,
+      isDirty: true,
+    })
+  },
+
+  renameChangingPoint: (id, label) => {
+    const { analysis } = get()
+    if (!analysis?.changingPoints) return
+    set({
       analysis: {
         ...analysis,
-        phases: {
-          ...analysis.phases,
-          [currentPhase]: { ...phase, positions: result.positions, pressingLineY: result.pressingLineY },
-        },
+        changingPoints: analysis.changingPoints.map((cp) => (cp.id === id ? { ...cp, label } : cp)),
       },
       isDirty: true,
     })
   },
 
-  setComment: (phase, text) => {
-    const { analysis } = get()
-    if (!analysis) return
+  removeChangingPoint: (id) => {
+    const { analysis, selectedChangingPointId } = get()
+    if (!analysis?.changingPoints) return
     set({
-      analysis: {
-        ...analysis,
-        phases: { ...analysis.phases, [phase]: { ...analysis.phases[phase], comment: text } },
-      },
+      analysis: { ...analysis, changingPoints: analysis.changingPoints.filter((cp) => cp.id !== id) },
+      selectedChangingPointId: selectedChangingPointId === id ? null : selectedChangingPointId,
       isDirty: true,
     })
+  },
+
+  moveChangingPoint: (id, direction) => {
+    const { analysis } = get()
+    if (!analysis?.changingPoints) return
+    const list = [...analysis.changingPoints]
+    const idx = list.findIndex((cp) => cp.id === id)
+    const swapWith = direction === 'left' ? idx - 1 : idx + 1
+    if (idx === -1 || swapWith < 0 || swapWith >= list.length) return
+    ;[list[idx], list[swapWith]] = [list[swapWith], list[idx]]
+    set({ analysis: { ...analysis, changingPoints: list }, isDirty: true })
+  },
+
+  selectChangingPoint: (id) => {
+    const { selectedChangingPointId } = get()
+    if (id === selectedChangingPointId) return
+    clearTimeout(morphTimer)
+    set({ selectedChangingPointId: id, isMorphing: true })
+    morphTimer = setTimeout(() => set({ isMorphing: false }), PHASE_TRANSITION_MS)
   },
 
   setSummary: (text) => {

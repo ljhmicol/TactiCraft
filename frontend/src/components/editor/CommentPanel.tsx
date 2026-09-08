@@ -2,27 +2,31 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { findTacticalRole } from '@/lib/tacticalRoles'
 import { useAnalysisStore } from '@/store/analysisStore'
-import type { PhaseType } from '@/types/analysis'
-
-const PHASE_LABELS: Record<PhaseType, string> = {
-  base: '기본',
-  attack: '공격',
-  defense: '수비',
-}
+import type { PlayerPosition } from '@/types/analysis'
 
 /**
- * 국면별 코멘트 + 종합 평가 (FR-04). 제목이 현재 국면명을 따라 바뀐다 —
- * 어느 국면에 쓰는 중인지 헷갈리는 것이 가장 흔한 실수다 (2단계 §11.1).
+ * 지금 보이는 곳(국면 또는 타임라인 체인징 포인트)의 코멘트 + 종합 평가
+ * (FR-04, TO-DO 5번). 제목이 그 이름을 따라 바뀐다 — 어디에 쓰는 중인지
+ * 헷갈리는 것이 가장 흔한 실수다 (2단계 §11.1).
  *
- * 전술 역할 문구 삽입(TO-DO 20)은 코멘트를 대신 써주는 게 아니라, 이 국면에
+ * 전술 역할 문구 삽입(TO-DO 20)은 코멘트를 대신 써주는 게 아니라, 지금
  * 배치된 선수 중 전술 역할이 지정된 선수의 역할 설명 한 줄을 코멘트 끝에
  * 붙여주는 보조 기능이다. 자동 생성이 아니라 사용자가 눌러야만 들어간다.
  */
-export function CommentPanel({ phase, comment, summary }: { phase: PhaseType; comment: string; summary: string }) {
+export function CommentPanel({
+  title,
+  comment,
+  summary,
+  phasePositions,
+}: {
+  title: string
+  comment: string
+  summary: string
+  phasePositions: PlayerPosition[]
+}) {
   const setComment = useAnalysisStore((s) => s.setComment)
   const setSummary = useAnalysisStore((s) => s.setSummary)
   const players = useAnalysisStore((s) => s.analysis?.players)
-  const phasePositions = useAnalysisStore((s) => s.analysis?.phases[phase].positions)
 
   const roleSuggestions = (phasePositions ?? [])
     .map((pos) => {
@@ -33,19 +37,14 @@ export function CommentPanel({ phase, comment, summary }: { phase: PhaseType; co
     .filter((v): v is NonNullable<typeof v> => v !== null)
 
   const insertSuggestion = (text: string) => {
-    setComment(phase, comment ? `${comment}\n${text}` : text)
+    setComment(comment ? `${comment}\n${text}` : text)
   }
 
   return (
     <div className="space-y-4">
       <div>
-        <Label htmlFor="phase-comment">{PHASE_LABELS[phase]} 국면 코멘트</Label>
-        <Textarea
-          id="phase-comment"
-          value={comment}
-          onChange={(e) => setComment(phase, e.target.value)}
-          rows={3}
-        />
+        <Label htmlFor="phase-comment">{title} 코멘트</Label>
+        <Textarea id="phase-comment" value={comment} onChange={(e) => setComment(e.target.value)} rows={3} />
         {roleSuggestions.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {roleSuggestions.map(({ player, role }) => (

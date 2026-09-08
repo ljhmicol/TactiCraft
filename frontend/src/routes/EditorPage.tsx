@@ -12,6 +12,7 @@ import { PhaseTabs } from '@/components/editor/PhaseTabs'
 import { PlayerEditDialog } from '@/components/editor/PlayerEditDialog'
 import { PlayerForm } from '@/components/editor/PlayerForm'
 import { SaveButton } from '@/components/editor/SaveButton'
+import { Timeline } from '@/components/editor/Timeline'
 import { ToolPalette } from '@/components/editor/ToolPalette'
 import { ExportControls } from '@/components/export/ExportControls'
 import { AnnotationLayer } from '@/components/pitch/AnnotationLayer'
@@ -30,6 +31,13 @@ import { pressingLineLevel, type PressingLineLevel } from '@/lib/compactness'
 import { FORMATION_NAMES } from '@/lib/formations'
 import { currentPressingLineLevel, findGkPlayerId, PRESSING_LINE_LEVELS } from '@/lib/pressingLineSteps'
 import { useAnalysisStore } from '@/store/analysisStore'
+import type { PhaseType } from '@/types/analysis'
+
+const PHASE_LABELS: Record<PhaseType, string> = {
+  base: '기본',
+  attack: '공격',
+  defense: '수비',
+}
 
 /**
  * / — 편집기. 분석이 없으면 빈 안내, 있으면 피치 + 경기정보/선수 패널을 보여준다.
@@ -57,6 +65,7 @@ export function EditorPage() {
   const analysis = useAnalysisStore((s) => s.analysis)
   const currentPhase = useAnalysisStore((s) => s.currentPhase)
   const previousPhase = useAnalysisStore((s) => s.previousPhase)
+  const selectedChangingPointId = useAnalysisStore((s) => s.selectedChangingPointId)
   const layers = useAnalysisStore((s) => s.layers)
   const drawTool = useAnalysisStore((s) => s.drawTool)
   const addOpponents = useAnalysisStore((s) => s.addOpponents)
@@ -84,10 +93,17 @@ export function EditorPage() {
     )
   }
 
-  const phase = analysis.phases[currentPhase]
+  // 타임라인에서 체인징 포인트를 골랐으면 그 스냅샷을, 아니면 평소대로
+  // currentPhase를 피치에 보여준다 — 편집 액션은 스토어가 알아서 같은 곳에
+  // 쓴다(TO-DO 5번). 찾지 못하면(삭제 직후 등) 국면으로 안전하게 되돌아간다.
+  const changingPoint = selectedChangingPointId
+    ? analysis.changingPoints?.find((cp) => cp.id === selectedChangingPointId)
+    : undefined
+  const phase = changingPoint ?? analysis.phases[currentPhase]
   // 국면 전환 때 잠깐 자동으로 뜨던 고스트는 없앴다(2026-09-08 "잠깐 보이는 고스트
   // 없애줘") — 이제 레이어 칩으로 켠 경우에만(Ghost View, 수동 토글) 보인다.
-  const showGhost = Boolean(previousPhase) && previousPhase !== currentPhase && layers.ghostView
+  // 체인징 포인트를 보는 중엔 "직전 국면"이라는 개념이 없어 항상 끈다.
+  const showGhost = !changingPoint && Boolean(previousPhase) && previousPhase !== currentPhase && layers.ghostView
   const hasOpponent = Boolean(phase.opponentPositions && phase.opponentPositions.length > 0)
   const gkId = findGkPlayerId(analysis.players, analysis.formation)
   const pressingLevel = currentPressingLineLevel(phase.positions, gkId)
@@ -116,6 +132,7 @@ export function EditorPage() {
           <div className="sticky top-0 z-10 w-full max-w-md bg-background py-2">
             <PhaseTabs />
           </div>
+          <Timeline />
           <ToolPalette />
           <div className="h-[65vh]" data-testid="editor-pitch" onPointerDown={() => setSelectedAnnotationId(null)}>
             <Pitch>
@@ -238,7 +255,12 @@ export function EditorPage() {
           </section>
 
           <section>
-            <CommentPanel phase={currentPhase} comment={phase.comment} summary={analysis.summary} />
+            <CommentPanel
+              title={changingPoint ? changingPoint.label : PHASE_LABELS[currentPhase]}
+              comment={phase.comment}
+              summary={analysis.summary}
+              phasePositions={phase.positions}
+            />
           </section>
         </div>
       </div>

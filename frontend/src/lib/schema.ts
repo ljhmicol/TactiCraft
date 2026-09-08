@@ -47,6 +47,12 @@ const phaseDataSchema = z.object({
   annotations: z.array(annotationSchema).default([]),
 })
 
+// 타임라인(매치 체인징 포인트, TO-DO 5번) — phaseDataSchema와 모양이 같고 id/label만 추가된다.
+const changingPointSchema = phaseDataSchema.extend({
+  id: z.string(),
+  label: z.string().min(1, '체인징 포인트 라벨을 입력해야 합니다'),
+})
+
 export const analysisSchema = z
   .object({
     id: z.number().optional(),
@@ -62,6 +68,7 @@ export const analysisSchema = z
       attack: phaseDataSchema,
       defense: phaseDataSchema,
     }),
+    changingPoints: z.array(changingPointSchema).optional(),
     summary: z.string(),
     createdAt: z.string().optional(),
     updatedAt: z.string().optional(),
@@ -93,6 +100,31 @@ export const analysisSchema = z
         seen.add(pos.playerId)
       })
     }
+
+    const cpIds = (data.changingPoints ?? []).map((cp) => cp.id)
+    if (new Set(cpIds).size !== cpIds.length) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['changingPoints'], message: '체인징 포인트 id가 중복되었습니다' })
+    }
+    ;(data.changingPoints ?? []).forEach((cp, cpIndex) => {
+      const seen = new Set<string>()
+      cp.positions.forEach((pos, i) => {
+        if (!idSet.has(pos.playerId)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['changingPoints', cpIndex, 'positions', i, 'playerId'],
+            message: `players에 존재하지 않는 선수 id입니다: ${pos.playerId}`,
+          })
+        }
+        if (seen.has(pos.playerId)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['changingPoints', cpIndex, 'positions', i, 'playerId'],
+            message: `같은 선수의 좌표가 중복되었습니다: ${pos.playerId}`,
+          })
+        }
+        seen.add(pos.playerId)
+      })
+    })
   })
 
 /** zod 이슈 경로를 사람이 읽을 문구로 바꾼다 (FR-07의 "오류 위치 안내"). */

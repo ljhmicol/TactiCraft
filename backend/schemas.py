@@ -91,12 +91,23 @@ class PhaseIn(BaseModel):
         return v
 
 
+class ChangingPointIn(PhaseIn):
+    """타임라인(매치 체인징 포인트, TO-DO 5번). phases의 base/attack/defense와
+    모양이 같고(PhaseIn 그대로 상속 — positions 11개 검증도 물려받는다) id/label만
+    추가된다. phases 딕셔너리와는 완전히 별개의 목록이다."""
+
+    id: str = Field(min_length=1)
+    label: str = Field(min_length=1)
+
+
 class AnalysisIn(BaseModel):
     schema_version: Literal[1] = 1
     match: MatchInfo
     formation: str = Field(min_length=1)
     players: List[PlayerIn]
     phases: Dict[PhaseType, PhaseIn]
+    # 없으면(구버전 클라이언트/저장분) 타임라인 미사용으로 취급한다.
+    changing_points: List[ChangingPointIn] = []
     summary: str = ""
 
     @field_validator("players")
@@ -128,6 +139,20 @@ class AnalysisIn(BaseModel):
             if len({pos.player_id for pos in phase.positions}) != SQUAD_SIZE:
                 raise ValueError(
                     f"phases.{phase_type}: 같은 선수의 좌표가 중복되었습니다"
+                )
+
+        cp_ids = [cp.id for cp in self.changing_points]
+        if len(set(cp_ids)) != len(cp_ids):
+            raise ValueError("changing_points[].id 가 중복되었습니다")
+        for i, cp in enumerate(self.changing_points):
+            unknown = {pos.player_id for pos in cp.positions} - known
+            if unknown:
+                raise ValueError(
+                    f"changing_points[{i}]: players에 없는 player_id {sorted(unknown)}"
+                )
+            if len({pos.player_id for pos in cp.positions}) != SQUAD_SIZE:
+                raise ValueError(
+                    f"changing_points[{i}]: 같은 선수의 좌표가 중복되었습니다"
                 )
         return self
 

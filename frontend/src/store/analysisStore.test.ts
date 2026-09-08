@@ -204,3 +204,101 @@ describe('analysisStore — setPressingLineLevel', () => {
     expect(result.success).toBe(true)
   })
 })
+
+/** TO-DO 5 — 타임라인(매치 체인징 포인트). 3국면과 완전히 별개로 동작해야 한다. */
+describe('analysisStore — 타임라인(체인징 포인트)', () => {
+  beforeEach(() => {
+    const analysis = createEmptyAnalysis('4-3-3', {
+      matchName: '테스트',
+      homeTeam: '홈',
+      awayTeam: '원정',
+      matchDate: '2026-09-09',
+      analyzedTeam: 'home',
+    })
+    useAnalysisStore.getState().loadAnalysis(analysis)
+  })
+
+  it('addChangingPoint는 지금 보이는 국면의 좌표를 복제하고 그 포인트를 선택한다', () => {
+    useAnalysisStore.getState().movePlayer(useAnalysisStore.getState().analysis!.players[0].id, 12, 34)
+    useAnalysisStore.getState().addChangingPoint('전반 23분')
+
+    const { analysis, selectedChangingPointId } = useAnalysisStore.getState()
+    expect(analysis!.changingPoints).toHaveLength(1)
+    const cp = analysis!.changingPoints![0]
+    expect(cp.label).toBe('전반 23분')
+    expect(selectedChangingPointId).toBe(cp.id)
+    expect(cp.positions).toEqual(analysis!.phases.base.positions)
+    expect(cp.comment).toBe('') // 코멘트는 새로 쓰도록 비워서 시작한다
+  })
+
+  it('체인징 포인트를 선택한 동안 movePlayer/addAnnotation은 그 포인트에만 반영되고 국면은 그대로 둔다', () => {
+    useAnalysisStore.getState().addChangingPoint('전반 23분')
+    const cpId = useAnalysisStore.getState().selectedChangingPointId!
+    const playerId = useAnalysisStore.getState().analysis!.players[0].id
+    const baseBefore = useAnalysisStore.getState().analysis!.phases.base.positions.find((p) => p.playerId === playerId)
+
+    useAnalysisStore.getState().movePlayer(playerId, 77, 88)
+    useAnalysisStore.getState().addAnnotation('run', { x: 10, y: 10 }, { x: 20, y: 20 })
+
+    const { analysis } = useAnalysisStore.getState()
+    const cp = analysis!.changingPoints!.find((c) => c.id === cpId)!
+    expect(cp.positions.find((p) => p.playerId === playerId)).toEqual({ playerId, x: 77, y: 88 })
+    expect(cp.annotations).toHaveLength(1)
+    // 국면 쪽 데이터는 전혀 건드리지 않았다.
+    expect(analysis!.phases.base.positions.find((p) => p.playerId === playerId)).toEqual(baseBefore)
+    expect(analysis!.phases.base.annotations).toHaveLength(0)
+  })
+
+  it('국면 탭(switchPhase)을 누르면 체인징 포인트 선택이 해제된다', () => {
+    useAnalysisStore.getState().addChangingPoint('전반 23분')
+    expect(useAnalysisStore.getState().selectedChangingPointId).not.toBeNull()
+
+    useAnalysisStore.getState().switchPhase('base') // currentPhase는 이미 'base' — 그래도 해제돼야 한다
+    expect(useAnalysisStore.getState().selectedChangingPointId).toBeNull()
+  })
+
+  it('removeChangingPoint로 선택 중인 포인트를 지우면 선택이 함께 해제된다', () => {
+    useAnalysisStore.getState().addChangingPoint('전반 23분')
+    const cpId = useAnalysisStore.getState().selectedChangingPointId!
+
+    useAnalysisStore.getState().removeChangingPoint(cpId)
+
+    const { analysis, selectedChangingPointId } = useAnalysisStore.getState()
+    expect(analysis!.changingPoints).toHaveLength(0)
+    expect(selectedChangingPointId).toBeNull()
+  })
+
+  it('moveChangingPoint는 배열 순서를 스왑하고 경계를 벗어나면 무시한다', () => {
+    useAnalysisStore.getState().addChangingPoint('킥오프')
+    useAnalysisStore.getState().addChangingPoint('15분')
+    useAnalysisStore.getState().addChangingPoint('23분')
+    const [a, b, c] = useAnalysisStore.getState().analysis!.changingPoints!.map((cp) => cp.id)
+
+    useAnalysisStore.getState().moveChangingPoint(b, 'left')
+    expect(useAnalysisStore.getState().analysis!.changingPoints!.map((cp) => cp.id)).toEqual([b, a, c])
+
+    useAnalysisStore.getState().moveChangingPoint(b, 'left') // 이미 맨 앞 — 무시
+    expect(useAnalysisStore.getState().analysis!.changingPoints!.map((cp) => cp.id)).toEqual([b, a, c])
+  })
+
+  it('renameChangingPoint는 라벨만 바꾼다', () => {
+    useAnalysisStore.getState().addChangingPoint('킥오프')
+    const cpId = useAnalysisStore.getState().selectedChangingPointId!
+    useAnalysisStore.getState().renameChangingPoint(cpId, '전반 23분 추격 상황')
+    expect(useAnalysisStore.getState().analysis!.changingPoints![0].label).toBe('전반 23분 추격 상황')
+  })
+
+  it('결과가 analysisSchema를 통과한다', () => {
+    useAnalysisStore.getState().addChangingPoint('전반 23분')
+    useAnalysisStore.getState().movePlayer(useAnalysisStore.getState().analysis!.players[0].id, 40, 60)
+    const result = analysisSchema.safeParse(useAnalysisStore.getState().analysis)
+    expect(result.success).toBe(true)
+  })
+
+  it('체인징 포인트가 없는(구버전) 분석도 그대로 analysisSchema를 통과한다', () => {
+    const { changingPoints: _drop, ...withoutChangingPoints } = useAnalysisStore.getState().analysis!
+    void _drop
+    const result = analysisSchema.safeParse(withoutChangingPoints)
+    expect(result.success).toBe(true)
+  })
+})

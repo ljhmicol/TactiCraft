@@ -31,6 +31,12 @@ def _load(db: Session, analysis_id: int) -> models.Analysis:
             selectinload(models.Analysis.players),
             selectinload(models.Analysis.phases).selectinload(models.Phase.positions),
             selectinload(models.Analysis.phases).selectinload(models.Phase.annotations),
+            selectinload(models.Analysis.changing_points)
+            .selectinload(models.ChangingPoint.phase)
+            .selectinload(models.Phase.positions),
+            selectinload(models.Analysis.changing_points)
+            .selectinload(models.ChangingPoint.phase)
+            .selectinload(models.Phase.annotations),
         )
     )
     row = db.execute(stmt).scalar_one_or_none()
@@ -55,6 +61,47 @@ def delete_analysis(db: Session, analysis_id: int) -> None:
     db.commit()
 
 
+def _build_phase(
+    phase_type: str,
+    phase_in: schemas.PhaseIn,
+    player_map: dict[str, models.Player],
+) -> models.Phase:
+    """PhaseIn(및 이를 상속하는 ChangingPointIn)을 Phase(+positions/annotations)로
+    변환한다 — 3국면과 타임라인 체인징 포인트가 같은 테이블을 공유한다."""
+    phase = models.Phase(
+        phase_type=phase_type,
+        pressing_line_y=phase_in.pressing_line_y,
+        comment=phase_in.comment,
+    )
+    for pos in phase_in.positions:
+        phase.positions.append(
+            models.Position(
+                player=player_map[pos.player_id],
+                side="own",
+                slot=0,
+                x=pos.x,
+                y=pos.y,
+            )
+        )
+    for slot, pos in enumerate(phase_in.opponent_positions or []):
+        phase.positions.append(
+            models.Position(player=None, side="opponent", slot=slot, x=pos.x, y=pos.y)
+        )
+    for ann in phase_in.annotations:
+        phase.annotations.append(
+            models.Annotation(
+                client_id=ann.id,
+                ann_type=ann.type,
+                from_x=ann.from_.x,
+                from_y=ann.from_.y,
+                to_x=ann.to.x,
+                to_y=ann.to.y,
+                curved=ann.curved,
+            )
+        )
+    return phase
+
+
 def upsert_analysis(
     db: Session,
     payload: schemas.AnalysisIn,
@@ -67,7 +114,9 @@ def upsert_analysis(
         db.add(row)
     else:
         row = _load(db, analysis_id)
-        # 전체 교체: 하위를 비우면 delete-orphan 이 처리한다
+        # 전체 교체: 하위를 비우면 delete-orphan 이 처리한다. changing_points가
+        # phases의 행을 참조하므로(phase_id FK) phases보다 먼저 비운다.
+        row.changing_points.clear()
         row.players.clear()
         row.phases.clear()
         db.flush()
@@ -100,45 +149,53 @@ def upsert_analysis(
     db.flush()  # player PK 확보
 
     for phase_type in schemas.PHASE_TYPES:
-        phase_in = payload.phases[phase_type]
-        phase = models.Phase(
-            phase_type=phase_type,
-            pressing_line_y=phase_in.pressing_line_y,
-            comment=phase_in.comment,
-        )
-        row.phases.append(phase)
+        row.phases.append(_build_phase(phase_type, payload.phases[phase_type], player_map))
 
-        for pos in phase_in.positions:
-            phase.positions.append(
-                models.Position(
-                    player=player_map[pos.player_id],
-                    side="own",
-                    slot=0,
-                    x=pos.x,
-                    y=pos.y,
-                )
+    # 타임라인(TO-DO 5번) — 각 체인징 포인트는 자기 전용 Phase 행(phase_type=
+    # "cp:<client_id>")을 갖고, ChangingPoint 행이 라벨·순서만 얹는다.
+    for i, cp_in in enumerate(payload.changing_points):
+        cp_phase = _build_phase(f"cp:{cp_in.id}", cp_in, player_map)
+        row.phases.append(cp_phase)
+        db.flush()  # cp_phase PK 확보
+        row.changing_points.append(
+            models.ChangingPoint(
+                client_id=cp_in.id,
+                label=cp_in.label,
+                order_index=i,
+                phase=cp_phase,
             )
-        for slot, pos in enumerate(phase_in.opponent_positions or []):
-            phase.positions.append(
-                models.Position(
-                    player=None, side="opponent", slot=slot, x=pos.x, y=pos.y
-                )
-            )
-        for ann in phase_in.annotations:
-            phase.annotations.append(
-                models.Annotation(
-                    client_id=ann.id,
-                    ann_type=ann.type,
-                    from_x=ann.from_.x,
-                    from_y=ann.from_.y,
-                    to_x=ann.to.x,
-                    to_y=ann.to.y,
-                    curved=ann.curved,
-                )
-            )
+        )
 
     db.commit()
     return _load(db, row.id)
+
+
+def _phase_dict(phase: models.Phase, client_id_by_pk: dict[int, str]) -> dict:
+    own = [p for p in phase.positions if p.side == "own"]
+    opponent = sorted(
+        (p for p in phase.positions if p.side == "opponent"),
+        key=lambda p: p.slot,
+    )
+    return {
+        "positions": [
+            {"player_id": client_id_by_pk[p.player_id], "x": p.x, "y": p.y} for p in own
+        ],
+        "opponent_positions": (
+            [{"x": p.x, "y": p.y} for p in opponent] if opponent else None
+        ),
+        "pressing_line_y": phase.pressing_line_y,
+        "comment": phase.comment or "",
+        "annotations": [
+            {
+                "id": a.client_id,
+                "type": a.ann_type,
+                "from": {"x": a.from_x, "y": a.from_y},
+                "to": {"x": a.to_x, "y": a.to_y},
+                "curved": a.curved,
+            }
+            for a in phase.annotations
+        ],
+    }
 
 
 def to_analysis_dict(row: models.Analysis) -> dict:
@@ -148,38 +205,20 @@ def to_analysis_dict(row: models.Analysis) -> dict:
     """
     client_id_by_pk = {p.id: p.client_id for p in row.players}
 
-    phases: dict[str, dict] = {}
-    for phase in row.phases:
-        own = [p for p in phase.positions if p.side == "own"]
-        opponent = sorted(
-            (p for p in phase.positions if p.side == "opponent"),
-            key=lambda p: p.slot,
-        )
-        phases[phase.phase_type] = {
-            "positions": [
-                {
-                    "player_id": client_id_by_pk[p.player_id],
-                    "x": p.x,
-                    "y": p.y,
-                }
-                for p in own
-            ],
-            "opponent_positions": (
-                [{"x": p.x, "y": p.y} for p in opponent] if opponent else None
-            ),
-            "pressing_line_y": phase.pressing_line_y,
-            "comment": phase.comment or "",
-            "annotations": [
-                {
-                    "id": a.client_id,
-                    "type": a.ann_type,
-                    "from": {"x": a.from_x, "y": a.from_y},
-                    "to": {"x": a.to_x, "y": a.to_y},
-                    "curved": a.curved,
-                }
-                for a in phase.annotations
-            ],
+    phases: dict[str, dict] = {
+        phase.phase_type: _phase_dict(phase, client_id_by_pk)
+        for phase in row.phases
+        if not phase.phase_type.startswith("cp:")
+    }
+
+    changing_points = [
+        {
+            "id": cp.client_id,
+            "label": cp.label,
+            **_phase_dict(cp.phase, client_id_by_pk),
         }
+        for cp in row.changing_points
+    ]
 
     return {
         "id": row.id,
@@ -204,6 +243,7 @@ def to_analysis_dict(row: models.Analysis) -> dict:
             for p in row.players
         ],
         "phases": phases,
+        "changing_points": changing_points,
         "summary": row.summary or "",
         "created_at": row.created_at,
         "updated_at": row.updated_at,

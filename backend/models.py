@@ -47,6 +47,12 @@ class Analysis(Base):
         cascade="all, delete-orphan",
         order_by="Phase.id",
     )
+    changing_points = relationship(
+        "ChangingPoint",
+        back_populates="analysis",
+        cascade="all, delete-orphan",
+        order_by="ChangingPoint.order_index",
+    )
 
 
 class Player(Base):
@@ -142,3 +148,30 @@ class Annotation(Base):
     curved = Column(Boolean)
 
     phase = relationship("Phase", back_populates="annotations")
+
+
+class ChangingPoint(Base):
+    """타임라인(매치 체인징 포인트, TO-DO 5번). 기본/공격/수비 3국면과는 별개의
+    선택적 확장 — 좌표/화살표/코멘트는 기존 Phase/Position/Annotation 테이블을
+    그대로 재사용하고(phase_type을 'cp:<client_id>'로 둬 UniqueConstraint를
+    만족시킨다), 이 테이블은 라벨과 순서만 얹는 얇은 메타데이터다. 새 테이블이라
+    create_all이 자동 생성한다 — annotations 테이블과 같은 이유로 ALTER TABLE
+    불필요(models.py 상단 Annotation 클래스 주석 참조).
+    """
+
+    __tablename__ = "changing_points"
+    __table_args__ = (UniqueConstraint("analysis_id", "client_id"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    analysis_id = Column(
+        Integer, ForeignKey("analyses.id", ondelete="CASCADE"), nullable=False
+    )
+    client_id = Column(String, nullable=False)  # JSON changingPoints[].id 보존
+    label = Column(String, nullable=False)
+    order_index = Column(Integer, nullable=False, default=0)  # 배열 순서 보존
+    phase_id = Column(
+        Integer, ForeignKey("phases.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+
+    analysis = relationship("Analysis", back_populates="changing_points")
+    phase = relationship("Phase")

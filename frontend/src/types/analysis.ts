@@ -48,6 +48,18 @@ export interface PhaseData {
   annotations: Annotation[] // 없던 구버전 데이터는 빈 배열로 취급
 }
 
+/**
+ * 타임라인(매치 체인징 포인트, TO-DO 5번). 기본/공격/수비 3국면과는 별개의
+ * 선택적 확장이다 — "전반 23분 추격 상황"처럼 경기 시간 축의 임의 시점을
+ * 자유 라벨과 함께 저장한다. PhaseData와 같은 모양(positions/annotations/
+ * comment 등)이라 Pitch·PlayerNode·AnnotationLayer·OverloadLayer를 그대로
+ * 재사용할 수 있다.
+ */
+export interface ChangingPoint extends PhaseData {
+  id: string // 프론트가 생성 (nanoid)
+  label: string // 자유 텍스트, 예: "전반 23분"
+}
+
 export interface Analysis {
   id?: number // 서버 저장 후에만 존재
   schemaVersion: 1
@@ -55,6 +67,7 @@ export interface Analysis {
   formation: string // '4-3-3'
   players: Player[] // 선발 11 + 벤치 최대 12(선택). 벤치는 앞 11명(선발) 뒤에만 붙는다 — TO-DO 14
   phases: Record<PhaseType, PhaseData>
+  changingPoints?: ChangingPoint[] // 없으면 타임라인 미사용 — 구버전 데이터도 그대로 유효
   summary: string
   createdAt?: string
   updatedAt?: string

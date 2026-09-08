@@ -21,6 +21,9 @@ export function PhaseTabs() {
   const switchPhase = useAnalysisStore((s) => s.switchPhase)
   const ghostView = useAnalysisStore((s) => s.layers.ghostView)
   const toggleLayer = useAnalysisStore((s) => s.toggleLayer)
+  // 타임라인에서 체인징 포인트를 보는 중이면 국면 탭 3개 중 어느 것도
+  // "활성"으로 보이지 않는다 — 국면 탭을 누르면 switchPhase가 이 선택을 해제한다.
+  const selectedChangingPointId = useAnalysisStore((s) => s.selectedChangingPointId)
   const [isPlaying, setIsPlaying] = useState(false)
 
   useEffect(() => {
@@ -48,7 +51,7 @@ export function PhaseTabs() {
             onClick={() => switchPhase(phase)}
             className={cn(
               'rounded-md px-4 py-1.5 text-sm font-medium transition-colors',
-              currentPhase === phase
+              currentPhase === phase && !selectedChangingPointId
                 ? 'bg-primary text-primary-foreground'
                 : 'text-muted-foreground hover:text-foreground',
               isPlaying && 'cursor-not-allowed opacity-50',
