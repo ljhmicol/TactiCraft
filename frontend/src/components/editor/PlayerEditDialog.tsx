@@ -109,7 +109,7 @@ export function PlayerEditDialog() {
                 <SelectContent>
                   <SelectItem value={NONE_VALUE}>선택 안 함</SelectItem>
                   {roleOptions.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>
+                    <SelectItem key={r.id} value={r.id} title={r.blurb}>
                       {r.groupLabel ? `${r.label} · ${r.groupLabel}` : r.label}
                     </SelectItem>
                   ))}
