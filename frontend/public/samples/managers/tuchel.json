@@ -10,22 +10,22 @@
   },
   "formation": "4-2-3-1",
   "players": [
-    { "id": "p1", "name": "피크포드", "number": 1, "role": "GK" },
-    { "id": "p5", "name": "오라일리", "number": 3, "role": "LB" },
-    { "id": "p3", "name": "게이", "number": 6, "role": "CB" },
-    { "id": "p4", "name": "스톤스", "number": 5, "role": "CB" },
-    { "id": "p2", "name": "콘사", "number": 2, "role": "RB" },
-    { "id": "p6", "name": "라이스", "number": 4, "role": "DM" },
-    { "id": "p7", "name": "앤더슨", "number": 8, "role": "DM" },
-    { "id": "p9", "name": "래시퍼드", "number": 11, "role": "LW" },
-    { "id": "p8", "name": "벨링엄", "number": 10, "role": "AM" },
-    { "id": "p10", "name": "사카", "number": 7, "role": "RW" },
-    { "id": "p11", "name": "케인", "number": 9, "role": "ST(주장)" },
-    { "id": "b1", "name": "제임스", "number": 24, "role": "RB" },
-    { "id": "b2", "name": "스펜스", "number": 25, "role": "LB" },
-    { "id": "b3", "name": "고든", "number": 18, "role": "LW" },
-    { "id": "b4", "name": "로저스", "number": 17, "role": "AM" },
-    { "id": "b5", "name": "마이누", "number": 16, "role": "CM" }
+    { "id": "p1", "name": "피크포드", "number": 1, "role": "GK", "tacticalRole": "sweeper-keeper" },
+    { "id": "p5", "name": "오라일리", "number": 3, "role": "LB", "tacticalRole": "inverted-fb" },
+    { "id": "p3", "name": "게이", "number": 6, "role": "CB", "tacticalRole": "cover-cb" },
+    { "id": "p4", "name": "스톤스", "number": 5, "role": "CB", "tacticalRole": "ball-playing-cb" },
+    { "id": "p2", "name": "콘사", "number": 2, "role": "RB", "tacticalRole": "defensive-fb" },
+    { "id": "p6", "name": "라이스", "number": 4, "role": "DM", "tacticalRole": "anchor" },
+    { "id": "p7", "name": "앤더슨", "number": 8, "role": "DM", "tacticalRole": "ball-winning-mf" },
+    { "id": "p9", "name": "래시퍼드", "number": 11, "role": "LW", "tacticalRole": "inside-forward" },
+    { "id": "p8", "name": "벨링엄", "number": 10, "role": "AM", "tacticalRole": "shadow-striker" },
+    { "id": "p10", "name": "사카", "number": 7, "role": "RW", "tacticalRole": "inverted-winger" },
+    { "id": "p11", "name": "케인", "number": 9, "role": "ST(주장)", "tacticalRole": "deep-lying-forward" },
+    { "id": "b1", "name": "제임스", "number": 24, "role": "RB", "tacticalRole": "overlapping-fb" },
+    { "id": "b2", "name": "스펜스", "number": 25, "role": "LB", "tacticalRole": "overlapping-fb" },
+    { "id": "b3", "name": "고든", "number": 18, "role": "LW", "tacticalRole": "inside-forward" },
+    { "id": "b4", "name": "로저스", "number": 17, "role": "AM", "tacticalRole": "trequartista" },
+    { "id": "b5", "name": "마이누", "number": 16, "role": "CM", "tacticalRole": "box-to-box" }
   ],
   "phases": {
     "base": {
@@ -90,5 +90,29 @@
       "comment": "상대 볼 소유 시 4-4-2 미드블록으로 압축한다. 케인(9번)과 사카(7번)가 전방 2선을 이뤄 상대 빌드업을 한쪽으로 유도하는 압박 트리거 역할을 하고, 라이스(4번)·앤더슨(8번) 중원 듀오가 그 뒤 공간을 지운다 — 투헬 특유의 '슈투트가르트 학파' 압박 트랩."
     }
   },
+  "changingPoints": [
+    {
+      "id": "tuc-cp1",
+      "label": "3·4위전 프랑스전 후반 추격골 직전 (6-4 승리)",
+      "positions": [
+        { "playerId": "p1", "x": 50, "y": 72 },
+        { "playerId": "p5", "x": 52, "y": 44 },
+        { "playerId": "p3", "x": 30, "y": 62 },
+        { "playerId": "p4", "x": 50, "y": 58 },
+        { "playerId": "p2", "x": 78, "y": 50 },
+        { "playerId": "p6", "x": 45, "y": 48 },
+        { "playerId": "p7", "x": 65, "y": 26 },
+        { "playerId": "p9", "x": 10, "y": 10 },
+        { "playerId": "p8", "x": 50, "y": 14 },
+        { "playerId": "p10", "x": 90, "y": 10 },
+        { "playerId": "p11", "x": 50, "y": 6 }
+      ],
+      "annotations": [
+        { "id": "tuc-cp1-run", "type": "run", "from": { "x": 50, "y": 14 }, "to": { "x": 50, "y": 6 } },
+        { "id": "tuc-cp1-pass", "type": "pass", "from": { "x": 45, "y": 48 }, "to": { "x": 50, "y": 14 } }
+      ],
+      "comment": "2골 뒤진 후반 막판 추격 국면(최종 6-4 승리로 뒤집었다). 피크포드까지 하프라인 근처로 올라와 스위퍼 역할을 하고, 스톤스·게이가 임시 미드필더처럼 전진해 수적 우위를 만든다. 라이스만 최소한의 안전판으로 남고 나머지 전원이 박스 안팎으로 쏟아져 들어간다."
+    }
+  ],
   "summary": "2025년 1월 잉글랜드 대표팀 감독으로 부임했고 2026년 9월 계약을 유로 2028까지 연장했다. 2026 북중미 월드컵은 4강 아르헨티나전 패배(1-2) 후 3·4위전에서 프랑스를 6-4로 꺾어 동메달로 마쳤다. 기본은 4-2-3-1이지만 국면에 따라 크게 변한다 — 공격 시 왼쪽 풀백(오라일리)이 안으로 접어들어 사실상 3-2-5, 비보유 시에는 4-4-2 미드블록으로 압축한다. (실제 경기 라인업은 로테이션이 잦았다 — 이 프리셋은 등번호 기준 '온페이퍼' 주전으로 구성했다.)"
 }
