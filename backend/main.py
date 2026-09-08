@@ -2,11 +2,13 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 import models  # noqa: F401  (create_all 전에 모델 등록이 필요)
 import schemas
-from config import settings
+from config import PROJECT_ROOT, settings
 from database import Base, engine
 from routers import analyses
 
@@ -50,3 +52,22 @@ app.include_router(analyses.router)
 def health():
     """프론트가 저장/목록 UI 활성화 여부를 판단하는 데 쓴다 (FR-08 폴백)."""
     return {"status": "ok", "version": settings.app_version}
+
+
+# 단일 이미지 배포(TO-DO 10번) — Dockerfile이 프론트를 빌드해 여기 복사해 둔다.
+# 로컬 개발(Vite 5173 + uvicorn 8000 2프로세스)에는 이 디렉터리가 없으므로
+# 아래 블록 전체가 조용히 건너뛰어진다 — 로컬 개발 경험에 영향 없음.
+FRONTEND_DIST = PROJECT_ROOT / "frontend" / "dist"
+
+if FRONTEND_DIST.is_dir():
+    app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="frontend-assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def serve_frontend(full_path: str):
+        """정적 파일(예: /samples/managers/*.json, 파비콘)은 그대로 서빙하고,
+        그 외 경로(React Router가 처리할 클라이언트 라우트)는 index.html로
+        폴백한다 — 이 라우트가 /api/* 보다 뒤에 등록돼 있어야 API가 먼저 잡힌다."""
+        candidate = FRONTEND_DIST / full_path
+        if full_path and candidate.is_file():
+            return FileResponse(candidate)
+        return FileResponse(FRONTEND_DIST / "index.html")
