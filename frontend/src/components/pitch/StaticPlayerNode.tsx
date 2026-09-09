@@ -20,20 +20,14 @@ interface StaticPlayerNodeProps {
   variant: 'A' | 'B'
   /** landscape는 전술 대결 뷰(TO-DO 21) 전용. position은 항상 원본(세로) 좌표계로 받는다. */
   orientation?: 'portrait' | 'landscape'
-  /**
-   * 스파이더파이어(TO-DO 28, 1번)로 펼쳐진 경우의 최종 렌더 좌표 — 이미
-   * 미러링·landscape 변환까지 끝난 값이라 주어지면 position/orientation
-   * 변환을 건너뛰고 이 값을 그대로 쓴다.
-   */
-  renderPoint?: Point
-  /** 동적 라벨 배치(TO-DO 28, 1번)로 밀려난 만큼(기본 0) — 이름표 y에만 더해진다. */
+  /** 동적 라벨 배치(TO-DO 28, 1번)로 밀려난 만큼(기본 0) — 이름표 y에만 더해진다. 마커 자체는
+   * 겹쳐도 그대로 둔다(2026-09-09 사용자 결정 — 스파이더파이어 대신 예전처럼). */
   labelYOffset?: number
 }
 
 const PORTRAIT_RADIUS = circularRadius(2.6)
-// 클러스터 배지·라벨 배치 계산(MatchupView, TO-DO 28)이 이 마커 반지름과
-// 일치해야 해서 export한다 — 값이 어긋나면 배지 크기나 라벨 겹침 판정이
-// 실제 렌더링과 안 맞게 된다.
+// 라벨 배치 계산(MatchupView, TO-DO 28)이 이 마커 반지름과 일치해야 해서
+// export한다 — 값이 어긋나면 라벨 겹침 판정이 실제 렌더링과 안 맞게 된다.
 export const LANDSCAPE_RADIUS = swapForLandscape(PORTRAIT_RADIUS)
 const GK_RING_RADIUS_PORTRAIT = circularRadius(3.1)
 const GK_RING_RADIUS_LANDSCAPE = swapForLandscape(GK_RING_RADIUS_PORTRAIT)
@@ -57,7 +51,6 @@ export function StaticPlayerNode({
   index,
   variant,
   orientation = 'portrait',
-  renderPoint,
   labelYOffset = 0,
 }: StaticPlayerNodeProps) {
   const info = positionInfoAt(formation, index)
@@ -66,7 +59,7 @@ export function StaticPlayerNode({
   const landscape = orientation === 'landscape'
   const RADIUS = landscape ? LANDSCAPE_RADIUS : PORTRAIT_RADIUS
   const GK_RING_RADIUS = landscape ? GK_RING_RADIUS_LANDSCAPE : GK_RING_RADIUS_PORTRAIT
-  const p = renderPoint ?? (landscape ? transposePoint(position) : position)
+  const p = landscape ? transposePoint(position) : position
 
   return (
     <g>
