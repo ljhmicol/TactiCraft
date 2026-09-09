@@ -141,6 +141,7 @@ interface AnalysisStore {
   setChangingPointMinute: (id: string, minute: number | undefined) => void
   removeChangingPoint: (id: string) => void
   moveChangingPoint: (id: string, direction: 'left' | 'right') => void // 타임라인 순서 바꾸기
+  mergeChangingPoints: (ids: string[]) => void // 2개 이상의 시점을 하나로 합친다(TO-DO 9번 후속) — 명장면은 여러 시점을 모아 하나의 장면으로도 보고 싶다는 요청
   selectChangingPoint: (id: string | null) => void // null이면 다시 국면 탭 보기로
   setMatchInfo: (patch: Partial<MatchInfo>) => void
   updatePlayer: (playerId: string, patch: Partial<Omit<Player, 'id'>>) => void
@@ -454,6 +455,60 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
     if (idx === -1 || swapWith < 0 || swapWith >= list.length) return
     ;[list[idx], list[swapWith]] = [list[swapWith], list[idx]]
     set({ analysis: { ...analysis, changingPoints: list }, isDirty: true })
+  },
+
+  // 여러 시점을 하나로 합친다 — "명장면은 여러 시점을 모아 하나의 장면으로
+  // 만드는 것"이라는 요청(2026-09-09)으로 추가. 좌표(positions)는 순서상
+  // 가장 마지막 시점(도착한 최종 배치)을 그대로 쓰고, annotations는 선택된
+  // 시점들의 화살표를 순서대로 이어붙인다 — pass 화살표가 서로 끝점=시작점으로
+  // 연결돼 있으면(buildPassChains) 병합 후 공 하나가 전체 구간을 끊김 없이
+  // 잇달아 흐르는 걸로 자동으로 이어진다. comment는 비어있지 않은 것만 줄바꿈으로
+  // 모으고, minute은 가장 이른 시점의 것을 물려받는다(그 장면이 시작된 시각).
+  mergeChangingPoints: (ids) => {
+    const { analysis } = get()
+    if (!analysis?.changingPoints) return
+    const list = analysis.changingPoints
+    const idSet = new Set(ids)
+    const selected = list.filter((cp) => idSet.has(cp.id))
+    if (selected.length < 2) return
+
+    const first = selected[0]
+    const last = selected[selected.length - 1]
+    const merged: ChangingPoint = {
+      id: nanoid(),
+      label: first.label === last.label ? first.label : `${first.label} ~ ${last.label}`,
+      minute: first.minute,
+      positions: last.positions.map((p) => ({ ...p })),
+      opponentPositions: last.opponentPositions?.map((p) => ({ ...p })),
+      pressingLineY: last.pressingLineY,
+      comment: selected
+        .map((cp) => cp.comment)
+        .filter((c) => c.trim().length > 0)
+        .join('\n'),
+      annotations: selected.flatMap((cp) => cp.annotations.map((a) => ({ ...a }))),
+    }
+
+    let inserted = false
+    const newList: ChangingPoint[] = []
+    for (const cp of list) {
+      if (!idSet.has(cp.id)) {
+        newList.push(cp)
+        continue
+      }
+      if (!inserted) {
+        newList.push(merged)
+        inserted = true
+      }
+    }
+
+    clearTimeout(morphTimer)
+    set({
+      analysis: { ...analysis, changingPoints: newList },
+      selectedChangingPointId: merged.id,
+      isMorphing: true,
+      isDirty: true,
+    })
+    morphTimer = setTimeout(() => set({ isMorphing: false }), PHASE_TRANSITION_MS)
   },
 
   selectChangingPoint: (id) => {

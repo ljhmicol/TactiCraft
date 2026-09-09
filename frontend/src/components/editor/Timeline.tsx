@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Combine, Plus, X } from 'lucide-react'
 import { useEffect, useState, type MouseEvent } from 'react'
 
 import { Input } from '@/components/ui/input'
@@ -35,6 +35,7 @@ export function Timeline() {
   const setChangingPointMinute = useAnalysisStore((s) => s.setChangingPointMinute)
   const removeChangingPoint = useAnalysisStore((s) => s.removeChangingPoint)
   const moveChangingPoint = useAnalysisStore((s) => s.moveChangingPoint)
+  const mergeChangingPoints = useAnalysisStore((s) => s.mergeChangingPoints)
   const selectChangingPoint = useAnalysisStore((s) => s.selectChangingPoint)
 
   const selected = changingPoints.find((cp) => cp.id === selectedChangingPointId) ?? null
@@ -72,15 +73,46 @@ export function Timeline() {
     if (isPlaying && changingPoints.length <= 1) setIsPlaying(false)
   }, [isPlaying, changingPoints.length])
 
+  // 시점 병합 — "명장면은 여러 시점을 모아 하나의 장면으로 만드는 것"이라는
+  // 요청(2026-09-09)으로 추가. 병합 모드에서는 점/칩을 눌러도 보기 선택이 아니라
+  // 병합 대상 체크로 동작한다. 2개 이상 고른 뒤 "병합" 버튼을 눌러 확정한다.
+  const [mergeMode, setMergeMode] = useState(false)
+  const [mergeSelected, setMergeSelected] = useState<string[]>([])
+
+  useEffect(() => {
+    // 시점이 사라지면(삭제) 이미 고른 병합 대상에서도 지운다
+    setMergeSelected((prev) => prev.filter((id) => changingPoints.some((cp) => cp.id === id)))
+  }, [changingPoints])
+
+  const exitMergeMode = () => {
+    setMergeMode(false)
+    setMergeSelected([])
+  }
+
+  const toggleMergeCandidate = (id: string) =>
+    setMergeSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+
+  const handleMergeConfirm = () => {
+    if (mergeSelected.length < 2) return
+    mergeChangingPoints(mergeSelected)
+    exitMergeMode()
+  }
+
   const handleAdd = () => addChangingPoint(`시점 ${changingPoints.length + 1}`)
 
-  const toggleSelect = (cp: ChangingPoint) => selectChangingPoint(cp.id === selectedChangingPointId ? null : cp.id)
+  const toggleSelect = (cp: ChangingPoint) => {
+    if (mergeMode) {
+      toggleMergeCandidate(cp.id)
+      return
+    }
+    selectChangingPoint(cp.id === selectedChangingPointId ? null : cp.id)
+  }
 
   // 시간축 바를 직접 클릭하면 그 위치의 분(minute)으로 새 시점을 만든다 — 점(버튼)을
   // 클릭한 경우는 선택 동작이라 여기서 무시한다(2026-09-09, "타임라인바에서 선택을
   // 하면 타임라인을 추가할 수 있게도 만들어줘" 요청).
   const handleTrackClick = (e: MouseEvent<HTMLDivElement>) => {
-    if (isPlaying) return
+    if (isPlaying || mergeMode) return
     if ((e.target as HTMLElement).closest('button')) return
     const rect = e.currentTarget.getBoundingClientRect()
     const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
@@ -93,7 +125,7 @@ export function Timeline() {
       <div className="flex items-center justify-between">
         <span className="text-xs text-muted-foreground">타임라인</span>
         <div className="flex items-center gap-1.5">
-          {changingPoints.length > 1 && (
+          {changingPoints.length > 1 && !mergeMode && (
             <button
               type="button"
               onClick={() => setIsPlaying((v) => !v)}
@@ -105,9 +137,23 @@ export function Timeline() {
               {isPlaying ? '⏸ 시점 정지' : '▶ 시점 자동재생'}
             </button>
           )}
+          {changingPoints.length > 1 && !isPlaying && (
+            <button
+              type="button"
+              onClick={() => (mergeMode ? exitMergeMode() : setMergeMode(true))}
+              title="여러 시점을 하나로 합치기"
+              className={cn(
+                'flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium transition-colors',
+                mergeMode ? 'bg-accent text-accent-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <Combine className="h-3 w-3" />
+              병합
+            </button>
+          )}
           <button
             type="button"
-            disabled={isPlaying}
+            disabled={isPlaying || mergeMode}
             onClick={handleAdd}
             title="지금 보이는 배치를 시점으로 저장"
             className="flex items-center gap-1 rounded-full bg-secondary px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50"
@@ -117,6 +163,29 @@ export function Timeline() {
           </button>
         </div>
       </div>
+
+      {mergeMode && (
+        <div className="flex items-center justify-between rounded-md bg-accent/60 px-2 py-1 text-xs text-accent-foreground">
+          <span>합칠 시점을 눌러 고르세요 ({mergeSelected.length}개 선택됨)</span>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              disabled={mergeSelected.length < 2}
+              onClick={handleMergeConfirm}
+              className="rounded-full bg-primary px-2 py-0.5 font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              병합하기
+            </button>
+            <button
+              type="button"
+              onClick={exitMergeMode}
+              className="rounded-full px-2 py-0.5 text-muted-foreground hover:text-foreground"
+            >
+              취소
+            </button>
+          </div>
+        </div>
+      )}
 
       {/*
         space-y-1(부모)의 자식 간격 규칙(.space-y-1 > :not([hidden]) ~ :not([hidden]))이
@@ -158,9 +227,13 @@ export function Timeline() {
               style={{ left: `${Math.min(100, ((cp.minute ?? 0) / AXIS_MAX_MINUTE) * 100)}%` }}
               className={cn(
                 'absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 transition-colors',
-                cp.id === selectedChangingPointId
-                  ? 'border-primary bg-primary'
-                  : 'border-muted-foreground bg-background hover:border-foreground',
+                mergeMode
+                  ? mergeSelected.includes(cp.id)
+                    ? 'border-amber-500 bg-amber-500'
+                    : 'border-muted-foreground bg-background hover:border-foreground'
+                  : cp.id === selectedChangingPointId
+                    ? 'border-primary bg-primary'
+                    : 'border-muted-foreground bg-background hover:border-foreground',
               )}
             />
           ))}
@@ -178,9 +251,13 @@ export function Timeline() {
               onClick={() => toggleSelect(cp)}
               className={cn(
                 'rounded-full px-2 py-0.5 text-xs font-medium transition-colors',
-                cp.id === selectedChangingPointId
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-secondary text-muted-foreground hover:text-foreground',
+                mergeMode
+                  ? mergeSelected.includes(cp.id)
+                    ? 'bg-amber-500 text-white'
+                    : 'bg-secondary text-muted-foreground hover:text-foreground'
+                  : cp.id === selectedChangingPointId
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-secondary text-muted-foreground hover:text-foreground',
                 isPlaying && 'cursor-not-allowed opacity-60',
               )}
             >
@@ -190,7 +267,7 @@ export function Timeline() {
         </div>
       )}
 
-      {selected && (
+      {selected && !mergeMode && (
         <div className="flex items-center gap-1.5 pt-1">
           <Input
             type="number"

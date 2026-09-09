@@ -287,6 +287,40 @@ describe('analysisStore — 타임라인(체인징 포인트)', () => {
     expect(useAnalysisStore.getState().analysis!.changingPoints!.map((cp) => cp.id)).toEqual([b, a, c])
   })
 
+  it('mergeChangingPoints는 선택한 시점들을 하나로 합친다 — 좌표는 마지막 것, annotations는 순서대로 이어붙임', () => {
+    useAnalysisStore.getState().addChangingPoint('시점1', 10)
+    const idA = useAnalysisStore.getState().selectedChangingPointId!
+    useAnalysisStore.getState().setComment('A 코멘트')
+    useAnalysisStore.getState().addAnnotation('pass', { x: 10, y: 10 }, { x: 20, y: 20 })
+
+    useAnalysisStore.getState().addChangingPoint('시점2', 20)
+    const idB = useAnalysisStore.getState().selectedChangingPointId!
+    useAnalysisStore.getState().addAnnotation('pass', { x: 20, y: 20 }, { x: 30, y: 30 })
+    const playerId = useAnalysisStore.getState().analysis!.players[0].id
+    useAnalysisStore.getState().movePlayer(playerId, 55, 66) // 시점2의 최종 좌표
+
+    useAnalysisStore.getState().mergeChangingPoints([idA, idB])
+
+    const { analysis, selectedChangingPointId } = useAnalysisStore.getState()
+    expect(analysis!.changingPoints).toHaveLength(1)
+    const merged = analysis!.changingPoints![0]
+    expect(selectedChangingPointId).toBe(merged.id)
+    expect(merged.label).toBe('시점1 ~ 시점2')
+    expect(merged.minute).toBe(10) // 가장 이른 시점(첫 번째)의 minute을 물려받는다
+    expect(merged.positions.find((p) => p.playerId === playerId)).toEqual({ playerId, x: 55, y: 66 }) // 마지막 시점의 최종 배치
+    expect(merged.annotations).toHaveLength(2) // 두 시점의 화살표를 순서대로 이어붙인다
+    expect(merged.comment).toBe('A 코멘트') // 빈 코멘트는 걸러내고 이어붙인다
+  })
+
+  it('mergeChangingPoints는 2개 미만을 주면 아무것도 하지 않는다', () => {
+    useAnalysisStore.getState().addChangingPoint('시점1')
+    const idA = useAnalysisStore.getState().selectedChangingPointId!
+
+    useAnalysisStore.getState().mergeChangingPoints([idA])
+
+    expect(useAnalysisStore.getState().analysis!.changingPoints).toHaveLength(1)
+  })
+
   it('renameChangingPoint는 라벨만 바꾼다', () => {
     useAnalysisStore.getState().addChangingPoint('킥오프')
     const cpId = useAnalysisStore.getState().selectedChangingPointId!
