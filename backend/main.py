@@ -10,7 +10,7 @@ import models  # noqa: F401  (create_all 전에 모델 등록이 필요)
 import schemas
 from config import PROJECT_ROOT, settings
 from database import Base, engine
-from routers import analyses
+from routers import analyses, auth as auth_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -33,19 +33,24 @@ def _ensure_column(table: str, column: str, ddl_type: str) -> None:
 _ensure_column("players", "tactical_role", "VARCHAR")
 _ensure_column("annotations", "curved", "BOOLEAN")
 _ensure_column("changing_points", "minute", "FLOAT")
+_ensure_column("analyses", "user_id", "INTEGER REFERENCES users(id)")
 
 app = FastAPI(title="TactiCore API", version=settings.app_version)
 
 # 로컬 전용이라도 allow_origins=["*"] 는 쓰지 않는다 (3단계 §7).
+# 로그인(TO-DO 11번) 세션 쿠키를 주고받으려면 allow_credentials=True가 필요하고,
+# CORS 스펙상 이 값이 True면 allow_origins에 "*"를 쓸 수 없다 — cors_origin_list는
+# 이미 명시적 목록이라 그대로 둔다.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
-    allow_credentials=False,
+    allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
 
 app.include_router(analyses.router)
+app.include_router(auth_router.router)
 
 
 @app.get("/api/health", response_model=schemas.HealthOut, tags=["health"])

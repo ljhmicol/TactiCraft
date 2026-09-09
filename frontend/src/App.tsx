@@ -2,10 +2,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { MouseEvent } from 'react'
 import { BrowserRouter, Link, Route, Routes } from 'react-router-dom'
 
+import { useLogout, useCurrentUser } from '@/hooks/useAuth'
 import { AnalysesPage } from '@/routes/AnalysesPage'
 import { AnalysisDetailPage } from '@/routes/AnalysisDetailPage'
 import { EditorPage } from '@/routes/EditorPage'
+import { LoginPage } from '@/routes/LoginPage'
 import { NewAnalysisPage } from '@/routes/NewAnalysisPage'
+import { RegisterPage } from '@/routes/RegisterPage'
 import { SharePage } from '@/routes/SharePage'
 import { VersusPage } from '@/routes/VersusPage'
 import { useAnalysisStore } from '@/store/analysisStore'
@@ -13,6 +16,40 @@ import { useAnalysisStore } from '@/store/analysisStore'
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
 })
+
+function AuthNav() {
+  const { user, isLoggedIn, isChecking } = useCurrentUser()
+  const logoutMutation = useLogout()
+
+  if (isChecking) return null
+
+  if (!isLoggedIn) {
+    return (
+      <>
+        <Link to="/login" className="hover:text-foreground">
+          로그인
+        </Link>
+        <Link to="/register" className="hover:text-foreground">
+          회원가입
+        </Link>
+      </>
+    )
+  }
+
+  return (
+    <>
+      <span className="text-muted-foreground">{user?.email}</span>
+      <button
+        type="button"
+        onClick={() => logoutMutation.mutate()}
+        disabled={logoutMutation.isPending}
+        className="hover:text-foreground"
+      >
+        로그아웃
+      </button>
+    </>
+  )
+}
 
 function App() {
   const closeAnalysis = useAnalysisStore((s) => s.closeAnalysis)
@@ -48,6 +85,7 @@ function App() {
             <Link to="/versus" className="hover:text-foreground">
               전술 대결
             </Link>
+            <AuthNav />
           </nav>
         </div>
         <Routes>
@@ -57,6 +95,8 @@ function App() {
           <Route path="/analyses/:id" element={<AnalysisDetailPage />} />
           <Route path="/share/:id" element={<SharePage />} />
           <Route path="/versus" element={<VersusPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>

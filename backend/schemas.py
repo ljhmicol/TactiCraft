@@ -181,3 +181,38 @@ class AnalysisSummary(BaseModel):
 class HealthOut(BaseModel):
     status: str
     version: str
+
+
+# 로그인(TO-DO 11번, 이메일/비밀번호). email-validator 의존성을 새로 안 들이려고
+# EmailStr 대신 간단한 정규식으로 형태만 확인한다 — 실제 존재 확인은 어차피
+# 이메일 발송 인프라가 없어서 못 한다(가입 시 검증 메일도 안 보냄, 범위 밖).
+_EMAIL_RE = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
+
+
+class UserRegister(BaseModel):
+    email: str = Field(pattern=_EMAIL_RE)
+    password: str = Field(min_length=8, max_length=100)
+
+    @field_validator("password")
+    @classmethod
+    def _check_password_bytes(cls, v: str) -> str:
+        # bcrypt는 72바이트를 넘는 부분을 조용히 잘라버린다(예외를 던지지
+        # 않는다) — 그대로 두면 72바이트 이후만 다른 두 비밀번호가 같은
+        # 해시로 저장돼 로그인이 통과하는 사고가 난다. max_length=100은
+        # 문자 수 기준이라 한글처럼 멀티바이트 문자에서는 이 값보다 훨씬
+        # 먼저 72바이트를 넘을 수 있어 별도로 바이트 길이를 확인한다.
+        if len(v.encode("utf-8")) > 72:
+            raise ValueError("비밀번호는 72바이트(한글 약 24자)를 넘을 수 없습니다")
+        return v
+
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+
+class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    email: str

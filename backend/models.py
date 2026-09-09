@@ -19,10 +19,39 @@ from sqlalchemy.orm import relationship
 from database import Base
 
 
+class User(Base):
+    """로그인 계정(TO-DO 11번, 이메일/비밀번호). 비밀번호는 bcrypt 해시만 저장한다."""
+
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    email = Column(String, nullable=False, unique=True)
+    password_hash = Column(String, nullable=False)
+    created_at = Column(String, nullable=False)
+
+
+class Session(Base):
+    """로그인 세션(httpOnly 쿠키에 담는 토큰). JWT 대신 이 테이블 방식을 쓴 이유는
+    로그아웃 시 즉시 무효화할 수 있어야 하기 때문 — JWT는 만료 전까지 서버가
+    통제할 수 없다."""
+
+    __tablename__ = "sessions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    token = Column(String, nullable=False, unique=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    created_at = Column(String, nullable=False)
+
+
 class Analysis(Base):
     __tablename__ = "analyses"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    # 로그인(TO-DO 11번) 이전에 저장된 분석은 NULL — 첫 가입 계정에 전부
+    # 귀속시킨다(2026-09-09 사용자 결정, routers/auth.py의 register 참조).
+    # 이 테이블이 로그인보다 먼저 존재해서 ALTER TABLE로 채운다(main.py
+    # _ensure_column) — tactical_role/curved/minute과 같은 이유.
+    user_id = Column(Integer, ForeignKey("users.id"))
     match_name = Column(String, nullable=False)
     home_team = Column(String, nullable=False)
     away_team = Column(String, nullable=False)

@@ -45,9 +45,16 @@ def _load(db: Session, analysis_id: int) -> models.Analysis:
     return row
 
 
-def list_analyses(db: Session) -> List[models.Analysis]:
-    """목록 조회. 좌표를 읽지 않는다 — 하위 테이블을 조인하지 않는 이유."""
-    stmt = select(models.Analysis).order_by(models.Analysis.updated_at.desc())
+def list_analyses(db: Session, user_id: int) -> List[models.Analysis]:
+    """목록 조회. 좌표를 읽지 않는다 — 하위 테이블을 조인하지 않는 이유.
+
+    로그인(TO-DO 11번) 이후에는 본인 소유 분석만 보인다 — user_id로 필터한다.
+    """
+    stmt = (
+        select(models.Analysis)
+        .where(models.Analysis.user_id == user_id)
+        .order_by(models.Analysis.updated_at.desc())
+    )
     return list(db.execute(stmt).scalars().all())
 
 
@@ -106,11 +113,12 @@ def upsert_analysis(
     db: Session,
     payload: schemas.AnalysisIn,
     analysis_id: Optional[int] = None,
+    user_id: Optional[int] = None,
 ) -> models.Analysis:
     now = _now()
 
     if analysis_id is None:
-        row = models.Analysis(created_at=now)
+        row = models.Analysis(created_at=now, user_id=user_id)
         db.add(row)
     else:
         row = _load(db, analysis_id)

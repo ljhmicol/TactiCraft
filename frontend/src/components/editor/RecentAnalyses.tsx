@@ -1,20 +1,23 @@
 import { Link } from 'react-router-dom'
 
 import { useAnalyses } from '@/hooks/useAnalyses'
+import { useCurrentUser } from '@/hooks/useAuth'
 import { useServerHealth } from '@/hooks/useServerHealth'
 
 const RECENT_COUNT = 5
 
 /**
- * 홈("/") 빈 화면에 최근 저장한 분석을 보여준다. 서버가 꺼져 있거나 저장된
- * 분석이 없으면 아무것도 렌더링하지 않는다 — 빈 화면 안내문만 남는다.
- * 목록은 백엔드가 이미 updated_at desc로 정렬해 준다(crud.py list_analyses).
+ * 홈("/") 빈 화면에 최근 저장한 분석을 보여준다. 서버가 꺼져 있거나, 비로그인
+ * 이거나(TO-DO 11번 — 목록 조회는 로그인 필요), 저장된 분석이 없으면 아무것도
+ * 렌더링하지 않는다 — 빈 화면 안내문만 남는다. 목록은 백엔드가 이미
+ * updated_at desc로 정렬해 준다(crud.py list_analyses).
  */
 export function RecentAnalyses() {
   const { isServerUp } = useServerHealth()
+  const { isLoggedIn } = useCurrentUser()
   const { data } = useAnalyses()
 
-  if (!isServerUp || !data || data.length === 0) return null
+  if (!isServerUp || !isLoggedIn || !data || data.length === 0) return null
 
   const recent = data.slice(0, RECENT_COUNT)
 

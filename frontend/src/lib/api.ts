@@ -78,6 +78,9 @@ async function toApiError(res: Response): Promise<ApiError> {
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     ...init,
+    // 로그인(TO-DO 11번) 세션은 httpOnly 쿠키다 — 이게 없으면 브라우저가
+    // 쿠키를 안 보내 로그인해도 매 요청이 401로 취급된다.
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...init?.headers },
     body: init?.body ? JSON.stringify(convertKeys(JSON.parse(init.body as string), toSnake)) : undefined,
   })
@@ -106,6 +109,29 @@ export function updateAnalysis(id: number, data: AnalysisPayload): Promise<Analy
 
 export function deleteAnalysis(id: number): Promise<void> {
   return apiFetch(`/analyses/${id}`, { method: 'DELETE' })
+}
+
+export interface CurrentUser {
+  id: number
+  email: string
+}
+
+/** 로그인(TO-DO 11번). 실패 시 ApiError(401/400)를 던진다. */
+export function registerUser(email: string, password: string): Promise<CurrentUser> {
+  return apiFetch('/auth/register', { method: 'POST', body: JSON.stringify({ email, password }) })
+}
+
+export function loginUser(email: string, password: string): Promise<CurrentUser> {
+  return apiFetch('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) })
+}
+
+export function logoutUser(): Promise<void> {
+  return apiFetch('/auth/logout', { method: 'POST' })
+}
+
+/** 비로그인 상태면 401 ApiError를 던진다 — useCurrentUser가 로그아웃 상태로 취급한다. */
+export function fetchCurrentUser(): Promise<CurrentUser> {
+  return apiFetch('/auth/me')
 }
 
 /** 앱 진입 시 1회, 저장 실패 시 재확인한다 (3단계 §2.1). 타임아웃 2초. */

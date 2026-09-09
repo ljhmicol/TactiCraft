@@ -1,12 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import { useCurrentUser } from '@/hooks/useAuth'
 import { createAnalysis, deleteAnalysis, fetchAnalyses, fetchAnalysis, updateAnalysis } from '@/lib/api'
 import type { Analysis } from '@/types/analysis'
 
 const ANALYSES_KEY = ['analyses']
 
+/** 목록 조회는 로그인이 필요하다(TO-DO 11번) — 비로그인 상태에선 어차피 401만
+ * 돌아오므로 요청 자체를 보내지 않는다. */
 export function useAnalyses() {
-  return useQuery({ queryKey: ANALYSES_KEY, queryFn: fetchAnalyses })
+  const { isLoggedIn } = useCurrentUser()
+  return useQuery({ queryKey: ANALYSES_KEY, queryFn: fetchAnalyses, enabled: isLoggedIn })
 }
 
 export function useAnalysis(id: number | undefined) {

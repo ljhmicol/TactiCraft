@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { useDuplicateAnalysis } from '@/hooks/useAnalyses'
+import { useCurrentUser } from '@/hooks/useAuth'
 import { useServerHealth } from '@/hooks/useServerHealth'
 import { ApiError } from '@/lib/api'
 import { useAnalysisStore } from '@/store/analysisStore'
@@ -16,6 +17,7 @@ import type { Analysis } from '@/types/analysis'
  */
 export function DuplicateButton({ analysis }: { analysis: Analysis }) {
   const { isServerUp, isChecking, recheck } = useServerHealth()
+  const { isLoggedIn, isChecking: isCheckingAuth } = useCurrentUser()
   const duplicateMutation = useDuplicateAnalysis()
   const loadAnalysis = useAnalysisStore((s) => s.loadAnalysis)
   const [errors, setErrors] = useState<string[] | null>(null)
@@ -43,7 +45,7 @@ export function DuplicateButton({ analysis }: { analysis: Analysis }) {
     }
   }
 
-  const disabled = !isServerUp || isChecking || duplicateMutation.isPending
+  const disabled = !isServerUp || isChecking || isCheckingAuth || !isLoggedIn || duplicateMutation.isPending
 
   return (
     <div className="flex flex-col items-end gap-1">
@@ -52,7 +54,13 @@ export function DuplicateButton({ analysis }: { analysis: Analysis }) {
         variant="outline"
         onClick={handleDuplicate}
         disabled={disabled}
-        title={!isServerUp ? '백엔드 서버가 꺼져 있어 복제할 수 없습니다' : '원본은 그대로 두고 새 분석으로 복제합니다'}
+        title={
+          !isServerUp
+            ? '백엔드 서버가 꺼져 있어 복제할 수 없습니다'
+            : !isLoggedIn && !isCheckingAuth
+              ? '로그인이 필요합니다'
+              : '원본은 그대로 두고 새 분석으로 복제합니다'
+        }
       >
         {duplicateMutation.isPending ? '복제 중…' : '복제 저장'}
       </Button>
