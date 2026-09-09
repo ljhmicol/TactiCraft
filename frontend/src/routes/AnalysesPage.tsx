@@ -6,15 +6,26 @@ import { Input } from '@/components/ui/input'
 import { useAnalyses } from '@/hooks/useAnalyses'
 import { useCurrentUser } from '@/hooks/useAuth'
 import { useServerHealth } from '@/hooks/useServerHealth'
+import { groupByDate } from '@/lib/dateGrouping'
+
+type GroupMode = 'none' | 'day' | 'week'
+
+const GROUP_MODE_OPTIONS: { value: GroupMode; label: string }[] = [
+  { value: 'none', label: '전체' },
+  { value: 'day', label: '일별' },
+  { value: 'week', label: '주별' },
+]
 
 /**
  * /analyses — 저장 목록. 서버 미기동 시 목록 대신 안내 카드 (2단계 §6, §11.3).
  * 비로그인 시 로그인 안내로 대체한다(TO-DO 11번) — 서버가 떠 있어도 목록
  * 조회는 로그인이 필요하므로, isServerUp만으로는 401을 설명할 수 없다.
  *
- * 검색·태그 필터(TO-DO 7번)는 목록이 수십 개 규모라 서버 왕복 없이
- * 프론트에서 처리한다 — 이미 다 받아온 데이터를 다시 걸러내는 것뿐이라
- * 새 API가 필요 없다.
+ * 검색·태그 필터·일별/주별 그룹핑(TO-DO 7번, 2026-09-09 후속 요청)은
+ * 목록이 수십 개 규모라 서버 왕복 없이 프론트에서 처리한다 — 이미 다
+ * 받아온 데이터를 다시 걸러내고 나누는 것뿐이라 새 API가 필요 없다.
+ * 그룹 기준은 경기 일자(matchDate) — 언제 저장했는지가 아니라 그
+ * 경기가 언제였는지가 전술 라이브러리를 훑어볼 때 더 자연스럽다.
  */
 export function AnalysesPage() {
   const { isServerUp, isChecking } = useServerHealth()
@@ -22,6 +33,7 @@ export function AnalysesPage() {
   const { data, isLoading, isError } = useAnalyses()
   const [search, setSearch] = useState('')
   const [activeTag, setActiveTag] = useState<string | null>(null)
+  const [groupMode, setGroupMode] = useState<GroupMode>('none')
 
   const allTags = useMemo(() => {
     const set = new Set<string>()
@@ -39,6 +51,11 @@ export function AnalysesPage() {
       return matchesSearch && matchesTag
     })
   }, [data, search, activeTag])
+
+  const groups = useMemo(
+    () => (groupMode === 'none' ? null : groupByDate(filtered, groupMode)),
+    [filtered, groupMode],
+  )
 
   return (
     <div className="p-6">
@@ -95,9 +112,34 @@ export function AnalysesPage() {
                 ))}
               </div>
             )}
+            <div className="flex gap-1.5">
+              {GROUP_MODE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setGroupMode(opt.value)}
+                  className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                    groupMode === opt.value
+                      ? 'bg-accent text-accent-foreground'
+                      : 'bg-secondary text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
           {(data?.length ?? 0) > 0 && filtered.length === 0 ? (
             <p className="text-muted-foreground">검색·필터 조건에 맞는 분석이 없습니다.</p>
+          ) : groups ? (
+            <div className="space-y-6">
+              {groups.map((group) => (
+                <section key={group.key}>
+                  <h2 className="mb-2 text-sm font-semibold text-foreground">{group.label}</h2>
+                  <AnalysisList analyses={group.items} />
+                </section>
+              ))}
+            </div>
           ) : (
             <AnalysisList analyses={filtered} />
           )}
