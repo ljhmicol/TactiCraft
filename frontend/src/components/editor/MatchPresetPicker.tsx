@@ -20,6 +20,13 @@ interface MatchPreset {
  */
 const MATCH_PRESETS: MatchPreset[] = [
   {
+    url: '/samples/matches/dimaria-wc2022-final.json',
+    title: '디마리아의 6턴 역습골 (35분)',
+    matchup: '아르헨티나 vs 프랑스 · 2022 카타르 월드컵 결승',
+    blurb:
+      '몰리나 탈압박 → 맥 알리스터 → 메시 → 알바레스 → 맥 알리스터 원터치 연결 → 디마리아 마무리. 타임라인 6개 시점으로 패스가 이어지는 과정을 그대로 따라갈 수 있음',
+  },
+  {
     url: '/samples/matches/mbappe-wc2022-final.json',
     title: '음바페 동점골 (80분)',
     matchup: '아르헨티나 vs 프랑스 · 2022 카타르 월드컵 결승',
