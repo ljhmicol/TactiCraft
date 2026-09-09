@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 
 import { BottomActionBar } from '@/components/editor/BottomActionBar'
 import { RecentAnalyses } from '@/components/editor/RecentAnalyses'
+import { useCurrentUser } from '@/hooks/useAuth'
 import { CommentPanel } from '@/components/editor/CommentPanel'
 import { DuplicateButton } from '@/components/editor/DuplicateButton'
 import { JsonIO } from '@/components/editor/JsonIO'
@@ -81,15 +82,28 @@ export function EditorPage() {
   // 화살표 선택 상태. 피치 어디를 눌러도(pointerdown 버블링) 해제된다 —
   // 화살표 자체는 stopPropagation으로 해제를 막는다.
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null)
+  const { isLoggedIn, isChecking: isCheckingAuth } = useCurrentUser()
 
   if (!analysis) {
     return (
       <div className="mx-auto flex max-w-md flex-col items-center gap-6 px-6 py-24 text-center">
         <div className="flex flex-col items-center gap-4">
           <p className="text-muted-foreground">아직 분석이 없습니다.</p>
-          <Button asChild>
-            <Link to="/new">새 분석 시작</Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button asChild>
+              <Link to="/new">새 분석 시작</Link>
+            </Button>
+            {!isCheckingAuth && !isLoggedIn && (
+              <>
+                <Button asChild variant="outline">
+                  <Link to="/login">로그인</Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link to="/register">회원가입</Link>
+                </Button>
+              </>
+            )}
+          </div>
         </div>
         <RecentAnalyses />
       </div>
