@@ -94,14 +94,14 @@ export function EditorPage() {
               <Link to="/new">새 분석 시작</Link>
             </Button>
             {!isCheckingAuth && !isLoggedIn && (
-              <>
+              <div className="flex items-center gap-2">
                 <Button asChild variant="outline">
                   <Link to="/login">로그인</Link>
                 </Button>
                 <Button asChild variant="outline">
                   <Link to="/register">회원가입</Link>
                 </Button>
-              </>
+              </div>
             )}
           </div>
         </div>
