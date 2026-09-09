@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { MouseEvent } from 'react'
-import { BrowserRouter, Link, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Link, Route, Routes, useNavigate } from 'react-router-dom'
 
-import { useLogout, useCurrentUser } from '@/hooks/useAuth'
+import { useCurrentUser, useLogout, useWithdraw } from '@/hooks/useAuth'
 import { AnalysesPage } from '@/routes/AnalysesPage'
 import { AnalysisDetailPage } from '@/routes/AnalysisDetailPage'
 import { EditorPage } from '@/routes/EditorPage'
@@ -20,6 +20,9 @@ const queryClient = new QueryClient({
 function AuthNav() {
   const { user, isLoggedIn, isChecking } = useCurrentUser()
   const logoutMutation = useLogout()
+  const withdrawMutation = useWithdraw()
+  const closeAnalysis = useAnalysisStore((s) => s.closeAnalysis)
+  const navigate = useNavigate()
 
   if (isChecking) return null
 
@@ -36,6 +39,15 @@ function AuthNav() {
     )
   }
 
+  // 탈퇴(TO-DO 11번 연장) — 본인 소유 분석까지 서버에서 함께 지워지므로
+  // 되돌릴 수 없다는 걸 확인창에서 분명히 알린다.
+  const handleWithdraw = async () => {
+    if (!window.confirm('탈퇴하면 저장한 분석이 모두 함께 삭제됩니다. 되돌릴 수 없습니다. 계속할까요?')) return
+    await withdrawMutation.mutateAsync()
+    closeAnalysis()
+    navigate('/')
+  }
+
   return (
     <>
       <span className="text-muted-foreground">{user?.email}</span>
@@ -46,6 +58,14 @@ function AuthNav() {
         className="hover:text-foreground"
       >
         로그아웃
+      </button>
+      <button
+        type="button"
+        onClick={handleWithdraw}
+        disabled={withdrawMutation.isPending}
+        className="text-destructive hover:text-destructive/80"
+      >
+        회원 탈퇴
       </button>
     </>
   )

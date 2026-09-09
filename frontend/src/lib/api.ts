@@ -129,6 +129,11 @@ export function logoutUser(): Promise<void> {
   return apiFetch('/auth/logout', { method: 'POST' })
 }
 
+/** 회원 탈퇴 — 본인 소유 분석까지 서버에서 함께 삭제된다. */
+export function withdrawUser(): Promise<void> {
+  return apiFetch('/auth/me', { method: 'DELETE' })
+}
+
 /** 비로그인 상태면 401 ApiError를 던진다 — useCurrentUser가 로그아웃 상태로 취급한다. */
 export function fetchCurrentUser(): Promise<CurrentUser> {
   return apiFetch('/auth/me')

@@ -78,3 +78,19 @@ def logout(request: Request, response: Response, db: DbSession = Depends(get_db)
 @router.get("/me", response_model=schemas.UserOut)
 def me(user: models.User = Depends(auth.get_current_user)):
     return user
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+def withdraw(response: Response, db: DbSession = Depends(get_db), user: models.User = Depends(auth.get_current_user)):
+    """회원 탈퇴 — 본인 소유 분석까지 함께 지운다(2026-09-09 사용자 결정).
+
+    analyses를 먼저 지워야 한다 — Analysis.user_id FK에는 ondelete가 없어서
+    (users를 참조하지만 CASCADE가 아님), 분석이 남아 있으면 users 삭제가
+    FK 제약에 걸린다. 벌크 DELETE라도 DB 레벨 FK CASCADE(players/phases/...)는
+    그대로 발동한다 — SQLite에서 FK 강제가 켜져 있어서다(database.py).
+    """
+    db.query(models.Analysis).filter(models.Analysis.user_id == user.id).delete()
+    db.query(models.Session).filter(models.Session.user_id == user.id).delete()
+    db.delete(user)
+    db.commit()
+    response.delete_cookie(auth.SESSION_COOKIE_NAME)

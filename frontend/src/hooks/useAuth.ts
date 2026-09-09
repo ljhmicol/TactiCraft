@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { fetchCurrentUser, loginUser, logoutUser, registerUser } from '@/lib/api'
+import { fetchCurrentUser, loginUser, logoutUser, registerUser, withdrawUser } from '@/lib/api'
 
 const ME_KEY = ['auth', 'me']
 
@@ -49,6 +49,19 @@ export function useLogout() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: logoutUser,
+    onSuccess: () => {
+      queryClient.setQueryData(ME_KEY, undefined)
+      queryClient.invalidateQueries({ queryKey: ME_KEY })
+      queryClient.invalidateQueries({ queryKey: ['analyses'] })
+    },
+  })
+}
+
+/** 회원 탈퇴 — 본인 소유 분석까지 서버에서 함께 삭제된다(2026-09-09 사용자 결정). */
+export function useWithdraw() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: withdrawUser,
     onSuccess: () => {
       queryClient.setQueryData(ME_KEY, undefined)
       queryClient.invalidateQueries({ queryKey: ME_KEY })
