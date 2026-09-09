@@ -69,43 +69,52 @@ export function Timeline() {
         </button>
       </div>
 
-      <div
-        className="relative mx-1 mb-5 mt-4 cursor-pointer py-1.5"
-        onClick={handleTrackClick}
-        title="클릭하면 그 시간에 새 시점을 추가합니다"
-      >
-        <div className="h-1.5 rounded-full bg-muted" />
-        {AXIS_LINES.map((m) => (
-          <div
-            key={m}
-            className="absolute top-1/2 h-2.5 w-px -translate-y-1/2 bg-border"
-            style={{ left: `${(m / AXIS_MAX_MINUTE) * 100}%` }}
-          />
-        ))}
-        {AXIS_TICKS.map((m) => (
-          <span
-            key={m}
-            className="absolute top-full mt-1 -translate-x-1/2 text-[10px] text-muted-foreground"
-            style={{ left: `${(m / AXIS_MAX_MINUTE) * 100}%` }}
-          >
-            {m}&apos;
-          </span>
-        ))}
-        {timed.map((cp) => (
-          <button
-            key={cp.id}
-            type="button"
-            title={`${cp.minute}' — ${cp.label}`}
-            onClick={() => toggleSelect(cp)}
-            style={{ left: `${Math.min(100, ((cp.minute ?? 0) / AXIS_MAX_MINUTE) * 100)}%` }}
-            className={cn(
-              'absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 transition-colors',
-              cp.id === selectedChangingPointId
-                ? 'border-primary bg-primary'
-                : 'border-muted-foreground bg-background hover:border-foreground',
-            )}
-          />
-        ))}
+      {/*
+        space-y-1(부모)의 자식 간격 규칙(.space-y-1 > :not([hidden]) ~ :not([hidden]))이
+        일반 mb-* 유틸리티보다 우선순위(specificity)가 높아서, 이 축 div가 부모의
+        직계 자식이면 어떤 mb-* 값을 줘도 0으로 덮어써진다(2026-09-09 사용자 리포트
+        — "0'과 시간 미정이 겹쳐" 디버깅 중 발견). 한 겹 더 감싸 직계 자식 관계를
+        끊어야 아래 mb-6가 실제로 적용된다.
+      */}
+      <div>
+        <div
+          className="relative mx-1 mb-6 mt-4 cursor-pointer py-1.5"
+          onClick={handleTrackClick}
+          title="클릭하면 그 시간에 새 시점을 추가합니다"
+        >
+          <div className="h-1.5 rounded-full bg-muted" />
+          {AXIS_LINES.map((m) => (
+            <div
+              key={m}
+              className="absolute top-1/2 h-2.5 w-px -translate-y-1/2 bg-border"
+              style={{ left: `${(m / AXIS_MAX_MINUTE) * 100}%` }}
+            />
+          ))}
+          {AXIS_TICKS.map((m) => (
+            <span
+              key={m}
+              className="absolute top-full mt-1 -translate-x-1/2 text-[10px] text-muted-foreground"
+              style={{ left: `${(m / AXIS_MAX_MINUTE) * 100}%` }}
+            >
+              {m}&apos;
+            </span>
+          ))}
+          {timed.map((cp) => (
+            <button
+              key={cp.id}
+              type="button"
+              title={`${cp.minute}' — ${cp.label}`}
+              onClick={() => toggleSelect(cp)}
+              style={{ left: `${Math.min(100, ((cp.minute ?? 0) / AXIS_MAX_MINUTE) * 100)}%` }}
+              className={cn(
+                'absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 transition-colors',
+                cp.id === selectedChangingPointId
+                  ? 'border-primary bg-primary'
+                  : 'border-muted-foreground bg-background hover:border-foreground',
+              )}
+            />
+          ))}
+        </div>
       </div>
 
       {untimed.length > 0 && (
