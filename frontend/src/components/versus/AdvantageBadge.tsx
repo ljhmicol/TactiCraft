@@ -13,6 +13,12 @@ const zoneLabel = (
   third: Record<ZoneOverload['third'], string>,
 ) => `${CHANNEL_KOREAN[z.channel]} · ${third[z.third]}(${z.own}:${z.opp})`
 
+// 우세 구역이 많으면(최대 15구역 중 절반 가까이) 줄글이 너무 길어져 읽히지
+// 않는다는 피드백(2026-09-09) — |diff| 내림차순으로 이미 정렬된 목록에서
+// 격차가 큰 상위 3개만 보여준다. 전체 개수(teamZones.length)는 그대로 쓰고
+// 목록만 자른다 — "3구역 우세" 같은 집계 문구가 어긋나면 안 되기 때문.
+const TOP_ZONE_COUNT = 3
+
 /**
  * 오버로드 15구역을 A/B 우세 구역으로 요약한다. 확률(%)처럼 보이는 숫자는
  * 일부러 안 만든다 — 실제 경기 시뮬레이션이 아니라 지금 배치된 좌표의 구역별
@@ -43,7 +49,12 @@ export function AdvantageBadge({ zones, labelA, labelB }: AdvantageBadgeProps) {
   const teamSummary = (label: string, color: string, teamZones: ZoneOverload[]) =>
     teamZones.length > 0 ? (
       <p className="text-sm" style={{ color }}>
-        <strong>{label}</strong> 우세 구역({teamZones.length}): {teamZones.map((z) => zoneLabel(z, third)).join(', ')}
+        <strong>{label}</strong> 우세 구역({teamZones.length}):{' '}
+        {teamZones
+          .slice(0, TOP_ZONE_COUNT)
+          .map((z) => zoneLabel(z, third))
+          .join(', ')}
+        {teamZones.length > TOP_ZONE_COUNT && ` 외 ${teamZones.length - TOP_ZONE_COUNT}곳`}
       </p>
     ) : (
       <p className="text-sm text-muted-foreground">

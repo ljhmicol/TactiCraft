@@ -20,6 +20,7 @@ export function VersusPage() {
   const [showChannelGrid, setShowChannelGrid] = useState(true)
   const [showOverload, setShowOverload] = useState(true)
   const [showPressingLine, setShowPressingLine] = useState(true)
+  const [showAnnotations, setShowAnnotations] = useState(true)
 
   const analysisA = useAnalysis(idA ? Number(idA) : undefined)
   const analysisB = useAnalysis(idB ? Number(idB) : undefined)
@@ -107,6 +108,7 @@ export function VersusPage() {
             { key: 'channelGrid', label: '5채널', on: showChannelGrid, set: setShowChannelGrid },
             { key: 'overload', label: '오버로드', on: showOverload, set: setShowOverload },
             { key: 'pressingLine', label: '압박 라인(수비 팀)', on: showPressingLine, set: setShowPressingLine },
+            { key: 'annotations', label: '이동 벡터', on: showAnnotations, set: setShowAnnotations },
           ] as const
         ).map((chip) => (
           <button
@@ -137,6 +139,7 @@ export function VersusPage() {
             showChannelGrid={showChannelGrid}
             showOverload={showOverload}
             showPressingLine={showPressingLine}
+            showAnnotations={showAnnotations}
           />
         </div>
       )}

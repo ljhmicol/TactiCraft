@@ -1,8 +1,15 @@
+import { motion } from 'framer-motion'
+
 import { transposePoint } from '@/lib/coords'
 import { circularRadius, swapForLandscape } from '@/lib/pitchMarkings'
 import { positionInfoAt } from '@/lib/positions'
 import { VERSUS_TEAM_COLORS } from '@/lib/theme'
+import { PHASE_TRANSITION_MS } from '@/store/analysisStore'
 import type { Player, Point } from '@/types/analysis'
+
+// PlayerNode(에디터)와 같은 지속시간·이징 — 공수 교대 버튼(TO-DO 28, 4번
+// "부드러운 전환 효과")을 눌러도 마커가 순간이동하지 않고 모프한다.
+const TRANSITION = { duration: PHASE_TRANSITION_MS / 1000, ease: [0.4, 0, 0.2, 1] as const }
 
 interface StaticPlayerNodeProps {
   player: Player
@@ -13,10 +20,21 @@ interface StaticPlayerNodeProps {
   variant: 'A' | 'B'
   /** landscape는 전술 대결 뷰(TO-DO 21) 전용. position은 항상 원본(세로) 좌표계로 받는다. */
   orientation?: 'portrait' | 'landscape'
+  /**
+   * 스파이더파이어(TO-DO 28, 1번)로 펼쳐진 경우의 최종 렌더 좌표 — 이미
+   * 미러링·landscape 변환까지 끝난 값이라 주어지면 position/orientation
+   * 변환을 건너뛰고 이 값을 그대로 쓴다.
+   */
+  renderPoint?: Point
+  /** 동적 라벨 배치(TO-DO 28, 1번)로 밀려난 만큼(기본 0) — 이름표 y에만 더해진다. */
+  labelYOffset?: number
 }
 
 const PORTRAIT_RADIUS = circularRadius(2.6)
-const LANDSCAPE_RADIUS = swapForLandscape(PORTRAIT_RADIUS)
+// 클러스터 배지·라벨 배치 계산(MatchupView, TO-DO 28)이 이 마커 반지름과
+// 일치해야 해서 export한다 — 값이 어긋나면 배지 크기나 라벨 겹침 판정이
+// 실제 렌더링과 안 맞게 된다.
+export const LANDSCAPE_RADIUS = swapForLandscape(PORTRAIT_RADIUS)
 const GK_RING_RADIUS_PORTRAIT = circularRadius(3.1)
 const GK_RING_RADIUS_LANDSCAPE = swapForLandscape(GK_RING_RADIUS_PORTRAIT)
 
@@ -39,6 +57,8 @@ export function StaticPlayerNode({
   index,
   variant,
   orientation = 'portrait',
+  renderPoint,
+  labelYOffset = 0,
 }: StaticPlayerNodeProps) {
   const info = positionInfoAt(formation, index)
   const isGK = info?.line === 'GK'
@@ -46,16 +66,25 @@ export function StaticPlayerNode({
   const landscape = orientation === 'landscape'
   const RADIUS = landscape ? LANDSCAPE_RADIUS : PORTRAIT_RADIUS
   const GK_RING_RADIUS = landscape ? GK_RING_RADIUS_LANDSCAPE : GK_RING_RADIUS_PORTRAIT
-  const p = landscape ? transposePoint(position) : position
+  const p = renderPoint ?? (landscape ? transposePoint(position) : position)
 
   return (
     <g>
       {isGK && (
-        <ellipse cx={p.x} cy={p.y} rx={GK_RING_RADIUS.rx} ry={GK_RING_RADIUS.ry} fill="#F8FAFC" fillOpacity={0.9} />
+        <motion.ellipse
+          initial={{ cx: p.x, cy: p.y }}
+          animate={{ cx: p.x, cy: p.y }}
+          transition={TRANSITION}
+          rx={GK_RING_RADIUS.rx}
+          ry={GK_RING_RADIUS.ry}
+          fill="#F8FAFC"
+          fillOpacity={0.9}
+        />
       )}
-      <ellipse
-        cx={p.x}
-        cy={p.y}
+      <motion.ellipse
+        initial={{ cx: p.x, cy: p.y }}
+        animate={{ cx: p.x, cy: p.y }}
+        transition={TRANSITION}
         rx={RADIUS.rx}
         ry={RADIUS.ry}
         fill={team.fill}
@@ -63,9 +92,10 @@ export function StaticPlayerNode({
         strokeOpacity={variant === 'A' ? 0.4 : 0.8}
         strokeWidth={variant === 'A' ? 0.3 : 0.5}
       />
-      <text
-        x={p.x}
-        y={p.y}
+      <motion.text
+        initial={{ x: p.x, y: p.y }}
+        animate={{ x: p.x, y: p.y }}
+        transition={TRANSITION}
         fill={team.text}
         fontSize={2.4}
         textAnchor="middle"
@@ -73,10 +103,11 @@ export function StaticPlayerNode({
         style={{ userSelect: 'none' }}
       >
         {player.number}
-      </text>
-      <text
-        x={p.x}
-        y={p.y + RADIUS.ry + 3}
+      </motion.text>
+      <motion.text
+        initial={{ x: p.x, y: p.y + RADIUS.ry + 3 + labelYOffset }}
+        animate={{ x: p.x, y: p.y + RADIUS.ry + 3 + labelYOffset }}
+        transition={TRANSITION}
         fill="#F8FAFC"
         fontSize={2}
         fontWeight={700}
@@ -87,7 +118,7 @@ export function StaticPlayerNode({
         strokeOpacity={0.55}
       >
         {player.name}
-      </text>
+      </motion.text>
     </g>
   )
 }

@@ -1,12 +1,50 @@
+import { useEffect, useState } from 'react'
+
 import { AdvantageBadge } from '@/components/versus/AdvantageBadge'
 import { MatchupOverloadLayer } from '@/components/versus/MatchupOverloadLayer'
+import { AnnotationLayer } from '@/components/pitch/AnnotationLayer'
 import { ChannelGrid } from '@/components/pitch/ChannelGrid'
+import { LANDSCAPE_RADIUS, StaticPlayerNode } from '@/components/pitch/StaticPlayerNode'
 import { Pitch } from '@/components/pitch/Pitch'
 import { PressingLine } from '@/components/pitch/PressingLine'
-import { StaticPlayerNode } from '@/components/pitch/StaticPlayerNode'
-import { mirrorPoint, resolveDefendingPressingLineLevel, resolveDefendingPressingLineY } from '@/lib/coords'
+import { mirrorPoint, resolveDefendingPressingLineLevel, resolveDefendingPressingLineY, transposePoint } from '@/lib/coords'
+import { resolveLabelOverlap, type LabelBox } from '@/lib/labelPlacement'
 import { computeOverload } from '@/lib/overload'
-import type { Analysis, PhaseData, PhaseType, PlayerPosition } from '@/types/analysis'
+import { circularRadius, swapForLandscape } from '@/lib/pitchMarkings'
+import { clusterByDistance, clusterCentroid, spiderfyPositions } from '@/lib/spiderfy'
+import type { Analysis, Annotation, PhaseData, PhaseType, Player, PlayerPosition, Point } from '@/types/analysis'
+
+/**
+ * 각 분석의 런/패스 화살표(에디터에서 그린 것)를 대결 뷰 좌표계로 옮긴다
+ * (TO-DO 28, 4번 "이동 벡터") — 새 데이터가 아니라 이미 있는 annotations를
+ * 재사용한다. B팀은 선수 좌표와 같은 순서로 먼저 미러링(자팀 좌표계 →
+ * 마주보는 배치)한 뒤 landscape면 transpose한다 — positionsB 계산과 같은
+ * 순서를 지켜야 화살표가 실제 선수 위치와 어긋나지 않는다.
+ */
+function transformAnnotationsForMatchup(annotations: Annotation[], mirror: boolean, landscape: boolean): Annotation[] {
+  return annotations.map((a) => {
+    const from = mirror ? mirrorPoint(a.from) : a.from
+    const to = mirror ? mirrorPoint(a.to) : a.to
+    return { ...a, from: landscape ? transposePoint(from) : from, to: landscape ? transposePoint(to) : to }
+  })
+}
+
+interface MatchupMarker {
+  key: string
+  player: Player
+  formation: string
+  index: number
+  variant: 'A' | 'B'
+  /** 원본(세로) 좌표계 — StaticPlayerNode에 그대로 넘긴다(참조용, renderPoint가 항상 실제 렌더를 결정) */
+  originalPosition: Point
+  /** landscape 변환까지 끝난 기본 위치 — 클러스터링·라벨 배치·미펼침 마커의 실제 렌더 위치 */
+  landscapePoint: Point
+}
+
+const CLUSTER_THRESHOLD = 6 // 마커 반지름(~2.6)의 2배 남짓 — 이 안이면 겹쳐 보인다고 판단
+const FAN_RADIUS = 7.5 // 펼쳤을 때 중심에서 각 마커까지 거리
+const LABEL_STEP = 2.4 // 라벨 한 칸 밀어낼 때 y 증가량
+const BADGE_RADIUS = swapForLandscape(circularRadius(3.4))
 
 interface MatchupViewProps {
   analysisA: Analysis
@@ -16,6 +54,7 @@ interface MatchupViewProps {
   showChannelGrid: boolean
   showOverload: boolean
   showPressingLine: boolean
+  showAnnotations: boolean
 }
 
 /**
@@ -32,11 +71,19 @@ export function MatchupView({
   showChannelGrid,
   showOverload,
   showPressingLine,
+  showAnnotations,
 }: MatchupViewProps) {
   const phaseA: PhaseType = attacker === 'A' ? 'attack' : 'defense'
   const phaseB: PhaseType = attacker === 'B' ? 'attack' : 'defense'
   const dataA = analysisA.phases[phaseA]
   const dataB = analysisB.phases[phaseB]
+
+  // 스파이더파이어(TO-DO 28, 1번) — 한 번에 하나의 클러스터만 펼친다. 공수
+  // 교대나 분석 전환으로 좌표가 바뀌면 클러스터 구성 자체가 달라지므로 접는다.
+  const [expandedCluster, setExpandedCluster] = useState<string | null>(null)
+  useEffect(() => {
+    setExpandedCluster(null)
+  }, [attacker, analysisA.id, analysisB.id])
 
   const positionsB: PlayerPosition[] = dataB.positions.map((p) => ({ playerId: p.playerId, ...mirrorPoint(p) }))
 
@@ -77,6 +124,84 @@ export function MatchupView({
   const labelB = analysisB.match.homeTeam
   const zones = computeOverload(syntheticPhase)
 
+  // 마커 겹침 처리(TO-DO 28, 1번) — A/B 22명을 한 목록으로 모아 클러스터링한다.
+  // 두 분석이 서로 다른 좌표계 출신이라도 여기서는 이미 landscape 변환·B팀
+  // 미러링이 끝난 최종 렌더 좌표 기준으로 가깝다/멀다를 판단해야 실제로 겹쳐
+  // 보이는지와 일치한다.
+  const markersA: MatchupMarker[] = analysisA.players.flatMap((player, index) => {
+    const pos = dataA.positions.find((p) => p.playerId === player.id)
+    if (!pos) return []
+    return [
+      {
+        key: `a-${player.id}`,
+        player,
+        formation: analysisA.formation,
+        index,
+        variant: 'A' as const,
+        originalPosition: pos,
+        landscapePoint: transposePoint(pos),
+      },
+    ]
+  })
+  const markersB: MatchupMarker[] = analysisB.players.flatMap((player, index) => {
+    const pos = positionsB.find((p) => p.playerId === player.id)
+    if (!pos) return []
+    return [
+      {
+        key: `b-${player.id}`,
+        player,
+        formation: analysisB.formation,
+        index,
+        variant: 'B' as const,
+        originalPosition: pos,
+        landscapePoint: transposePoint(pos),
+      },
+    ]
+  })
+  const markers = [...markersA, ...markersB]
+  const markerByKey = new Map(markers.map((m) => [m.key, m]))
+
+  const clusters = clusterByDistance(
+    markers.map((m) => ({ id: m.key, x: m.landscapePoint.x, y: m.landscapePoint.y })),
+    CLUSTER_THRESHOLD,
+  )
+
+  const renderMarkers: { marker: MatchupMarker; point: Point; clusterKey: string | null }[] = []
+  const badges: { key: string; point: Point; count: number }[] = []
+
+  for (const group of clusters) {
+    if (group.length === 1) {
+      const marker = markerByKey.get(group[0].id)!
+      renderMarkers.push({ marker, point: marker.landscapePoint, clusterKey: null })
+      continue
+    }
+    const clusterKey = group
+      .map((m) => m.id)
+      .sort()
+      .join('|')
+    if (expandedCluster === clusterKey) {
+      const spider = spiderfyPositions(group, FAN_RADIUS)
+      for (const g of group) {
+        renderMarkers.push({ marker: markerByKey.get(g.id)!, point: spider.get(g.id)!, clusterKey })
+      }
+    } else {
+      badges.push({ key: clusterKey, point: clusterCentroid(group), count: group.length })
+    }
+  }
+
+  // 동적 라벨 배치(TO-DO 28, 1번) — 마커 위치는 그대로 두고 이름표만
+  // 겹치지 않게 밀어낸다. 실제로 렌더링되는(펼쳐진 클러스터 포함) 위치
+  // 기준으로 계산해야 한다 — 원래 위치로 계산하면 펼친 뒤에도 안 겹쳐야
+  // 할 라벨이 겹친 것으로 판정된다.
+  const labelBoxes: LabelBox[] = renderMarkers.map(({ marker, point }) => ({
+    id: marker.key,
+    x: point.x,
+    defaultY: point.y + LANDSCAPE_RADIUS.ry + 3,
+    width: Math.max(6, marker.player.name.length * 1.6),
+    height: 2.6,
+  }))
+  const labelOffsets = resolveLabelOverlap(labelBoxes, LABEL_STEP)
+
   return (
     <div className="flex h-full flex-col gap-3">
       {showOverload && <AdvantageBadge zones={zones} labelA={labelA} labelB={labelB} />}
@@ -92,36 +217,62 @@ export function MatchupView({
             />
           )}
           {showOverload && <MatchupOverloadLayer zones={zones} orientation="landscape" />}
-          {analysisA.players.map((player, index) => {
-            const pos = dataA.positions.find((p) => p.playerId === player.id)
-            if (!pos) return null
-            return (
+          {showAnnotations && (
+            <g opacity={0.55}>
+              <AnnotationLayer annotations={transformAnnotationsForMatchup(dataA.annotations, false, true)} />
+              <AnnotationLayer annotations={transformAnnotationsForMatchup(dataB.annotations, true, true)} />
+            </g>
+          )}
+          {renderMarkers.map(({ marker, point, clusterKey }) => (
+            <g
+              key={marker.key}
+              onPointerDown={clusterKey ? () => setExpandedCluster(null) : undefined}
+              style={clusterKey ? { cursor: 'pointer' } : undefined}
+            >
               <StaticPlayerNode
-                key={`a-${player.id}`}
-                player={player}
-                position={pos}
-                formation={analysisA.formation}
-                index={index}
-                variant="A"
+                player={marker.player}
+                position={marker.originalPosition}
+                formation={marker.formation}
+                index={marker.index}
+                variant={marker.variant}
                 orientation="landscape"
+                renderPoint={point}
+                labelYOffset={labelOffsets.get(marker.key) ?? 0}
               />
-            )
-          })}
-          {analysisB.players.map((player, index) => {
-            const pos = positionsB.find((p) => p.playerId === player.id)
-            if (!pos) return null
-            return (
-              <StaticPlayerNode
-                key={`b-${player.id}`}
-                player={player}
-                position={pos}
-                formation={analysisB.formation}
-                index={index}
-                variant="B"
-                orientation="landscape"
+            </g>
+          ))}
+          {/* 겹친 마커 클러스터(TO-DO 28, 1번) — 접힌 상태는 인원수 배지 하나로,
+              클릭하면 스파이더파이어로 펼쳐진다(위 renderMarkers 쪽에서 그림). */}
+          {badges.map((badge) => (
+            <g
+              key={badge.key}
+              onPointerDown={() => setExpandedCluster(badge.key)}
+              style={{ cursor: 'pointer' }}
+            >
+              <ellipse
+                cx={badge.point.x}
+                cy={badge.point.y}
+                rx={BADGE_RADIUS.rx}
+                ry={BADGE_RADIUS.ry}
+                fill="#0F172A"
+                fillOpacity={0.88}
+                stroke="#F8FAFC"
+                strokeWidth={0.4}
               />
-            )
-          })}
+              <text
+                x={badge.point.x}
+                y={badge.point.y}
+                fill="#F8FAFC"
+                fontSize={3}
+                fontWeight={700}
+                textAnchor="middle"
+                dominantBaseline="central"
+                style={{ userSelect: 'none' }}
+              >
+                {badge.count}
+              </text>
+            </g>
+          ))}
         </Pitch>
       </div>
     </div>
