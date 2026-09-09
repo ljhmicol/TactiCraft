@@ -39,7 +39,7 @@ export function Timeline() {
   const timed = changingPoints.filter((cp) => cp.minute != null)
   const untimed = changingPoints.filter((cp) => cp.minute == null)
 
-  const handleAdd = () => addChangingPoint(`체인징 포인트 ${changingPoints.length + 1}`)
+  const handleAdd = () => addChangingPoint(`시점 ${changingPoints.length + 1}`)
 
   const toggleSelect = (cp: ChangingPoint) => selectChangingPoint(cp.id === selectedChangingPointId ? null : cp.id)
 
@@ -51,7 +51,7 @@ export function Timeline() {
     const rect = e.currentTarget.getBoundingClientRect()
     const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
     const minute = Math.round(ratio * AXIS_MAX_MINUTE)
-    addChangingPoint(`체인징 포인트 ${changingPoints.length + 1}`, minute)
+    addChangingPoint(`시점 ${changingPoints.length + 1}`, minute)
   }
 
   return (
@@ -147,7 +147,7 @@ export function Timeline() {
             value={selected.label}
             onChange={(e) => renameChangingPoint(selected.id, e.target.value)}
             className="h-7 flex-1 text-xs"
-            aria-label="체인징 포인트 이름"
+            aria-label="시점 이름"
           />
           <button
             type="button"
