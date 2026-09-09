@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import {
   ANNOTATION_STYLES,
@@ -12,6 +12,7 @@ import {
 } from '@/lib/annotations'
 import { PLAYER_COLORS } from '@/lib/theme'
 import { circularRadius } from '@/lib/pitchMarkings'
+import { PHASE_TRANSITION_MS } from '@/store/analysisStore'
 import type { Annotation } from '@/types/analysis'
 
 interface AnnotationLayerProps {
@@ -146,9 +147,26 @@ export function AnnotationLayer({ annotations, interactive, animated = true }: A
  * 그대로 찍는다(lib/exportImage.ts) — 무한 반복이라 매번 다른 위치에서
  * 캡처되지만, "경로 위 어딘가"는 정적 이미지로도 자연스러워 별도 처리하지
  * 않는다.
+ *
+ * 시퀀싱(2026-09-09, "패스 받을 선수가 미리 움직여져있고 받게" 요청 —
+ * 시점을 잘게 쪼개는 대신 전환 애니메이션 자체를 늦추는 쪽으로 정정):
+ * 시점(체인징 포인트)이 바뀌면 이 체인은 새 key로 다시 마운트되는데, 받는
+ * 선수(PlayerNode)도 같은 순간부터 국면 전환 모프(PHASE_TRANSITION_MS)를
+ * 시작한다. 공이 즉시 출발하면 "선수는 아직 이동 중인데 공이 먼저 도착"하는
+ * 것처럼 보이므로, PlayerNode의 runArmed와 같은 패턴으로 공도
+ * PHASE_TRANSITION_MS만큼 정지해 있다가(시작점에 가만히) 그 뒤에 출발한다 —
+ * 받을 선수가 자리를 잡은 뒤에 패스가 오는 순서가 된다.
  */
 function PassChainBall({ chain }: { chain: Annotation[] }) {
   const points = chainSamplePoints(chain)
+  const [armed, setArmed] = useState(false)
+
+  useEffect(() => {
+    setArmed(false)
+    const timer = setTimeout(() => setArmed(true), PHASE_TRANSITION_MS)
+    return () => clearTimeout(timer)
+  }, [])
+
   if (points.length < 2) return null
   const segments = points.length - 1
 
@@ -162,14 +180,18 @@ function PassChainBall({ chain }: { chain: Annotation[] }) {
       strokeOpacity={0.6}
       pointerEvents="none"
       initial={{ cx: points[0].x, cy: points[0].y }}
-      animate={{ cx: points.map((p) => p.x), cy: points.map((p) => p.y) }}
-      transition={{
-        duration: BALL_SEGMENT_DURATION * segments,
-        times: travelTimes(points),
-        ease: segments > 1 ? 'linear' : 'easeInOut',
-        repeat: Infinity,
-        repeatDelay: 0.6,
-      }}
+      animate={armed ? { cx: points.map((p) => p.x), cy: points.map((p) => p.y) } : { cx: points[0].x, cy: points[0].y }}
+      transition={
+        armed
+          ? {
+              duration: BALL_SEGMENT_DURATION * segments,
+              times: travelTimes(points),
+              ease: segments > 1 ? 'linear' : 'easeInOut',
+              repeat: Infinity,
+              repeatDelay: 0.6,
+            }
+          : { duration: 0 }
+      }
     />
   )
 }
