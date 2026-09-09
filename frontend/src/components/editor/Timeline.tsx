@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react'
-import type { MouseEvent } from 'react'
+import { useEffect, useState, type MouseEvent } from 'react'
 
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -11,6 +11,10 @@ import type { ChangingPoint } from '@/types/analysis'
 const AXIS_MAX_MINUTE = 120
 const AXIS_TICKS = [0, 45, 90, 120]
 const AXIS_LINES = [45, 90] // 전반/후반 종료선
+
+// PhaseTabs의 국면 자동재생(TO-DO 2번)과 같은 간격 — 모프(600ms)가 끝난 뒤에도
+// 잠깐 눈에 보일 정도로(2026-09-09, "타임라인이 자동재생 되게 해줘" 요청).
+const AUTO_PLAY_INTERVAL_MS = 1800
 
 /**
  * 타임라인(매치 체인징 포인트, TO-DO 5번). 기본/공격/수비 3국면과 완전히
@@ -39,6 +43,35 @@ export function Timeline() {
   const timed = changingPoints.filter((cp) => cp.minute != null)
   const untimed = changingPoints.filter((cp) => cp.minute == null)
 
+  // 타임라인 자동재생 — 실제 경기에서 패스가 이어지듯 시점을 순서대로(배열
+  // 순서 = order_index) 넘긴다. PhaseTabs의 국면 자동재생과 같은 패턴:
+  // 재생 중엔 처음으로 되감지 않고 "지금 선택된 곳에서 한 칸씩" 전진한다.
+  const [isPlaying, setIsPlaying] = useState(false)
+
+  useEffect(() => {
+    if (!isPlaying) return
+    if (changingPoints.length === 0) return
+
+    const step = () => {
+      const { analysis, selectedChangingPointId: currentId, selectChangingPoint: select } = useAnalysisStore.getState()
+      const points = analysis?.changingPoints ?? []
+      if (points.length === 0) return
+      const currentIndex = points.findIndex((cp) => cp.id === currentId)
+      const nextIndex = (currentIndex + 1) % points.length
+      select(points[nextIndex].id)
+    }
+
+    step()
+    const timer = setInterval(step, AUTO_PLAY_INTERVAL_MS)
+    return () => clearInterval(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- step은 항상 최신 store를 직접 읽어온다
+  }, [isPlaying])
+
+  // 재생 중 시점이 1개 이하로 줄면(삭제 또는 다른 분석 로드) 자동으로 정지한다.
+  useEffect(() => {
+    if (isPlaying && changingPoints.length <= 1) setIsPlaying(false)
+  }, [isPlaying, changingPoints.length])
+
   const handleAdd = () => addChangingPoint(`시점 ${changingPoints.length + 1}`)
 
   const toggleSelect = (cp: ChangingPoint) => selectChangingPoint(cp.id === selectedChangingPointId ? null : cp.id)
@@ -47,6 +80,7 @@ export function Timeline() {
   // 클릭한 경우는 선택 동작이라 여기서 무시한다(2026-09-09, "타임라인바에서 선택을
   // 하면 타임라인을 추가할 수 있게도 만들어줘" 요청).
   const handleTrackClick = (e: MouseEvent<HTMLDivElement>) => {
+    if (isPlaying) return
     if ((e.target as HTMLElement).closest('button')) return
     const rect = e.currentTarget.getBoundingClientRect()
     const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
@@ -58,15 +92,30 @@ export function Timeline() {
     <div className="w-full max-w-md space-y-1 rounded-md border border-border p-2">
       <div className="flex items-center justify-between">
         <span className="text-xs text-muted-foreground">타임라인</span>
-        <button
-          type="button"
-          onClick={handleAdd}
-          title="지금 보이는 배치를 시점으로 저장"
-          className="flex items-center gap-1 rounded-full bg-secondary px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-        >
-          <Plus className="h-3 w-3" />
-          시점
-        </button>
+        <div className="flex items-center gap-1.5">
+          {changingPoints.length > 1 && (
+            <button
+              type="button"
+              onClick={() => setIsPlaying((v) => !v)}
+              className={cn(
+                'rounded-full px-2 py-1 text-xs font-medium transition-colors',
+                isPlaying ? 'bg-accent text-accent-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {isPlaying ? '⏸ 시점 정지' : '▶ 시점 자동재생'}
+            </button>
+          )}
+          <button
+            type="button"
+            disabled={isPlaying}
+            onClick={handleAdd}
+            title="지금 보이는 배치를 시점으로 저장"
+            className="flex items-center gap-1 rounded-full bg-secondary px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Plus className="h-3 w-3" />
+            시점
+          </button>
+        </div>
       </div>
 
       {/*
@@ -103,6 +152,7 @@ export function Timeline() {
             <button
               key={cp.id}
               type="button"
+              disabled={isPlaying}
               title={`${cp.minute}' — ${cp.label}`}
               onClick={() => toggleSelect(cp)}
               style={{ left: `${Math.min(100, ((cp.minute ?? 0) / AXIS_MAX_MINUTE) * 100)}%` }}
@@ -124,12 +174,14 @@ export function Timeline() {
             <button
               key={cp.id}
               type="button"
+              disabled={isPlaying}
               onClick={() => toggleSelect(cp)}
               className={cn(
                 'rounded-full px-2 py-0.5 text-xs font-medium transition-colors',
                 cp.id === selectedChangingPointId
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-secondary text-muted-foreground hover:text-foreground',
+                isPlaying && 'cursor-not-allowed opacity-60',
               )}
             >
               {cp.label}
@@ -146,6 +198,7 @@ export function Timeline() {
             max={120}
             value={selected.minute ?? ''}
             placeholder="분"
+            disabled={isPlaying}
             onChange={(e) =>
               setChangingPointMinute(selected.id, e.target.value === '' ? undefined : Number(e.target.value))
             }
@@ -154,13 +207,14 @@ export function Timeline() {
           />
           <Input
             value={selected.label}
+            disabled={isPlaying}
             onChange={(e) => renameChangingPoint(selected.id, e.target.value)}
             className="h-7 flex-1 text-xs"
             aria-label="시점 이름"
           />
           <button
             type="button"
-            disabled={selectedIndex <= 0}
+            disabled={isPlaying || selectedIndex <= 0}
             onClick={() => moveChangingPoint(selected.id, 'left')}
             title="왼쪽으로 이동"
             className="rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
@@ -169,7 +223,7 @@ export function Timeline() {
           </button>
           <button
             type="button"
-            disabled={selectedIndex < 0 || selectedIndex >= changingPoints.length - 1}
+            disabled={isPlaying || selectedIndex < 0 || selectedIndex >= changingPoints.length - 1}
             onClick={() => moveChangingPoint(selected.id, 'right')}
             title="오른쪽으로 이동"
             className="rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
@@ -178,9 +232,10 @@ export function Timeline() {
           </button>
           <button
             type="button"
+            disabled={isPlaying}
             onClick={() => removeChangingPoint(selected.id)}
             title="이 시점 삭제"
-            className="rounded-md p-1 text-destructive hover:bg-destructive/10"
+            className="rounded-md p-1 text-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-30"
           >
             <X className="h-3.5 w-3.5" />
           </button>
