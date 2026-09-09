@@ -167,6 +167,13 @@ export function annotationSamplePoints(ann: { from: Point; to: Point; curved?: b
   return BALL_SAMPLE_TS.map((t) => bezierPoint(ann.from, control, ann.to, t))
 }
 
+// 패스 체인 공 애니메이션의 구간(하나의 패스)당 소요 시간(초) — "패스 되는 공
+// 속도가 너무 느려" 피드백(2026-09-08)으로 1.1초에서 0.45초로 단축했다가,
+// "아주 조금만 더 느리게"(2026-09-08, 2차) 요청으로 0.55초로 소폭 재조정.
+// AnnotationLayer(공 애니메이션 자체)와 PlayerNode(병합된 체인에서 받는
+// 선수의 도착 시점을 그 구간 타이밍에 맞추는 계산, 2026-09-09)가 공유한다.
+export const BALL_SEGMENT_DURATION = 0.55
+
 /** 이 거리(피치 좌표 단위) 이내면 "같은 지점"으로 본다 — 패스 체인 연결
  * 판정과 PlayerNode의 "이 선수 자리에서 시작하는 run 화살표" 판정이 공유. */
 export const ANNOTATION_LINK_EPS = 3

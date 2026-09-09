@@ -5,6 +5,7 @@ import {
   ANNOTATION_STYLES,
   arrowGeometry,
   arrowMidpoint,
+  BALL_SEGMENT_DURATION,
   buildPassChains,
   chainSamplePoints,
   curvedArrowGeometry,
@@ -38,10 +39,6 @@ interface AnnotationLayerProps {
 const BADGE_RADIUS = circularRadius(1.7)
 const DELETE_OFFSET = 2.2 // 선분 중점에서 화살표 진행 방향의 수직으로 치울 거리
 const BALL_RADIUS = circularRadius(1.1)
-// 구간(하나의 패스)당 소요 시간(초) — "패스 되는 공 속도가 너무 느려" 피드백(2026-09-08)으로
-// 1.1초에서 0.45초로 단축했다가, "아주 조금만 더 느리게"(2026-09-08, 2차)
-// 요청으로 0.55초로 소폭 재조정.
-const BALL_SEGMENT_DURATION = 0.55
 
 /**
  * 국면의 화살표(움직임/패스)를 그린다. 편집 화면과 PNG 카드(ShareCard)가 같은

@@ -70,7 +70,11 @@ const HISTORY_LIMIT = 50
  * 아니면 평소대로 currentPhase (TO-DO 5번). movePlayer 등 모든 편집 액션이
  * "지금 국면"이 아니라 "지금 보이는 곳"에 쓰도록 이 두 헬퍼로 통일한다.
  */
-function getActivePhaseData(
+/** PlayerNode 등 렌더링 쪽에서도 "지금 보이는 곳"(체인징 포인트 우선, 없으면
+ * 국면 탭)을 그대로 읽어야 해서 export한다 — 2026-09-09, PlayerNode의
+ * run/pass 화살표 매칭이 currentPhase만 보고 체인징 포인트를 놓치던 버그(아래
+ * 문서 주석) 수정에 사용. */
+export function getActivePhaseData(
   analysis: Analysis,
   currentPhase: PhaseType,
   selectedChangingPointId: string | null,
