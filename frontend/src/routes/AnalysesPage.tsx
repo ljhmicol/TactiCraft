@@ -1,6 +1,8 @@
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { AnalysisList } from '@/components/analyses/AnalysisList'
+import { Input } from '@/components/ui/input'
 import { useAnalyses } from '@/hooks/useAnalyses'
 import { useCurrentUser } from '@/hooks/useAuth'
 import { useServerHealth } from '@/hooks/useServerHealth'
@@ -9,11 +11,34 @@ import { useServerHealth } from '@/hooks/useServerHealth'
  * /analyses — 저장 목록. 서버 미기동 시 목록 대신 안내 카드 (2단계 §6, §11.3).
  * 비로그인 시 로그인 안내로 대체한다(TO-DO 11번) — 서버가 떠 있어도 목록
  * 조회는 로그인이 필요하므로, isServerUp만으로는 401을 설명할 수 없다.
+ *
+ * 검색·태그 필터(TO-DO 7번)는 목록이 수십 개 규모라 서버 왕복 없이
+ * 프론트에서 처리한다 — 이미 다 받아온 데이터를 다시 걸러내는 것뿐이라
+ * 새 API가 필요 없다.
  */
 export function AnalysesPage() {
   const { isServerUp, isChecking } = useServerHealth()
   const { isLoggedIn, isChecking: isCheckingAuth } = useCurrentUser()
   const { data, isLoading, isError } = useAnalyses()
+  const [search, setSearch] = useState('')
+  const [activeTag, setActiveTag] = useState<string | null>(null)
+
+  const allTags = useMemo(() => {
+    const set = new Set<string>()
+    for (const a of data ?? []) for (const t of a.tags) set.add(t)
+    return [...set].sort()
+  }, [data])
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return (data ?? []).filter((a) => {
+      const matchesSearch =
+        !q ||
+        [a.matchName, a.homeTeam, a.awayTeam, a.matchDate].some((field) => field.toLowerCase().includes(q))
+      const matchesTag = !activeTag || a.tags.includes(activeTag)
+      return matchesSearch && matchesTag
+    })
+  }, [data, search, activeTag])
 
   return (
     <div className="p-6">
@@ -44,7 +69,39 @@ export function AnalysesPage() {
       ) : isError ? (
         <p className="text-destructive">목록을 불러오지 못했습니다.</p>
       ) : (
-        <AnalysisList analyses={data ?? []} />
+        <>
+          <div className="mb-3 flex flex-col gap-2">
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="매치명·팀·날짜 검색"
+              className="max-w-xs"
+            />
+            {allTags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {allTags.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => setActiveTag((cur) => (cur === tag ? null : tag))}
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                      activeTag === tag
+                        ? 'bg-accent text-accent-foreground'
+                        : 'bg-secondary text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {(data?.length ?? 0) > 0 && filtered.length === 0 ? (
+            <p className="text-muted-foreground">검색·필터 조건에 맞는 분석이 없습니다.</p>
+          ) : (
+            <AnalysisList analyses={filtered} />
+          )}
+        </>
       )}
     </div>
   )

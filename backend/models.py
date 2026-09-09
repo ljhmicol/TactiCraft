@@ -5,6 +5,7 @@ ORM 레벨 삭제 전파를 위해 둘 다 필요하다.
 """
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     Column,
     Float,
@@ -60,6 +61,17 @@ class Analysis(Base):
     analyzed_team = Column(String, nullable=False)  # 'home' | 'away'
     formation = Column(String, nullable=False)
     summary = Column(Text)
+    # 목록 화면 미리보기(TO-DO 7번) — base 국면을 작게 렌더링한 PNG를 프론트가
+    # 저장 시점에 만들어 data URL 문자열째로 보낸다. 목록 조회 때마다 서버가
+    # 다시 렌더링하면 느리다는 게 원래 TO-DO 메모의 판단이었다(파일/BLOB
+    # 컬럼 필요). BLOB 대신 Text로 두는 이유는 새 테이블/파일 관리 없이
+    # DB 백업 하나에 다 들어가게 하기 위해서 — SQLite는 컬럼 크기 제한이
+    # 없어 data URL(base64) 그대로 넣어도 문제없다.
+    thumbnail = Column(Text)
+    # 목록 검색·필터(TO-DO 7번) — JSON 타입은 SQLAlchemy가 파이썬 list ↔
+    # SQLite TEXT를 자동으로 (역)직렬화해준다. 정규화 테이블(별도 tags
+    # 테이블 + 다대다)은 이 규모(분석 하나당 태그 몇 개)엔 과해서 채택 안 함.
+    tags = Column(JSON, nullable=False, default=list)
     schema_version = Column(Integer, nullable=False, default=1)
     created_at = Column(String, nullable=False)
     updated_at = Column(String, nullable=False)

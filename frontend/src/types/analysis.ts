@@ -70,6 +70,8 @@ export interface Analysis {
   phases: Record<PhaseType, PhaseData>
   changingPoints?: ChangingPoint[] // 없으면 타임라인 미사용 — 구버전 데이터도 그대로 유효
   summary: string
+  tags: string[] // 목록 검색·필터용 자유 태그 (TO-DO 7번)
+  thumbnail?: string // 목록 미리보기용 base64 PNG data URL — 저장 시점에 프론트가 캡처해 채운다 (TO-DO 7번)
   createdAt?: string
   updatedAt?: string
 }
@@ -83,6 +85,8 @@ export interface AnalysisSummary {
   matchDate: string
   competition?: string
   updatedAt: string
+  tags: string[]
+  thumbnail?: string
 }
 
 // 시각화 계산용 타입

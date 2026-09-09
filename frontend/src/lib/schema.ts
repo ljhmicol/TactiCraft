@@ -71,6 +71,9 @@ export const analysisSchema = z
     }),
     changingPoints: z.array(changingPointSchema).optional(),
     summary: z.string(),
+    // 구버전 JSON(TO-DO 7번 이전 내보내기·감독 프리셋)엔 없을 수 있다 — 기본값으로 채운다.
+    tags: z.array(z.string()).optional().default([]),
+    thumbnail: z.string().optional(),
     createdAt: z.string().optional(),
     updatedAt: z.string().optional(),
   })

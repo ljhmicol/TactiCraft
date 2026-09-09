@@ -29,3 +29,13 @@ export async function exportCard(node: HTMLElement, ratio: '1:1' | '4:5'): Promi
   a.download = `tacticore_${Date.now()}.png`
   a.click()
 }
+
+/**
+ * 목록 미리보기용 썸네일(TO-DO 7번) — exportCard와 달리 다운로드하지 않고
+ * data URL 문자열만 돌려준다. 저장 뮤테이션이 이 값을 페이로드에 실어
+ * 백엔드로 보낸다.
+ */
+export async function captureThumbnail(node: HTMLElement, width: number, height: number): Promise<string> {
+  await document.fonts.ready
+  return toPng(node, { pixelRatio: 2, cacheBust: true, width, height })
+}

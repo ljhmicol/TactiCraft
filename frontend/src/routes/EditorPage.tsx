@@ -10,6 +10,7 @@ import { DuplicateButton } from '@/components/editor/DuplicateButton'
 import { JsonIO } from '@/components/editor/JsonIO'
 import { LayerToggleChips } from '@/components/editor/LayerToggleChips'
 import { MatchInfoForm } from '@/components/editor/MatchInfoForm'
+import { TagInput } from '@/components/editor/TagInput'
 import { PhaseTabs } from '@/components/editor/PhaseTabs'
 import { PlayerEditDialog } from '@/components/editor/PlayerEditDialog'
 import { PlayerForm } from '@/components/editor/PlayerForm'
@@ -274,6 +275,9 @@ export function EditorPage() {
           <section>
             <h2 className="mb-2 text-sm font-semibold text-foreground">경기 정보</h2>
             <MatchInfoForm match={analysis.match} />
+            <div className="mt-3">
+              <TagInput tags={analysis.tags} />
+            </div>
           </section>
 
           <section>

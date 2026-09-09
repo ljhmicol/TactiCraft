@@ -19,7 +19,7 @@
 
 ## 체크리스트
 
-- [/] **7. 분석 목록 고도화** (썸네일·검색·태그) — 중
+- [O] **7. 분석 목록 고도화** (썸네일·검색·태그) — 중
 - [ ] **9. 실제 경기 명장면 프리셋** (StatsBomb OpenData) — 중~대 · 제약 있음
 - [ ] **12. 커뮤니티/댓글** — 대 · 배포 이후 · 요구사항 §1.5 2차 범위
 
@@ -31,6 +31,14 @@
 
 - **내용**: 목록 화면에 썸네일 미리보기(base 국면 미니 렌더링), 제목·날짜 검색, 태그. 목록이 수십 개가 되면 필요.
 - **기술 메모**: 썸네일은 저장 시점에 base 국면을 작은 PNG로 만들어 두는 방식(목록 조회 시 렌더링은 느림) — 백엔드에 파일 또는 BLOB 컬럼 필요.
+- **구현**:
+  - **백엔드**: `analyses.thumbnail`(Text — base64 PNG data URL 통째로 저장, 별도 파일/BLOB 관리 없이 DB 백업 하나에 다 들어가게), `analyses.tags`(SQLAlchemy `JSON` 타입 — SQLite에는 TEXT로 저장되지만 파이썬 `list[str]` ↔ DB 자동 (역)직렬화됨, 별도 다대다 태그 테이블은 이 규모엔 과해서 채택 안 함). 둘 다 기존 테이블이라 `main.py`의 `_ensure_column`으로 마이그레이션(`tags`는 `TEXT DEFAULT '[]'`로 기존 행도 빈 배열이 되게). `schemas.py`의 `AnalysisIn`/`AnalysisSummary`에 두 필드 추가.
+  - **썸네일 생성**: 새 `components/export/ThumbnailCard.tsx` — `SharePngCard`/`ShareCard`와 같은 "화면 밖(-9999px) 고정 크기 노드 캡처" 패턴이지만, store 의존 없는 읽기 전용 노드(`SharePlayerNode`/`PrintOpponentNode`)로 base 국면 피치만 작게(160×247, 68:105 비율) 그린다. `lib/exportImage.ts`에 `captureThumbnail`(기존 `exportCard`와 달리 다운로드 안 하고 data URL만 반환) 추가. `SaveButton.tsx`가 저장 버튼을 누를 때마다 이 카드를 캡처해 페이로드에 실어 보낸다 — 캡처 실패는 저장을 막지 않고 기존 썸네일을 그대로 둔다. `DuplicateButton`은 별도 캡처 없이 원본 `analysis.thumbnail`을 그대로 이어받는다(페이로드 스프레드에 이미 포함돼 있어서 코드 변경 불필요).
+  - **태그 입력**: 새 `components/editor/TagInput.tsx` — Enter(또는 쉼표)로 하나씩 추가, 칩의 ×로 삭제. 매 글자마다 store에 커밋하지 않고 확정 시점(Enter/blur)에만 커밋 — 다른 목록형 편집(annotations 등)과 같은 패턴. "경기 정보" 섹션에 `MatchInfoForm` 바로 아래 배치.
+  - **검색·태그 필터**: `AnalysesPage.tsx`에서 처리 — 목록이 수십 개 규모라 서버 왕복 없이 이미 받아온 데이터를 프론트에서 걸러낸다(매치명·팀·날짜 텍스트 검색 + 태그 칩 클릭으로 필터, 클릭한 태그 다시 클릭하면 해제). 새 API 불필요.
+  - **목록 표시**: `AnalysisList.tsx`에 썸네일 열(작은 `<img>`, 없으면 점선 테두리 자리표시자)과 태그 열(칩) 추가.
+  - 구버전 JSON(감독 프리셋, 기존 내보내기 파일)엔 `tags`가 없을 수 있어 `lib/schema.ts`의 zod 스키마에 `.optional().default([])`로 하위호환.
+- **검증**: `tsc --noEmit`/`eslint`(기존 경고 2건 외 신규 없음)/`vitest run`(142 tests 통과)/`npm run build` 통과(빌드 후 `dist/` 삭제). 백엔드 마이그레이션이 실제 로컬 DB에 `thumbnail`/`tags` 컬럼을 만들고 기존 26건이 안 깨지는지 확인. Playwright로 실제 브라우저 E2E: 회원가입 → 감독 프리셋 로드(빈 포메이션은 홈/원정팀·선수 이름이 비어 있어 저장 시 422가 나는 걸 처음에 발견 — 프리셋으로 바꿔서 재검증) → 태그 2개 입력(칩 2개 렌더링 확인) → 저장(JS 에러 없음 확인) → 저장 목록에서 실제 PNG data URL 썸네일 렌더링·태그 칩 표시 확인 → 검색어로 좁혀지는 것과 없는 검색어로 "조건에 맞는 분석이 없습니다" 문구 확인 → 태그 칩 클릭으로 필터링 확인. 7개 체크 전부 통과, 스크린샷으로 실제 미니 피치 썸네일까지 육안 확인. 테스트 중 두 차례(첫 시도의 빈 포메이션 422, 스크립트의 타임아웃) 발생한 부수적인 테스트 계정 잔여물을 포함해 전부 정리, 실제 사용자 계정(26건)은 그대로 둠.
 
 ### 9. 실제 경기 명장면 프리셋 (StatsBomb OpenData)
 

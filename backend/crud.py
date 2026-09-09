@@ -137,6 +137,8 @@ def upsert_analysis(
     row.analyzed_team = payload.match.analyzed_team
     row.formation = payload.formation
     row.summary = payload.summary
+    row.tags = payload.tags
+    row.thumbnail = payload.thumbnail
     row.schema_version = payload.schema_version
     row.updated_at = now
 
@@ -255,6 +257,8 @@ def to_analysis_dict(row: models.Analysis) -> dict:
         "phases": phases,
         "changing_points": changing_points,
         "summary": row.summary or "",
+        "tags": row.tags or [],
+        "thumbnail": row.thumbnail,
         "created_at": row.created_at,
         "updated_at": row.updated_at,
     }

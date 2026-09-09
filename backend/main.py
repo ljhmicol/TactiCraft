@@ -34,6 +34,8 @@ _ensure_column("players", "tactical_role", "VARCHAR")
 _ensure_column("annotations", "curved", "BOOLEAN")
 _ensure_column("changing_points", "minute", "FLOAT")
 _ensure_column("analyses", "user_id", "INTEGER REFERENCES users(id)")
+_ensure_column("analyses", "thumbnail", "TEXT")
+_ensure_column("analyses", "tags", "TEXT DEFAULT '[]'")
 
 app = FastAPI(title="TactiCore API", version=settings.app_version)
 

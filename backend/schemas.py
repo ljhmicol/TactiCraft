@@ -110,6 +110,12 @@ class AnalysisIn(BaseModel):
     # 없으면(구버전 클라이언트/저장분) 타임라인 미사용으로 취급한다.
     changing_points: List[ChangingPointIn] = []
     summary: str = ""
+    # 목록 검색·필터(TO-DO 7번). 자유 텍스트 태그 — 사전 정의 목록 없음.
+    tags: List[str] = []
+    # 목록 미리보기(TO-DO 7번) — 프론트가 저장 시점에 base 국면을 캡처해
+    # data URL(base64 PNG)로 보낸다. 없으면(구버전 클라이언트) 목록에서
+    # 미리보기 없이 표시된다.
+    thumbnail: Optional[str] = None
 
     @field_validator("players")
     @classmethod
@@ -167,7 +173,9 @@ class AnalysisOut(AnalysisIn):
 
 
 class AnalysisSummary(BaseModel):
-    """목록 조회 전용. 좌표를 싣지 않는다 (2단계 §5)."""
+    """목록 조회 전용. 좌표를 싣지 않는다 (2단계 §5). 썸네일·태그는 예외로
+    포함한다(TO-DO 7번) — 목록 화면이 보여줄 목적으로 만든 값이라 좌표와
+    달리 여기서 굳이 뺄 이유가 없다."""
 
     id: int
     match_name: str
@@ -176,6 +184,8 @@ class AnalysisSummary(BaseModel):
     match_date: str
     competition: Optional[str] = None
     updated_at: str
+    tags: List[str] = []
+    thumbnail: Optional[str] = None
 
 
 class HealthOut(BaseModel):
