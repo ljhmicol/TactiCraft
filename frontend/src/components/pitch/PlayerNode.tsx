@@ -1,14 +1,7 @@
 import { motion, type PanInfo } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 
-import {
-  ANNOTATION_LINK_EPS,
-  annotationSamplePoints,
-  BALL_SEGMENT_DURATION,
-  buildPassChains,
-  chainSamplePoints,
-  travelTimes,
-} from '@/lib/annotations'
+import { ANNOTATION_LINK_EPS, annotationSamplePoints, travelTimes } from '@/lib/annotations'
 import { clampCoord, clientToPitch } from '@/lib/coords'
 import { circularRadius } from '@/lib/pitchMarkings'
 import { positionInfoAt } from '@/lib/positions'
@@ -96,49 +89,20 @@ export function PlayerNode({ player, position }: PlayerNodeProps) {
   // EditorPage가 화면에 실제로 그리는 phase와 똑같이 판단한다. 예전엔
   // `s.analysis.phases[s.currentPhase]`만 봐서, 체인징 포인트를 보고 있을 땐
   // (currentPhase가 보통 'base'로 남아 있으므로) 아래 조건에 걸려 run 화살표가
-  // 전혀 매칭되지 않는 버그가 있었다(2026-09-09 발견 — 병합 재생 기능을 추가
-  // 하며 pass 쪽도 같은 패턴이 필요해서 손보다가 확인).
-  const activeAnnotations = useAnalysisStore((s) => {
+  // 전혀 매칭되지 않는 버그가 있었다(2026-09-09 발견).
+  const runAnnotations = useAnalysisStore((s) => {
     if (!s.analysis) return undefined
     // 기본 국면(체인징 포인트 미선택)은 포메이션만 보여주는 정지 상태여야
     // 하므로 애초에 조회하지 않는다 — "기본 국면에서는 화살표방향으로
     // 움직이지 않고... 가만히".
     if (s.currentPhase === 'base' && !s.selectedChangingPointId) return undefined
-    return getActivePhaseData(s.analysis, s.currentPhase, s.selectedChangingPointId).annotations
+    return getActivePhaseData(s.analysis, s.currentPhase, s.selectedChangingPointId).annotations.filter(
+      (a) => a.type === 'run',
+    )
   })
-  const runAnnotations = useMemo(() => activeAnnotations?.filter((a) => a.type === 'run'), [activeAnnotations])
-  const passAnnotations = useMemo(() => activeAnnotations?.filter((a) => a.type === 'pass'), [activeAnnotations])
   const [dragging, setDragging] = useState(false)
   const instant = dragging || isPressingLineDragging
-
-  // 병합된 시점(TO-DO 9번 후속, "병합하면 시간순으로 진행되게")의 다단계 패스
-  // 체인에서, 이 선수가 어느 한 구간(레그)의 수신자라면 그 구간의 공이
-  // "출발하는" 시점(PHASE_TRANSITION_MS + 그 전까지 구간들의 누적 이동 시간)
-  // 보다 PHASE_TRANSITION_MS만큼 먼저 도착하도록 모프 시작을 늦춘다 — 원래
-  // 낱개 시점(패스 1구간)에서 받는 선수가 공보다 먼저 자리 잡던 것과 같은
-  // 간격을, 여러 시점을 합친 다구간 체인의 각 구간마다 반복하는 것.
-  // 1구간짜리(병합 아닌 보통 시점)는 이 값이 항상 0으로 나와 기존 동작과
-  // 동일하다(첫 구간의 출발 시각은 PHASE_TRANSITION_MS 그 자체이므로).
-  const chainDelaySec = useMemo(() => {
-    if (!passAnnotations || passAnnotations.length === 0) return 0
-    for (const chain of buildPassChains(passAnnotations)) {
-      const points = chainSamplePoints(chain)
-      if (points.length < 2) continue
-      const times = travelTimes(points)
-      const segments = points.length - 1
-      for (let k = 1; k < points.length; k++) {
-        if (Math.hypot(points[k].x - position.x, points[k].y - position.y) <= ANNOTATION_LINK_EPS) {
-          const departureMs = PHASE_TRANSITION_MS + times[k - 1] * BALL_SEGMENT_DURATION * segments * 1000
-          return Math.max(0, departureMs - PHASE_TRANSITION_MS) / 1000
-        }
-      }
-    }
-    return 0
-  }, [passAnnotations, position])
-
-  const transition = instant
-    ? { duration: 0 }
-    : { duration: 0.6, ease: [0.4, 0, 0.2, 1] as const, delay: chainDelaySec }
+  const transition = instant ? { duration: 0 } : { duration: 0.6, ease: [0.4, 0, 0.2, 1] as const }
   const info = formation ? positionInfoAt(formation, index) : null
   const lineColor = info ? POSITION_LINE_COLORS[info.line] : null
   // 전술 역할이 지정돼 있으면 포지션 코드(LB, CB…) 대신 역할 이름을 원 위에

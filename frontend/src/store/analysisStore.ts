@@ -55,6 +55,12 @@ export function createEmptyAnalysis(formation: string, match: MatchInfo): Analys
 /** 국면 전환 애니메이션 사양 (2단계 §8). */
 export const PHASE_TRANSITION_MS = 600
 
+// 병합된 시점(steps)을 자동 재생할 때 스텝 사이 간격 — Timeline.tsx의 시점
+// 자동재생과 같은 간격을 쓴다(국면 모프 0.6초가 끝난 뒤에도 잠깐 눈에 보일
+// 정도, 2026-09-09 기존에 검증된 값). 두 기능이 같은 "시점 하나씩 넘어가는"
+// 리듬이라 상수를 공유한다.
+export const TIMELINE_STEP_INTERVAL_MS = 1800
+
 /**
  * 되돌리기/다시하기(TO-DO 27번) 설정값. `analysis`가 바뀔 때마다 매번
  * 히스토리를 쌓으면(드래그 중 매 프레임, 코멘트 입력 중 매 키 입력) 되돌리기
@@ -118,6 +124,10 @@ interface AnalysisStore {
   editingPlayerId: string | null // 피치의 선수 클릭으로 연 편집 다이얼로그
   isPressingLineDragging: boolean // 압박 라인을 드래그하는 동안 true — PlayerNode가 모프 애니메이션 없이 즉시 따라오게 함(2026-09-08)
   selectedChangingPointId: string | null // 타임라인에서 고른 체인징 포인트 — null이면 평소대로 currentPhase를 보여준다 (TO-DO 5번)
+  // 병합된 시점(steps 보유)을 고르면 0부터 시작해 자동으로 증가하다가, 다
+  // 재생되면 null로 돌아가 이 체인징 포인트 자체(마지막 스텝 좌표 + 전체
+  // 화살표 모음)를 보여준다 — steps가 없는 보통 시점에서는 항상 null(2026-09-09).
+  mergedStepIndex: number | null
   past: Analysis[] // 되돌리기 스택 (TO-DO 27번) — 오래된 것이 배열 앞쪽
   future: Analysis[] // 다시하기 스택 — undo 한 번마다 여기로 하나씩 옮겨진다
 
@@ -169,6 +179,7 @@ const defaultLayers: LayerToggles = {
 }
 
 let morphTimer: ReturnType<typeof setTimeout> | undefined
+let mergedStepTimer: ReturnType<typeof setInterval> | undefined
 
 // 되돌리기/다시하기 내부 상태(TO-DO 27번) — 스토어 밖의 모듈 스코프 변수다.
 // morphTimer와 같은 이유: 컴포넌트 리렌더와 무관하게 "지금 burst 진행 중인지"
@@ -208,12 +219,14 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
   editingPlayerId: null,
   isPressingLineDragging: false,
   selectedChangingPointId: null,
+  mergedStepIndex: null,
   past: [],
   future: [],
 
   loadAnalysis: (a) => {
     pendingSnapshot = null
     if (historyTimer) clearTimeout(historyTimer)
+    clearInterval(mergedStepTimer)
     suppressHistory = true
     set({
       analysis: a,
@@ -222,6 +235,7 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
       isDirty: false,
       editingPlayerId: null,
       selectedChangingPointId: null,
+      mergedStepIndex: null,
       past: [],
       future: [],
     })
@@ -231,6 +245,7 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
   closeAnalysis: () => {
     pendingSnapshot = null
     if (historyTimer) clearTimeout(historyTimer)
+    clearInterval(mergedStepTimer)
     suppressHistory = true
     set({
       analysis: null,
@@ -242,6 +257,7 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
       editingPlayerId: null,
       isPressingLineDragging: false,
       selectedChangingPointId: null,
+      mergedStepIndex: null,
       past: [],
       future: [],
     })
@@ -257,8 +273,15 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
     if (next === currentPhase && !selectedChangingPointId) return
 
     clearTimeout(morphTimer)
+    clearInterval(mergedStepTimer)
 
-    set({ previousPhase: currentPhase, currentPhase: next, isMorphing: true, selectedChangingPointId: null })
+    set({
+      previousPhase: currentPhase,
+      currentPhase: next,
+      isMorphing: true,
+      selectedChangingPointId: null,
+      mergedStepIndex: null,
+    })
 
     morphTimer = setTimeout(() => set({ isMorphing: false }), PHASE_TRANSITION_MS)
   },
@@ -443,9 +466,13 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
   removeChangingPoint: (id) => {
     const { analysis, selectedChangingPointId } = get()
     if (!analysis?.changingPoints) return
+    if (selectedChangingPointId === id) {
+      clearInterval(mergedStepTimer)
+    }
     set({
       analysis: { ...analysis, changingPoints: analysis.changingPoints.filter((cp) => cp.id !== id) },
       selectedChangingPointId: selectedChangingPointId === id ? null : selectedChangingPointId,
+      mergedStepIndex: selectedChangingPointId === id ? null : get().mergedStepIndex,
       isDirty: true,
     })
   },
@@ -462,12 +489,16 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
   },
 
   // 여러 시점을 하나로 합친다 — "명장면은 여러 시점을 모아 하나의 장면으로
-  // 만드는 것"이라는 요청(2026-09-09)으로 추가. 좌표(positions)는 순서상
-  // 가장 마지막 시점(도착한 최종 배치)을 그대로 쓰고, annotations는 선택된
-  // 시점들의 화살표를 순서대로 이어붙인다 — pass 화살표가 서로 끝점=시작점으로
-  // 연결돼 있으면(buildPassChains) 병합 후 공 하나가 전체 구간을 끊김 없이
-  // 잇달아 흐르는 걸로 자동으로 이어진다. comment는 비어있지 않은 것만 줄바꿈으로
-  // 모으고, minute은 가장 이른 시점의 것을 물려받는다(그 장면이 시작된 시각).
+  // 만드는 것"이라는 요청(2026-09-09)으로 추가. steps에 선택된 시점들의
+  // 원본 스냅샷을 순서대로 보관해 두면(선택 시 selectChangingPoint가 이걸
+  // 순서대로 자동 재생한다 — 아래), 같은 선수가 이 범위 안에서 공을 여러 번
+  // 만져도 각 스텝이 독립된(이미 검증된) 낱개 시점 렌더링이라 "패스가
+  // 도착하는 자리에 선수가 없는" 문제가 생기지 않는다. 최상위 필드는 재생이
+  // 끝난 뒤 정착하는 "전체 요약" 프레임: positions는 마지막 시점(도착한 최종
+  // 배치), annotations는 선택된 시점들의 화살표를 순서대로 이어붙인 것(패스
+  // 화살표가 서로 끝점=시작점으로 연결돼 있으면 buildPassChains가 자동으로
+  // 하나의 흐름으로 묶는다). comment는 비어있지 않은 것만 줄바꿈으로 모으고,
+  // minute은 가장 이른 시점의 것을 물려받는다(그 장면이 시작된 시각).
   mergeChangingPoints: (ids) => {
     const { analysis } = get()
     if (!analysis?.changingPoints) return
@@ -478,6 +509,13 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
 
     const first = selected[0]
     const last = selected[selected.length - 1]
+    const toPhaseData = (cp: ChangingPoint): PhaseData => ({
+      positions: cp.positions.map((p) => ({ ...p })),
+      opponentPositions: cp.opponentPositions?.map((p) => ({ ...p })),
+      pressingLineY: cp.pressingLineY,
+      comment: cp.comment,
+      annotations: cp.annotations.map((a) => ({ ...a })),
+    })
     const merged: ChangingPoint = {
       id: nanoid(),
       label: first.label === last.label ? first.label : `${first.label} ~ ${last.label}`,
@@ -490,6 +528,7 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
         .filter((c) => c.trim().length > 0)
         .join('\n'),
       annotations: selected.flatMap((cp) => cp.annotations.map((a) => ({ ...a }))),
+      steps: selected.map(toPhaseData),
     }
 
     let inserted = false
@@ -505,21 +544,40 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
       }
     }
 
-    clearTimeout(morphTimer)
-    set({
-      analysis: { ...analysis, changingPoints: newList },
-      selectedChangingPointId: merged.id,
-      isMorphing: true,
-      isDirty: true,
-    })
-    morphTimer = setTimeout(() => set({ isMorphing: false }), PHASE_TRANSITION_MS)
+    set({ analysis: { ...analysis, changingPoints: newList }, isDirty: true })
+    get().selectChangingPoint(merged.id)
   },
 
+  // steps(병합된 시점)를 가진 포인트를 고르면 0번 스텝부터 TIMELINE_STEP_INTERVAL_MS
+  // 간격으로 자동 재생하다가, 마지막 스텝을 지나면 mergedStepIndex를 null로
+  // 되돌려 이 체인징 포인트 자체(전체 화살표가 다 보이는 요약 프레임)로
+  // 정착한다 — "병합하면 시간순으로 자연스럽게 이어지게"(2026-09-09).
   selectChangingPoint: (id) => {
-    const { selectedChangingPointId } = get()
+    const { selectedChangingPointId, analysis } = get()
     if (id === selectedChangingPointId) return
     clearTimeout(morphTimer)
-    set({ selectedChangingPointId: id, isMorphing: true })
+    clearInterval(mergedStepTimer)
+
+    const cp = id ? analysis?.changingPoints?.find((c) => c.id === id) : undefined
+    const steps = cp?.steps
+
+    if (steps && steps.length > 1) {
+      set({ selectedChangingPointId: id, isMorphing: true, mergedStepIndex: 0 })
+      let idx = 0
+      mergedStepTimer = setInterval(() => {
+        idx += 1
+        if (idx >= steps.length) {
+          clearInterval(mergedStepTimer)
+          set({ mergedStepIndex: null })
+          morphTimer = setTimeout(() => set({ isMorphing: false }), PHASE_TRANSITION_MS)
+          return
+        }
+        set({ mergedStepIndex: idx })
+      }, TIMELINE_STEP_INTERVAL_MS)
+      return
+    }
+
+    set({ selectedChangingPointId: id, isMorphing: true, mergedStepIndex: null })
     morphTimer = setTimeout(() => set({ isMorphing: false }), PHASE_TRANSITION_MS)
   },
 

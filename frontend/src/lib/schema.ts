@@ -52,6 +52,8 @@ const changingPointSchema = phaseDataSchema.extend({
   id: z.string(),
   label: z.string().min(1, '체인징 포인트 라벨을 입력해야 합니다'),
   minute: z.number().min(0).max(120).optional(),
+  // 병합된 시점의 원본 하위 스냅샷들(2026-09-09) — 있으면 순서대로 자동 재생한다.
+  steps: z.array(phaseDataSchema).optional(),
 })
 
 export const analysisSchema = z

@@ -37,6 +37,11 @@ export function Timeline() {
   const moveChangingPoint = useAnalysisStore((s) => s.moveChangingPoint)
   const mergeChangingPoints = useAnalysisStore((s) => s.mergeChangingPoints)
   const selectChangingPoint = useAnalysisStore((s) => s.selectChangingPoint)
+  // 병합된 시점을 고르면 스토어가 steps를 자동 재생한다(null이 아닌 동안) —
+  // 재생 중엔 이 시점의 이름/시간 수정·이동·삭제를 막아 재생을 방해하지
+  // 않게 한다(2026-09-09, isPlaying과 같은 패턴).
+  const mergedStepIndex = useAnalysisStore((s) => s.mergedStepIndex)
+  const isReplaying = mergedStepIndex !== null
 
   const selected = changingPoints.find((cp) => cp.id === selectedChangingPointId) ?? null
   const selectedIndex = selected ? changingPoints.findIndex((cp) => cp.id === selected.id) : -1
@@ -275,7 +280,7 @@ export function Timeline() {
             max={120}
             value={selected.minute ?? ''}
             placeholder="분"
-            disabled={isPlaying}
+            disabled={isPlaying || isReplaying}
             onChange={(e) =>
               setChangingPointMinute(selected.id, e.target.value === '' ? undefined : Number(e.target.value))
             }
@@ -284,14 +289,14 @@ export function Timeline() {
           />
           <Input
             value={selected.label}
-            disabled={isPlaying}
+            disabled={isPlaying || isReplaying}
             onChange={(e) => renameChangingPoint(selected.id, e.target.value)}
             className="h-7 flex-1 text-xs"
             aria-label="시점 이름"
           />
           <button
             type="button"
-            disabled={isPlaying || selectedIndex <= 0}
+            disabled={isPlaying || isReplaying || selectedIndex <= 0}
             onClick={() => moveChangingPoint(selected.id, 'left')}
             title="왼쪽으로 이동"
             className="rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
@@ -300,7 +305,7 @@ export function Timeline() {
           </button>
           <button
             type="button"
-            disabled={isPlaying || selectedIndex < 0 || selectedIndex >= changingPoints.length - 1}
+            disabled={isPlaying || isReplaying || selectedIndex < 0 || selectedIndex >= changingPoints.length - 1}
             onClick={() => moveChangingPoint(selected.id, 'right')}
             title="오른쪽으로 이동"
             className="rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
@@ -309,7 +314,7 @@ export function Timeline() {
           </button>
           <button
             type="button"
-            disabled={isPlaying}
+            disabled={isPlaying || isReplaying}
             onClick={() => removeChangingPoint(selected.id)}
             title="이 시점 삭제"
             className="rounded-md p-1 text-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-30"

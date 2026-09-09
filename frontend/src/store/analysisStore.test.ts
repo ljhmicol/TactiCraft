@@ -287,29 +287,85 @@ describe('analysisStore — 타임라인(체인징 포인트)', () => {
     expect(useAnalysisStore.getState().analysis!.changingPoints!.map((cp) => cp.id)).toEqual([b, a, c])
   })
 
-  it('mergeChangingPoints는 선택한 시점들을 하나로 합친다 — 좌표는 마지막 것, annotations는 순서대로 이어붙임', () => {
-    useAnalysisStore.getState().addChangingPoint('시점1', 10)
-    const idA = useAnalysisStore.getState().selectedChangingPointId!
-    useAnalysisStore.getState().setComment('A 코멘트')
-    useAnalysisStore.getState().addAnnotation('pass', { x: 10, y: 10 }, { x: 20, y: 20 })
+  it('mergeChangingPoints는 선택한 시점들을 하나로 합친다 — 좌표는 마지막 것, annotations는 순서대로 이어붙임, steps에 원본 스냅샷 보관', () => {
+    // 병합은 곧바로 selectChangingPoint를 거쳐 steps 자동재생 타이머(실제
+    // setInterval)를 건다 — 테스트가 끝나도 안 꺼지면 나중 테스트를 오염시킬
+    // 수 있어 fake timer로 통제한다.
+    vi.useFakeTimers()
+    try {
+      useAnalysisStore.getState().addChangingPoint('시점1', 10)
+      const idA = useAnalysisStore.getState().selectedChangingPointId!
+      useAnalysisStore.getState().setComment('A 코멘트')
+      useAnalysisStore.getState().addAnnotation('pass', { x: 10, y: 10 }, { x: 20, y: 20 })
+      const positionsA = useAnalysisStore.getState().analysis!.changingPoints!.find((cp) => cp.id === idA)!.positions
 
-    useAnalysisStore.getState().addChangingPoint('시점2', 20)
-    const idB = useAnalysisStore.getState().selectedChangingPointId!
-    useAnalysisStore.getState().addAnnotation('pass', { x: 20, y: 20 }, { x: 30, y: 30 })
-    const playerId = useAnalysisStore.getState().analysis!.players[0].id
-    useAnalysisStore.getState().movePlayer(playerId, 55, 66) // 시점2의 최종 좌표
+      useAnalysisStore.getState().addChangingPoint('시점2', 20)
+      const idB = useAnalysisStore.getState().selectedChangingPointId!
+      useAnalysisStore.getState().addAnnotation('pass', { x: 20, y: 20 }, { x: 30, y: 30 })
+      const playerId = useAnalysisStore.getState().analysis!.players[0].id
+      useAnalysisStore.getState().movePlayer(playerId, 55, 66) // 시점2의 최종 좌표
 
-    useAnalysisStore.getState().mergeChangingPoints([idA, idB])
+      useAnalysisStore.getState().mergeChangingPoints([idA, idB])
 
-    const { analysis, selectedChangingPointId } = useAnalysisStore.getState()
-    expect(analysis!.changingPoints).toHaveLength(1)
-    const merged = analysis!.changingPoints![0]
-    expect(selectedChangingPointId).toBe(merged.id)
-    expect(merged.label).toBe('시점1 ~ 시점2')
-    expect(merged.minute).toBe(10) // 가장 이른 시점(첫 번째)의 minute을 물려받는다
-    expect(merged.positions.find((p) => p.playerId === playerId)).toEqual({ playerId, x: 55, y: 66 }) // 마지막 시점의 최종 배치
-    expect(merged.annotations).toHaveLength(2) // 두 시점의 화살표를 순서대로 이어붙인다
-    expect(merged.comment).toBe('A 코멘트') // 빈 코멘트는 걸러내고 이어붙인다
+      const { analysis, selectedChangingPointId, mergedStepIndex } = useAnalysisStore.getState()
+      expect(analysis!.changingPoints).toHaveLength(1)
+      const merged = analysis!.changingPoints![0]
+      expect(selectedChangingPointId).toBe(merged.id)
+      expect(merged.label).toBe('시점1 ~ 시점2')
+      expect(merged.minute).toBe(10) // 가장 이른 시점(첫 번째)의 minute을 물려받는다
+      expect(merged.positions.find((p) => p.playerId === playerId)).toEqual({ playerId, x: 55, y: 66 }) // 마지막 시점의 최종 배치
+      expect(merged.annotations).toHaveLength(2) // 두 시점의 화살표를 순서대로 이어붙인다
+      expect(merged.comment).toBe('A 코멘트') // 빈 코멘트는 걸러내고 이어붙인다
+      // steps에는 병합 전 각 시점의 원본 스냅샷이 순서대로 그대로 남는다 —
+      // 같은 선수가 이 범위 안에서 공을 여러 번 만져도 재생 시 각 스텝이
+      // 독립적으로 정확한 자리를 보여줄 수 있어야 하기 때문.
+      expect(merged.steps).toHaveLength(2)
+      expect(merged.steps![0].positions).toEqual(positionsA)
+      expect(merged.steps![0].annotations).toHaveLength(1)
+      expect(merged.steps![1].annotations).toHaveLength(1)
+      // 선택 직후엔 0번 스텝부터 자동재생을 시작한다.
+      expect(mergedStepIndex).toBe(0)
+    } finally {
+      vi.clearAllTimers()
+      vi.useRealTimers()
+    }
+  })
+
+  it('steps가 있는 시점을 고르면 mergedStepIndex가 자동으로 진행되다가 끝나면 null로 정착한다', () => {
+    vi.useFakeTimers()
+    try {
+      useAnalysisStore.getState().addChangingPoint('시점1')
+      const idA = useAnalysisStore.getState().selectedChangingPointId!
+      useAnalysisStore.getState().addChangingPoint('시점2')
+      const idB = useAnalysisStore.getState().selectedChangingPointId!
+      useAnalysisStore.getState().addChangingPoint('시점3')
+      const idC = useAnalysisStore.getState().selectedChangingPointId!
+
+      useAnalysisStore.getState().mergeChangingPoints([idA, idB, idC])
+      expect(useAnalysisStore.getState().mergedStepIndex).toBe(0)
+
+      vi.advanceTimersByTime(1800)
+      expect(useAnalysisStore.getState().mergedStepIndex).toBe(1)
+
+      vi.advanceTimersByTime(1800)
+      expect(useAnalysisStore.getState().mergedStepIndex).toBe(2)
+
+      // 마지막 스텝을 지나면 null로 돌아가 병합된 시점 자체(요약 프레임)를 보여준다.
+      vi.advanceTimersByTime(1800)
+      expect(useAnalysisStore.getState().mergedStepIndex).toBeNull()
+
+      // 더 지나도 그대로 null — 반복 재생하지 않는다.
+      vi.advanceTimersByTime(5000)
+      expect(useAnalysisStore.getState().mergedStepIndex).toBeNull()
+    } finally {
+      vi.clearAllTimers()
+      vi.useRealTimers()
+    }
+  })
+
+  it('steps가 없는(보통) 시점을 고르면 mergedStepIndex는 계속 null이다', () => {
+    useAnalysisStore.getState().addChangingPoint('시점1')
+    expect(useAnalysisStore.getState().mergedStepIndex).toBeNull()
   })
 
   it('mergeChangingPoints는 2개 미만을 주면 아무것도 하지 않는다', () => {

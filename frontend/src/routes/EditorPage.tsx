@@ -71,6 +71,7 @@ export function EditorPage() {
   const currentPhase = useAnalysisStore((s) => s.currentPhase)
   const previousPhase = useAnalysisStore((s) => s.previousPhase)
   const selectedChangingPointId = useAnalysisStore((s) => s.selectedChangingPointId)
+  const mergedStepIndex = useAnalysisStore((s) => s.mergedStepIndex)
   const layers = useAnalysisStore((s) => s.layers)
   const drawTool = useAnalysisStore((s) => s.drawTool)
   const addOpponents = useAnalysisStore((s) => s.addOpponents)
@@ -117,7 +118,13 @@ export function EditorPage() {
   const changingPoint = selectedChangingPointId
     ? analysis.changingPoints?.find((cp) => cp.id === selectedChangingPointId)
     : undefined
-  const phase = changingPoint ?? analysis.phases[currentPhase]
+  // 병합된 시점(steps 보유)을 고르면 스토어가 mergedStepIndex를 0부터 자동으로
+  // 증가시킨다(TIMELINE_STEP_INTERVAL_MS 간격) — 재생 중엔 그 스텝의 스냅샷을,
+  // 다 재생되면(null) 이 체인징 포인트 자체(전체 화살표 요약)를 보여준다
+  // (2026-09-09, "병합하면 시간순으로 자연스럽게 이어지게").
+  const mergedStep =
+    changingPoint?.steps && mergedStepIndex !== null ? changingPoint.steps[mergedStepIndex] : undefined
+  const phase = mergedStep ?? changingPoint ?? analysis.phases[currentPhase]
   // 국면 전환 때 잠깐 자동으로 뜨던 고스트는 없앴다(2026-09-08 "잠깐 보이는 고스트
   // 없애줘") — 이제 레이어 칩으로 켠 경우에만(Ghost View, 수동 토글) 보인다.
   // 체인징 포인트를 보는 중엔 "직전 국면"이라는 개념이 없어 항상 끈다.
