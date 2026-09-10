@@ -125,6 +125,17 @@ export function EditorPage() {
   const mergedStep =
     changingPoint?.steps && mergedStepIndex !== null ? changingPoint.steps[mergedStepIndex] : undefined
   const phase = mergedStep ?? changingPoint ?? analysis.phases[currentPhase]
+  // 스텝을 다 재생하고 정착한 요약 프레임(mergedStep이 없어지는 순간)의
+  // annotations는 8~10개 다리를 전부 이어붙인 하나의 긴 체인이다 — 공이
+  // 그 전체 구간을 처음부터 다시 흐르며 재생된다. 그런데 이 프레임에
+  // 도달하는 유일한 경로가 "방금 스텝별로 한 다리씩 다 보여준 뒤"뿐이라
+  // (steps가 있으면 selectChangingPoint가 항상 0번부터 재생한다), 선수는
+  // 이미 도착해 가만히 있는데 공만 전체 경로를 처음부터 한 번 더 훑는
+  // 것처럼 보였다(2026-09-10 사용자 리포트 "이후엔 선수들은 가만히 있고
+  // 공만 움직인다"). 이 프레임에서만 공 애니메이션을 끄고 화살표만
+  // 정적으로 남긴다 — 스텝 재생 중(mergedStep이 있을 때)과 병합되지 않은
+  // 보통 화면은 그대로 애니메이션을 보여준다.
+  const isSettledMergeSummary = Boolean(changingPoint?.steps && changingPoint.steps.length > 1 && !mergedStep)
   // 국면 전환 때 잠깐 자동으로 뜨던 고스트는 없앴다(2026-09-08 "잠깐 보이는 고스트
   // 없애줘") — 이제 레이어 칩으로 켠 경우에만(Ghost View, 수동 토글) 보인다.
   // 체인징 포인트를 보는 중엔 "직전 국면"이라는 개념이 없어 항상 끈다.
@@ -186,6 +197,7 @@ export function EditorPage() {
               )}
               <AnnotationLayer
                 annotations={phase.annotations}
+                animated={!isSettledMergeSummary}
                 interactive={{
                   selectedId: selectedAnnotationId,
                   onSelect: setSelectedAnnotationId,

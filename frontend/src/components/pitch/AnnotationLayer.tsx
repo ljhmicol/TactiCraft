@@ -26,12 +26,17 @@ interface AnnotationLayerProps {
   }
   /**
    * 기본 true — false면 패스 공(PassChainBall)을 그리지 않고 화살표만
-   * 정적으로 그린다. GIF 내보내기(TO-DO 6) 전용: 공은 repeat: Infinity로
-   * 실제 벽시계 시간을 따라 도는데, GIF는 프레임을 실시간 재생이 아니라
+   * 정적으로 그린다. GIF 내보내기(TO-DO 6) 전용: 공 애니메이션은 실제
+   * 벽시계 시간을 따라 도는데, GIF는 프레임을 실시간 재생이 아니라
    * 가상 시간으로 하나씩 캡처하다 보니(GifExportRunner) 캡처 사이사이
    * 공이 계속 따로 움직여서 "중간에 멈추거나 다음 국면으로 그대로
    * 넘어가 버리는" 것처럼 보였다(2026-09-08 사용자 리포트) — 애니메이션
    * 자체를 아예 렌더링하지 않는 쪽이 가상 시간 스테핑과 맞다.
+   *
+   * EditorPage는 병합된 시점의 스텝 재생이 끝나 요약 프레임에 정착했을 때도
+   * false를 넘긴다 — 그 프레임의 annotations는 스텝들을 전부 이어붙인 하나의
+   * 긴 체인이라, 공을 다시 애니메이션하면 이미 도착한 선수와 달리 공만
+   * 전체 경로를 처음부터 다시 흐른다(2026-09-10 사용자 리포트).
    */
   animated?: boolean
 }
@@ -140,10 +145,15 @@ export function AnnotationLayer({ annotations, interactive, animated = true }: A
  * 구간이 2개 이상(체인)이면 각 꼭짓점에서 갑자기 느려지지 않도록 linear로,
  * 단일 구간이면 easeInOut으로 부드럽게 시작·끝난다.
  *
- * PNG 캡처(ShareCard)는 애니메이션 완료를 기다리지 않고 그 순간 상태를
- * 그대로 찍는다(lib/exportImage.ts) — 무한 반복이라 매번 다른 위치에서
- * 캡처되지만, "경로 위 어딘가"는 정적 이미지로도 자연스러워 별도 처리하지
- * 않는다.
+ * 딱 한 번만 움직이고 도착점에 멈춘다(2026-09-10, 이전엔 repeat: Infinity로
+ * 계속 왕복했는데, 드리블(carry) 구간에서 선수는 한 번만 모프하고 멈추는데
+ * 공만 계속 왕복해 "선수는 도착했는데 공이 한 번 더 움직인다"는 리포트,
+ * 그리고 병합된 시점을 연속 재생할 때 각 스텝의 0.6~1.8초 사이 동안 선수는
+ * 이미 멈춰 있는데 공만 계속 왕복해 "이후엔 선수는 가만히 있고 공만
+ * 움직인다"는 리포트의 공통 원인이었다). PNG 캡처(ShareCard)는 애니메이션
+ * 완료를 기다리지 않고 그 순간 상태를 그대로 찍는다(lib/exportImage.ts) —
+ * "경로 위 어딘가(도착 직후엔 도착점)"는 정적 이미지로도 자연스러워 별도
+ * 처리하지 않는다.
  *
  * 시퀀싱(2026-09-09, "패스 받을 선수가 미리 움직여져있고 받게" 요청 —
  * 시점을 잘게 쪼개는 대신 전환 애니메이션 자체를 늦추는 쪽으로 정정):
@@ -194,8 +204,7 @@ function PassChainBall({ chain }: { chain: Annotation[] }) {
               duration: chainBallDuration(chain),
               times: travelTimes(points),
               ease: segments > 1 ? 'linear' : 'easeInOut',
-              repeat: Infinity,
-              repeatDelay: 0.6,
+              // 딱 한 번만 재생하고 도착점에 멈춘다 — 위 함수 doc 참고.
             }
           : { duration: 0 }
       }
