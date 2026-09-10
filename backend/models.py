@@ -29,6 +29,12 @@ class User(Base):
     email = Column(String, nullable=False, unique=True)
     password_hash = Column(String, nullable=False)
     created_at = Column(String, nullable=False)
+    # 댓글(TO-DO 12번)에 쓰는 표시 이름 — "커뮤니티에서 서로 얘기할 때 이름이
+    # 있는 게 좋다"(2026-09-10 사용자 결정)는 요청으로 회원가입 시점부터
+    # 받는다. 기존 DB에는 없는 컬럼이라 main.py에서 _ensure_column으로
+    # 채운다(curved/carry와 같은 이유) — DB에는 nullable로 두고 기존 계정은
+    # 이메일 앞부분으로 백필한다. 새 가입은 UserRegister가 항상 요구한다.
+    username = Column(String, unique=True)
 
 
 class Session(Base):
@@ -222,3 +228,30 @@ class ChangingPoint(Base):
 
     analysis = relationship("Analysis", back_populates="changing_points")
     phase = relationship("Phase")
+
+
+class Comment(Base):
+    """분석 전체에 붙는 댓글(TO-DO 12번). 스레드/답글 없이 평평한 목록 —
+    사용자가 "분석 전체 하나에"를 선택했다(2026-09-10). 새 테이블이라
+    create_all이 자동 생성한다(annotations/changing_points와 같은 이유로
+    ALTER TABLE 불필요).
+
+    username은 users.username과 중복 저장이다(정규화 위반) — 이 프로젝트가
+    이미 쓰는 패턴(분석 목록 썸네일을 PNG data URL로 통째로 저장)과 같은
+    이유로, 댓글을 읽을 때마다 users 테이블과 조인하지 않고 바로 보여주기
+    위해서다. 현재 사용자명 변경 기능이 없어 최신값과 어긋날 일도 없다.
+    """
+
+    __tablename__ = "comments"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    analysis_id = Column(
+        Integer, ForeignKey("analyses.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    username = Column(String, nullable=False)
+    body = Column(Text, nullable=False)
+    created_at = Column(String, nullable=False)
+
+    analysis = relationship("Analysis")
+    user = relationship("User")

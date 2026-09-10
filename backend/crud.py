@@ -264,3 +264,41 @@ def to_analysis_dict(row: models.Analysis) -> dict:
         "created_at": row.created_at,
         "updated_at": row.updated_at,
     }
+
+
+# ---------------------------------------------------------------------------
+# 댓글 (TO-DO 12번)
+# ---------------------------------------------------------------------------
+
+
+def list_comments(db: Session, analysis_id: int) -> List[models.Comment]:
+    """오래된 것부터 — 대화 스레드처럼 위에서 아래로 시간순으로 읽히게."""
+    return (
+        db.query(models.Comment)
+        .filter(models.Comment.analysis_id == analysis_id)
+        .order_by(models.Comment.id.asc())
+        .all()
+    )
+
+
+def create_comment(db: Session, analysis_id: int, user: "models.User", body: str) -> models.Comment:
+    comment = models.Comment(
+        analysis_id=analysis_id,
+        user_id=user.id,
+        username=user.username or user.email.split("@")[0],
+        body=body,
+        created_at=_now(),
+    )
+    db.add(comment)
+    db.commit()
+    db.refresh(comment)
+    return comment
+
+
+def get_comment(db: Session, comment_id: int) -> Optional[models.Comment]:
+    return db.query(models.Comment).filter(models.Comment.id == comment_id).first()
+
+
+def delete_comment(db: Session, comment_id: int) -> None:
+    db.query(models.Comment).filter(models.Comment.id == comment_id).delete()
+    db.commit()

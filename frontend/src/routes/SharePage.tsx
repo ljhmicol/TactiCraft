@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 
+import { CommunityComments } from '@/components/comments/CommunityComments'
 import { AnnotationLayer } from '@/components/pitch/AnnotationLayer'
 import { ChannelGrid } from '@/components/pitch/ChannelGrid'
 import { CompactnessBox } from '@/components/pitch/CompactnessBox'
@@ -35,6 +36,11 @@ type ViewKey = { kind: 'phase'; phase: PhaseType } | { kind: 'cp'; id: string }
  * 방식(고정 1080px 카드를 화면 밖에 렌더링해 캡처)이지만 `useAnalysisStore`를
  * 읽지 않는 `SharePngCard`를 따로 쓴다 — 레이어 토글을 이 페이지의 로컬
  * state로 props를 통해 넘긴다.
+ *
+ * 댓글(TO-DO 12번)도 여기 붙는다 — "공유된 분석에 의견"이라는 항목 설명과
+ * 맞는 자리이자, EditorPage(자기 분석 편집)에 더 끼워 넣기엔 이미 레이아웃이
+ * 복잡하다. `isOwner`는 GET 응답에 서버가 계산해 넣어준다(비로그인 방문자는
+ * 항상 false) — 소유자는 자기 분석의 공유 링크에서 남의 댓글도 지울 수 있다.
  */
 export function SharePage() {
   const { id } = useParams<{ id: string }>()
@@ -216,6 +222,8 @@ export function SharePage() {
           <p className="whitespace-pre-wrap text-sm text-muted-foreground">{bodyText}</p>
         </div>
       )}
+
+      {analysis.id !== undefined && <CommunityComments analysisId={analysis.id} isOwner={Boolean(analysis.isOwner)} />}
     </div>
   )
 }

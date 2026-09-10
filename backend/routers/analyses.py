@@ -26,12 +26,16 @@ def list_analyses(
 
 
 @router.get("/{analysis_id}", response_model=schemas.AnalysisOut)
-def get_analysis(analysis_id: int, db: Session = Depends(get_db)):
+def get_analysis(
+    analysis_id: int,
+    db: Session = Depends(get_db),
+    user: models.User | None = Depends(auth.get_current_user_optional),
+):
     try:
         row = crud.get_analysis(db, analysis_id)
     except crud.AnalysisNotFound:
         raise HTTPException(status_code=404, detail="Analysis not found")
-    return crud.to_analysis_dict(row)
+    return {**crud.to_analysis_dict(row), "is_owner": bool(user and row.user_id == user.id)}
 
 
 @router.post("", response_model=schemas.AnalysisOut, status_code=status.HTTP_201_CREATED)

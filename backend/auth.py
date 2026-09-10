@@ -7,6 +7,7 @@ JWT 대신 DB 세션 테이블(models.Session)을 쓴다 — 로그아웃 시 �
 
 import secrets
 from datetime import datetime
+from typing import Optional
 
 import bcrypt
 from fastapi import Depends, HTTPException, Request, status
@@ -55,3 +56,20 @@ def get_current_user(request: Request, db: DbSession = Depends(get_db)) -> model
     if not user:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "로그인이 필요합니다")
     return user
+
+
+def get_current_user_optional(request: Request, db: DbSession = Depends(get_db)) -> Optional[models.User]:
+    """get_current_user와 같지만 비로그인이면 401 대신 None을 돌려준다.
+
+    공유 링크(/share/:id, 로그인 여부와 무관하게 공개)에서 "지금 보는 내가
+    이 분석의 소유자인가"(TO-DO 12번 댓글의 삭제 권한 UI 판정용)를 알아야
+    하는데, 그 판정 자체는 로그인을 요구하면 안 된다 — 비로그인 방문자도
+    분석은 볼 수 있어야 하기 때문이다.
+    """
+    token = request.cookies.get(SESSION_COOKIE_NAME)
+    if not token:
+        return None
+    session = db.query(models.Session).filter(models.Session.token == token).first()
+    if not session:
+        return None
+    return db.query(models.User).filter(models.User.id == session.user_id).first()

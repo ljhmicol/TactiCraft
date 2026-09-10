@@ -91,6 +91,10 @@ export interface Analysis {
   thumbnail?: string // 목록 미리보기용 base64 PNG data URL — 저장 시점에 프론트가 캡처해 채운다 (TO-DO 7번)
   createdAt?: string
   updatedAt?: string
+  // 지금 로그인한 사람이 이 분석의 소유자인지(TO-DO 12번, 댓글 삭제 버튼
+  // 노출 판정용) — 서버가 GET 시점에 계산해 채운다. 저장 페이로드에는
+  // 의미가 없지만(백엔드가 무시함) 굳이 걷어내지 않는다.
+  isOwner?: boolean
 }
 
 /** 목록 조회 전용 (좌표 없음) */

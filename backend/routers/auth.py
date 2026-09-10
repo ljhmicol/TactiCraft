@@ -37,7 +37,16 @@ def register(payload: schemas.UserRegister, response: Response, db: DbSession = 
     if existing:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "이미 가입된 이메일입니다")
 
-    user = models.User(email=payload.email, password_hash=auth.hash_password(payload.password), created_at=_now())
+    existing_username = db.query(models.User).filter(models.User.username == payload.username).first()
+    if existing_username:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "이미 사용 중인 사용자명입니다")
+
+    user = models.User(
+        email=payload.email,
+        username=payload.username,
+        password_hash=auth.hash_password(payload.password),
+        created_at=_now(),
+    )
     db.add(user)
     db.flush()  # user.id 확보
 

@@ -114,11 +114,14 @@ export function deleteAnalysis(id: number): Promise<void> {
 export interface CurrentUser {
   id: number
   email: string
+  // 백필 전 구버전 계정엔 없을 수 있다(TO-DO 12번 도입 이전 가입) — 실질적으론
+  // main.py 마이그레이션이 이메일 앞부분으로 채워 넣어서 항상 값이 있다.
+  username?: string
 }
 
 /** 로그인(TO-DO 11번). 실패 시 ApiError(401/400)를 던진다. */
-export function registerUser(email: string, password: string): Promise<CurrentUser> {
-  return apiFetch('/auth/register', { method: 'POST', body: JSON.stringify({ email, password }) })
+export function registerUser(email: string, username: string, password: string): Promise<CurrentUser> {
+  return apiFetch('/auth/register', { method: 'POST', body: JSON.stringify({ email, username, password }) })
 }
 
 export function loginUser(email: string, password: string): Promise<CurrentUser> {
@@ -137,6 +140,29 @@ export function withdrawUser(): Promise<void> {
 /** 비로그인 상태면 401 ApiError를 던진다 — useCurrentUser가 로그아웃 상태로 취급한다. */
 export function fetchCurrentUser(): Promise<CurrentUser> {
   return apiFetch('/auth/me')
+}
+
+// 댓글(TO-DO 12번) — 분석 전체 하나에 붙는 평평한 목록. 읽기는 공유 링크
+// 방문자 누구나(비로그인 포함), 작성은 로그인 필수(백엔드가 401로 막는다).
+export interface Comment {
+  id: number
+  analysisId: number
+  userId: number
+  username: string
+  body: string
+  createdAt: string
+}
+
+export function fetchComments(analysisId: number): Promise<Comment[]> {
+  return apiFetch(`/analyses/${analysisId}/comments`)
+}
+
+export function createComment(analysisId: number, body: string): Promise<Comment> {
+  return apiFetch(`/analyses/${analysisId}/comments`, { method: 'POST', body: JSON.stringify({ body }) })
+}
+
+export function deleteComment(commentId: number): Promise<void> {
+  return apiFetch(`/comments/${commentId}`, { method: 'DELETE' })
 }
 
 /** 앱 진입 시 1회, 저장 실패 시 재확인한다 (3단계 §2.1). 타임아웃 2초. */

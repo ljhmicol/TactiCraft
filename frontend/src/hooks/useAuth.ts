@@ -37,7 +37,8 @@ export function useLogin() {
 export function useRegister() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ email, password }: { email: string; password: string }) => registerUser(email, password),
+    mutationFn: ({ email, username, password }: { email: string; username: string; password: string }) =>
+      registerUser(email, username, password),
     onSuccess: (user) => {
       queryClient.setQueryData(ME_KEY, user)
       queryClient.invalidateQueries({ queryKey: ['analyses'] })

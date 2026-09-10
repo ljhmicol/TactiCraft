@@ -8,14 +8,20 @@ import { useRegister } from '@/hooks/useAuth'
 import { ApiError } from '@/lib/api'
 
 /**
- * /register — 이메일/비밀번호 회원가입 (TO-DO 11번). 첫 가입 계정은 로그인
- * 이전에 쌓인 기존 분석을 전부 자동으로 넘겨받는다(2026-09-09 사용자 결정,
- * backend/routers/auth.py의 register 참조) — 별도 UI 안내는 두지 않는다.
+ * /register — 이메일/사용자명/비밀번호 회원가입 (TO-DO 11번). 첫 가입 계정은
+ * 로그인 이전에 쌓인 기존 분석을 전부 자동으로 넘겨받는다(2026-09-09 사용자
+ * 결정, backend/routers/auth.py의 register 참조) — 별도 UI 안내는 두지 않는다.
+ *
+ * 사용자명(TO-DO 12번, 댓글)은 가입 시점부터 받는다 — "커뮤니티에서 서로
+ * 얘기할 때 이름이 있는 게 좋다"(2026-09-10 사용자 결정). 백엔드 정규식
+ * `^[\w가-힣]{2,20}$`과 맞춰 한글·영문·숫자·밑줄 2~20자만 허용한다(공백 금지 —
+ * 댓글 목록에서 작성자명이 한 줄로 또렷하게 보이도록).
  */
 export function RegisterPage() {
   const navigate = useNavigate()
   const registerMutation = useRegister()
   const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
 
@@ -23,7 +29,7 @@ export function RegisterPage() {
     e.preventDefault()
     setError(null)
     try {
-      await registerMutation.mutateAsync({ email, password })
+      await registerMutation.mutateAsync({ email, username, password })
       navigate('/')
     } catch (err) {
       setError(err instanceof ApiError ? err.message : '회원가입에 실패했습니다.')
@@ -44,6 +50,21 @@ export function RegisterPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="username">사용자명</Label>
+          <Input
+            id="username"
+            type="text"
+            required
+            minLength={2}
+            maxLength={20}
+            pattern="[\w가-힣]+"
+            autoComplete="username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">한글·영문·숫자·밑줄 2~20자 — 댓글에 표시됩니다</p>
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="password">비밀번호</Label>

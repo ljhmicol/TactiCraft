@@ -172,6 +172,10 @@ class AnalysisOut(AnalysisIn):
     id: int
     created_at: str
     updated_at: str
+    # 지금 요청한 사람이 이 분석의 소유자인지(TO-DO 12번, 댓글 삭제 버튼 노출
+    # 판정용) — 라우터가 채운다(crud.to_analysis_dict는 요청자를 모른다).
+    # 비로그인 방문자에게도 분석 자체는 공개이므로 기본값 False로 안전하게 둔다.
+    is_owner: bool = False
 
 
 class AnalysisSummary(BaseModel):
@@ -199,10 +203,14 @@ class HealthOut(BaseModel):
 # EmailStr 대신 간단한 정규식으로 형태만 확인한다 — 실제 존재 확인은 어차피
 # 이메일 발송 인프라가 없어서 못 한다(가입 시 검증 메일도 안 보냄, 범위 밖).
 _EMAIL_RE = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
+# 댓글(TO-DO 12번) 표시 이름. 한글/영문/숫자/밑줄만 허용 — 공백을 막아
+# 댓글 목록에서 "누가 썼는지"가 줄바꿈 없이 한 줄로 또렷하게 보이게 한다.
+_USERNAME_RE = r"^[\w가-힣]{2,20}$"
 
 
 class UserRegister(BaseModel):
     email: str = Field(pattern=_EMAIL_RE)
+    username: str = Field(pattern=_USERNAME_RE)
     password: str = Field(min_length=8, max_length=100)
 
     @field_validator("password")
@@ -228,3 +236,30 @@ class UserOut(BaseModel):
 
     id: int
     email: str
+    username: Optional[str] = None  # 백필 전 구버전 계정은 없을 수 있다
+
+
+# 댓글(TO-DO 12번) — 분석 전체 하나에 붙는 평평한 목록(스레드 없음, 2026-09-10
+# 사용자 결정). 작성은 로그인 필수, 삭제는 작성자 본인 또는 분석 소유자만
+# (라우터에서 확인).
+class CommentIn(BaseModel):
+    body: str = Field(min_length=1, max_length=2000)
+
+    @field_validator("body")
+    @classmethod
+    def _strip_and_check(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("빈 댓글은 남길 수 없습니다")
+        return v
+
+
+class CommentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    analysis_id: int
+    user_id: int
+    username: str
+    body: str
+    created_at: str

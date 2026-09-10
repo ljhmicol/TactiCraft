@@ -10,7 +10,7 @@ import models  # noqa: F401  (create_all 전에 모델 등록이 필요)
 import schemas
 from config import PROJECT_ROOT, settings
 from database import Base, engine
-from routers import analyses, auth as auth_router
+from routers import analyses, auth as auth_router, comments as comments_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -37,6 +37,33 @@ _ensure_column("changing_points", "minute", "FLOAT")
 _ensure_column("analyses", "user_id", "INTEGER REFERENCES users(id)")
 _ensure_column("analyses", "thumbnail", "TEXT")
 _ensure_column("analyses", "tags", "TEXT DEFAULT '[]'")
+_ensure_column("users", "username", "VARCHAR")
+
+
+def _backfill_usernames() -> None:
+    """username 컬럼을 막 추가한 직후엔 기존 계정이 전부 NULL이다 — 댓글(TO-DO
+    12번)에 빈 이름으로 뜨는 걸 막기 위해 이메일 앞부분으로 한 번 채워 넣는다.
+    이후 회원가입(UserRegister)은 username을 항상 요구하므로 새 계정은 NULL이
+    될 일이 없다 — 그래서 이 함수는 매번 실행돼도 조용히 아무 일도 안 한다
+    (WHERE username IS NULL 조건).
+    """
+    with engine.connect() as conn:
+        rows = conn.execute(text("SELECT id, email FROM users WHERE username IS NULL")).fetchall()
+        for row in rows:
+            fallback = row[1].split("@")[0]
+            conn.execute(text("UPDATE users SET username = :u WHERE id = :i"), {"u": fallback, "i": row[0]})
+        if rows:
+            conn.commit()
+    # username은 이제 로그인마다 항상 값이 있어야 하는 컬럼이라, ALTER로 뒤늦게
+    # 추가된 이 컬럼에도 새 가입 시 중복을 막을 유니크 인덱스를 걸어 둔다
+    # (create_all은 기존 테이블을 건드리지 않아 모델의 unique=True가 반영 안
+    # 됐다 — _ensure_column과 같은 이유).
+    with engine.connect() as conn:
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_username ON users(username)"))
+        conn.commit()
+
+
+_backfill_usernames()
 
 app = FastAPI(title="TactiCore API", version=settings.app_version)
 
@@ -54,6 +81,7 @@ app.add_middleware(
 
 app.include_router(analyses.router)
 app.include_router(auth_router.router)
+app.include_router(comments_router.router)
 
 
 @app.get("/api/health", response_model=schemas.HealthOut, tags=["health"])
