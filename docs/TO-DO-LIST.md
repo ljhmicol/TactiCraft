@@ -125,6 +125,8 @@
     1. **uvicorn `--reload`가 일부 파일 변경을 놓침**: `schemas.py`(`AnalysisOut.is_owner` 추가)와 `routers/analyses.py`(`is_owner` 계산) 편집 이후 `auth.py` 편집 하나만 `WatchFiles detected changes` 로그에 잡혔고, 실행 중인 프로세스의 `/openapi.json`을 까보니 `AnalysisOut`에 `is_owner`가 실제로 없었다 — reload가 방금 로그에 안 찍힌 파일들을 반영하지 않은 상태였다. 완전히 재시작(TaskStop 후 재기동)하니 해결. **TO-DO 9번 때도 DB 컬럼 마이그레이션이 리로드 로그 이후에도 안 먹혀 재시작이 필요했던 것과 같은 계열의 문제** — 이 프로젝트에서 백엔드 파일을 여러 개 연달아 고친 뒤에는 리로드 로그를 믿지 말고 항상 완전 재시작으로 확인할 것.
     2. **직접 sqlite3로 만든 테스트 데이터 정리가 고아 행을 남김**: 이전 라운드(TO-DO 9번 이후)에 curl로 만든 테스트 계정/분석을 Python `sqlite3.connect()`로 직접 지웠는데, 이 연결은 기본적으로 `PRAGMA foreign_keys`가 꺼져 있어(SQLAlchemy 엔진과 달리 앱이 이 프라그마를 안 켠 raw 연결) CASCADE가 발동하지 않아 `players`/`phases` 행이 고아로 남았다. 이번 라운드 Playwright 테스트에서 새 분석이 SQLite의 rowid 재사용으로 같은 id(33)를 받으면서 `UNIQUE constraint failed: players.analysis_id, players.client_id`로 저장이 "Failed to fetch"째 실패했다 — 앱 버그가 아니라 직전 세션의 수동 정리 방식 문제였다. `PRAGMA foreign_keys = ON`을 켠 연결로 고아 행을 마저 지워 해결. **교훈: 이 DB를 raw sqlite3로 손댈 땐 항상 `PRAGMA foreign_keys = ON`부터 켤 것** — 아니면 앱의 엔진(FK 강제 켜짐, `database.py`)을 거치는 편이 안전하다.
   - **테스트 데이터 정리**: 검증 중 만든 계정(`owner-*`/`other-*`/`test-comment*`/`diag@example.com`)과 그 분석을 전부 지우고, 실사용 계정(`ljh.micol@gmail.com`, 분석 31개)만 남은 것 확인.
+  - **접근 경로 누락(2026-09-10 사용자 지적) — "커뮤니티는 어디있어?"**: 구현 직후 상단 네비게이션에 "커뮤니티" 탭이 없다는 걸 지적받았다. 댓글을 모아 보여주는 화면 자체를 새로 만들 것인지(별도 API 필요, 작업량 큼) vs 저장 목록에서 공유 페이지로 바로 가는 링크만 추가할 것인지 AskUserQuestion으로 확인 — **저장 목록에서 바로 댓글로**를 선택받았다. `AnalysisList.tsx`의 각 행에 `/share/:id`로 가는 "댓글" 링크(`MessageCircle` 아이콘)를 추가했다. 별도 "커뮤니티" 탭은 만들지 않았다 — 모아 보여줄 화면이 없으면 빈 탭이 되기 때문.
+  - **검증**: `tsc -b`/`lint`(0 errors)/`vitest`(174, 회귀 없음)/`build` 통과. Playwright로 가입 → 분석 저장 → 저장 목록의 "댓글" 링크 클릭 → `/share/:id`로 정확히 이동 → 댓글 섹션 렌더링까지 확인.
 
 ## 기각 기록
 
