@@ -187,6 +187,9 @@ class Annotation(Base):
     # main.py에서 수동 ALTER TABLE로 채운다 — players.tactical_role과 같은
     # 이유(create_all은 기존 테이블에 컬럼을 추가하지 못한다), TO-DO 2026-09-07
     curved = Column(Boolean)
+    # 드리블/운반 구간 여부. curved와 같은 이유로 main.py에서 _ensure_column으로
+    # 채운다(2026-09-10 — 기존 DB에는 없는 컬럼이다).
+    carry = Column(Boolean)
 
     phase = relationship("Phase", back_populates="annotations")
 

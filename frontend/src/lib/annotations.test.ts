@@ -3,12 +3,16 @@ import { describe, expect, it } from 'vitest'
 import {
   ANNOTATION_MIN_LENGTH,
   arrowGeometry,
+  BALL_SEGMENT_DURATION,
   buildPassChains,
+  CARRY_BALL_DURATION,
+  chainBallDuration,
   chainSamplePoints,
   curvedArrowGeometry,
   travelTimes,
 } from '@/lib/annotations'
-import { analysisSchema } from '@/lib/schema'
+import { analysisSchema, annotationSchema } from '@/lib/schema'
+import { PHASE_TRANSITION_MS } from '@/store/analysisStore'
 import type { Annotation } from '@/types/analysis'
 
 const PITCH_LENGTH_M = 105
@@ -139,6 +143,54 @@ describe('chainSamplePoints', () => {
       { x: 45, y: 55 },
       { x: 55, y: 20 },
     ])
+  })
+})
+
+describe('chainBallDuration', () => {
+  it('직선 패스는 화살표 하나당 BALL_SEGMENT_DURATION이다', () => {
+    const a = pass('a', { x: 30, y: 85 }, { x: 45, y: 55 })
+    const b = pass('b', { x: 45, y: 55 }, { x: 55, y: 20 })
+    expect(chainBallDuration([a])).toBeCloseTo(BALL_SEGMENT_DURATION)
+    expect(chainBallDuration([a, b])).toBeCloseTo(BALL_SEGMENT_DURATION * 2)
+  })
+
+  it('곡선 패스도 화살표 하나면 직선 하나와 같은 시간이다 — 베지어 샘플 점 수에 끌려가지 않는다', () => {
+    // 곡선은 chainSamplePoints가 8점으로 샘플링하므로, 점 개수로 세면 8배 느려진다.
+    const curved: Annotation = { ...pass('shot', { x: 56.2, y: 16.7 }, { x: 54.2, y: 0 }), curved: true }
+    expect(chainSamplePoints([curved]).length).toBeGreaterThan(2)
+    expect(chainBallDuration([curved])).toBeCloseTo(BALL_SEGMENT_DURATION)
+  })
+})
+
+describe('carry(드리블) 플래그', () => {
+  it('스키마가 carry를 받아들이고, 없으면 undefined다', () => {
+    const withCarry = { ...pass('c', { x: 96, y: 16 }, { x: 70, y: 7 }), carry: true }
+    const plain = pass('p', { x: 96, y: 16 }, { x: 70, y: 7 })
+    expect(annotationSchema.parse(withCarry).carry).toBe(true)
+    expect(annotationSchema.parse(plain).carry).toBeUndefined()
+  })
+
+  it('드리블 체인의 공은 선수의 국면 전환 모프와 정확히 같은 시간에 이동한다', () => {
+    // 화살표 개수로 세면 캐리 두 구간이 1.1초가 되어 공이 선수(0.6초)보다 느려진다.
+    const c1 = { ...pass('c1', { x: 96, y: 16 }, { x: 88, y: 10 }), carry: true }
+    const c2 = { ...pass('c2', { x: 88, y: 10 }, { x: 70, y: 7 }), carry: true }
+    expect(CARRY_BALL_DURATION * 1000).toBe(PHASE_TRANSITION_MS)
+    expect(chainBallDuration([c1, c2])).toBeCloseTo(CARRY_BALL_DURATION)
+    expect(chainBallDuration([c1])).toBeCloseTo(CARRY_BALL_DURATION)
+    // 드리블이 아닌 구간이 섞여 있으면 예전대로 화살표 개수로 센다.
+    expect(chainBallDuration([c1, pass('p', { x: 70, y: 7 }, { x: 54, y: 0 })])).toBeCloseTo(
+      BALL_SEGMENT_DURATION * 2,
+    )
+  })
+
+  it('드리블 구간은 체인의 머리에 와서 공이 대기 없이 출발할 수 있어야 한다', () => {
+    // AnnotationLayer는 chain[0].carry로 대기 여부를 정한다 — 드리블 화살표가
+    // 체인의 머리로 잡히는지(선행 패스가 없는지)까지가 이 판정의 전제다.
+    const carry1 = { ...pass('c1', { x: 96, y: 16 }, { x: 88, y: 10 }), carry: true }
+    const carry2 = { ...pass('c2', { x: 88, y: 10 }, { x: 70, y: 7 }), carry: true }
+    const chains = buildPassChains([carry1, carry2])
+    expect(chains).toHaveLength(1)
+    expect(chains[0][0].carry).toBe(true)
   })
 })
 

@@ -5,8 +5,8 @@ import {
   ANNOTATION_STYLES,
   arrowGeometry,
   arrowMidpoint,
-  BALL_SEGMENT_DURATION,
   buildPassChains,
+  chainBallDuration,
   chainSamplePoints,
   curvedArrowGeometry,
   travelTimes,
@@ -156,16 +156,26 @@ export function AnnotationLayer({ annotations, interactive, animated = true }: A
  */
 function PassChainBall({ chain }: { chain: Annotation[] }) {
   const points = chainSamplePoints(chain)
-  const [armed, setArmed] = useState(false)
+  // 드리블(carry)로 시작하는 체인은 기다리지 않는다 — 공을 몰고 가는 선수
+  // 자신이 같은 순간 같은 방향으로 모프하므로, 대기를 두면 선수가 먼저
+  // 도착한 뒤에 공이 따라가 "자기한테 패스하는" 모양이 된다(2026-09-10).
+  const carried = chain[0]?.carry === true
+  const [armed, setArmed] = useState(carried)
 
   useEffect(() => {
+    if (carried) {
+      setArmed(true)
+      return
+    }
     setArmed(false)
     const timer = setTimeout(() => setArmed(true), PHASE_TRANSITION_MS)
     return () => clearTimeout(timer)
-  }, [])
+  }, [carried])
 
   if (points.length < 2) return null
-  const segments = points.length - 1
+  // 구간 수는 점 개수가 아니라 화살표 개수다 — 곡선 화살표는 베지어 8점으로
+  // 샘플링되므로 점으로 세면 곡선 패스 하나가 8배 느려진다(chainBallDuration).
+  const segments = chain.length
 
   return (
     <motion.ellipse
@@ -181,7 +191,7 @@ function PassChainBall({ chain }: { chain: Annotation[] }) {
       transition={
         armed
           ? {
-              duration: BALL_SEGMENT_DURATION * segments,
+              duration: chainBallDuration(chain),
               times: travelTimes(points),
               ease: segments > 1 ? 'linear' : 'easeInOut',
               repeat: Infinity,

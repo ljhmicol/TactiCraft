@@ -104,6 +104,7 @@ def _build_phase(
                 to_x=ann.to.x,
                 to_y=ann.to.y,
                 curved=ann.curved,
+                carry=ann.carry,
             )
         )
     return phase
@@ -203,6 +204,7 @@ def _phase_dict(phase: models.Phase, client_id_by_pk: dict[int, str]) -> dict:
                 "from": {"x": a.from_x, "y": a.from_y},
                 "to": {"x": a.to_x, "y": a.to_y},
                 "curved": a.curved,
+                "carry": a.carry,
             }
             for a in phase.annotations
         ],

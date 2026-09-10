@@ -170,9 +170,33 @@ export function annotationSamplePoints(ann: { from: Point; to: Point; curved?: b
 // 패스 체인 공 애니메이션의 구간(하나의 패스)당 소요 시간(초) — "패스 되는 공
 // 속도가 너무 느려" 피드백(2026-09-08)으로 1.1초에서 0.45초로 단축했다가,
 // "아주 조금만 더 느리게"(2026-09-08, 2차) 요청으로 0.55초로 소폭 재조정.
-// AnnotationLayer(공 애니메이션 자체)와 PlayerNode(병합된 체인에서 받는
-// 선수의 도착 시점을 그 구간 타이밍에 맞추는 계산, 2026-09-09)가 공유한다.
+// 체인 전체 길이는 chainBallDuration()으로 계산한다 — 직접 곱하지 말 것.
 export const BALL_SEGMENT_DURATION = 0.55
+
+/**
+ * 드리블(carry) 체인의 공이 이동하는 시간(초). 공을 몰고 가는 선수의 국면 전환
+ * 모프(store의 PHASE_TRANSITION_MS)와 반드시 같아야 둘이 함께 움직인다 —
+ * lib이 store를 import하지 않도록 값을 여기 따로 두고, 두 값이 어긋나지
+ * 않는지는 annotations.test.ts가 검사한다.
+ */
+export const CARRY_BALL_DURATION = 0.6
+
+/**
+ * 패스 체인 공 애니메이션의 총 소요 시간(초) — "패스 한 번당 BALL_SEGMENT_DURATION".
+ *
+ * 반드시 화살표 개수로 세야 한다. chainSamplePoints는 곡선(curved) 화살표를
+ * 베지어 8점으로 샘플링하므로, 점 개수로 세면 곡선 패스 하나가 직선 패스
+ * 8개만큼 느려진다(2026-09-10 — 비야 프리셋의 감아차기 슛이 시점 자동재생
+ * 간격 1.8초 안에 골대까지 못 가고 잘리던 원인). 직선만 있는 체인에서는
+ * 점 개수 - 1 == 화살표 개수라 기존 동작과 완전히 같다.
+ */
+export function chainBallDuration(chain: { curved?: boolean; carry?: boolean }[]): number {
+  // 전 구간이 드리블이면 공은 선수와 "같이" 가야 하므로 모프와 같은 시간에 끝낸다
+  // — 화살표 개수로 세면(메시의 캐리 두 구간 = 1.1초) 공이 선수보다 느려진다
+  // (2026-09-10 사용자 리포트 "지금 공이 좀 더 느리다").
+  if (chain.length > 0 && chain.every((a) => a.carry === true)) return CARRY_BALL_DURATION
+  return BALL_SEGMENT_DURATION * Math.max(chain.length, 1)
+}
 
 /** 이 거리(피치 좌표 단위) 이내면 "같은 지점"으로 본다 — 패스 체인 연결
  * 판정과 PlayerNode의 "이 선수 자리에서 시작하는 run 화살표" 판정이 공유. */

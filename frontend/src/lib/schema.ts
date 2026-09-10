@@ -11,12 +11,16 @@ const pointSchema = z.object({
 
 const playerPositionSchema = pointSchema.extend({ playerId: z.string() })
 
-const annotationSchema = z.object({
+// export는 테스트용 — zod는 모르는 키를 조용히 버리므로(strip), carry 같은
+// 선택 필드가 스키마에 실제로 있는지 단위 테스트로 못 박아 둔다.
+export const annotationSchema = z.object({
   id: z.string(),
   type: z.enum(['run', 'pass']),
   from: pointSchema,
   to: pointSchema,
   curved: z.boolean().optional(),
+  // 드리블/운반 — 공이 선수의 국면 전환 모프를 기다리지 않고 같이 출발한다.
+  carry: z.boolean().optional(),
 })
 
 const playerSchema = z.object({

@@ -36,6 +36,8 @@ class AnnotationIn(BaseModel):
     from_: Point = Field(alias="from")
     to: Point
     curved: Optional[bool] = None
+    # 드리블/운반 — 공이 선수와 함께 출발한다(프론트 AnnotationLayer, 2026-09-10)
+    carry: Optional[bool] = None
 
 
 class MatchInfo(BaseModel):

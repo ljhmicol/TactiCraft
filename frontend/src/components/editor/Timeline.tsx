@@ -1,16 +1,15 @@
-import { ChevronLeft, ChevronRight, Combine, Plus, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Combine, Maximize2, Minimize2, Plus, X } from 'lucide-react'
 import { useEffect, useState, type MouseEvent } from 'react'
 
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { axisMinuteAt, axisRatio, clusterByAxis, formatMinute, FULL_AXIS, timelineAxis } from '@/lib/timelineAxis'
 import { useAnalysisStore } from '@/store/analysisStore'
 import type { ChangingPoint } from '@/types/analysis'
 
-// 경기 시간축 범위 — 연장전까지 감안해 120분까지 그린다(2026-09-09, "타임라인이
-// 나는 시간대도 있어야 할 것 같아" 요청으로 minute 필드 + 시간축 바 추가).
-const AXIS_MAX_MINUTE = 120
-const AXIS_TICKS = [0, 45, 90, 120]
-const AXIS_LINES = [45, 90] // 전반/후반 종료선
+// 축 범위·눈금은 lib/timelineAxis가 정한다 — 보통은 0~120분(2026-09-09,
+// "타임라인이 나는 시간대도 있어야 할 것 같아" 요청)이지만, 시점들이 좁은
+// 구간에 몰려 있으면 그 구간으로 확대한다(2026-09-10).
 
 // PhaseTabs의 국면 자동재생(TO-DO 2번)과 같은 간격 — 모프(600ms)가 끝난 뒤에도
 // 잠깐 눈에 보일 정도로(2026-09-09, "타임라인이 자동재생 되게 해줘" 요청).
@@ -23,9 +22,9 @@ const AUTO_PLAY_INTERVAL_MS = 1800
  * 피치가 그 시점의 스냅샷을 보여주고(드래그·화살표·코멘트까지 그대로 편집
  * 가능), 국면 탭을 누르면 다시 평소 국면 보기로 돌아간다(analysisStore.switchPhase).
  *
- * minute이 있는 포인트는 0~120분 시간축 위에 실제 위치로 표시되고, 없는
- * 포인트는 그 아래 "시간 미정" 칩으로 따로 모아 보여준다 — 시간을 몰라도
- * 포인트 자체는 만들 수 있어야 하기 때문(구버전 데이터에도 minute이 없다).
+ * minute이 있는 포인트는 시간축 위에 실제 위치로 표시되고, 없는 포인트는 그
+ * 아래 "시간 미정" 칩으로 따로 모아 보여준다 — 시간을 몰라도 포인트 자체는
+ * 만들 수 있어야 하기 때문(구버전 데이터에도 minute이 없다).
  */
 export function Timeline() {
   const changingPoints = useAnalysisStore((s) => s.analysis?.changingPoints ?? [])
@@ -48,6 +47,13 @@ export function Timeline() {
 
   const timed = changingPoints.filter((cp) => cp.minute != null)
   const untimed = changingPoints.filter((cp) => cp.minute == null)
+  // 좁은 구간이면 자동으로 확대하되, 경기 전체에서 어디쯤인지 보고 싶을 때를
+  // 위해 사용자가 0~120분 전체 축으로 되돌릴 수 있다(2026-09-10 요청).
+  const [showFullAxis, setShowFullAxis] = useState(false)
+  const autoAxis = timelineAxis(timed.map((cp) => cp.minute as number))
+  const axis = showFullAxis ? FULL_AXIS : autoAxis
+  // 점(12px)이 트랙(약 380px)에서 차지하는 비율 — 이보다 가까우면 겹쳐 보인다.
+  const clusters = clusterByAxis(axis, timed, 3.2)
 
   // 타임라인 자동재생 — 실제 경기에서 패스가 이어지듯 시점을 순서대로(배열
   // 순서 = order_index) 넘긴다. PhaseTabs의 국면 자동재생과 같은 패턴:
@@ -113,6 +119,27 @@ export function Timeline() {
     selectChangingPoint(cp.id === selectedChangingPointId ? null : cp.id)
   }
 
+  /**
+   * 겹쳐서 한 덩어리로 그려진 점을 누르면 그 안의 시점을 차례로 넘어간다 —
+   * 축소 상태에서도 덩어리 안의 모든 시점에 닿을 수 있어야 하기 때문이다.
+   * 병합 모드에서는 덩어리 전체를 한 번에 체크/해제한다.
+   */
+  const handleClusterClick = (items: ChangingPoint[]) => {
+    if (items.length === 1) {
+      toggleSelect(items[0])
+      return
+    }
+    if (mergeMode) {
+      const allChecked = items.every((cp) => mergeSelected.includes(cp.id))
+      items.forEach((cp) => {
+        if (mergeSelected.includes(cp.id) === allChecked) toggleMergeCandidate(cp.id)
+      })
+      return
+    }
+    const current = items.findIndex((cp) => cp.id === selectedChangingPointId)
+    selectChangingPoint(items[(current + 1) % items.length].id)
+  }
+
   // 시간축 바를 직접 클릭하면 그 위치의 분(minute)으로 새 시점을 만든다 — 점(버튼)을
   // 클릭한 경우는 선택 동작이라 여기서 무시한다(2026-09-09, "타임라인바에서 선택을
   // 하면 타임라인을 추가할 수 있게도 만들어줘" 요청).
@@ -121,8 +148,7 @@ export function Timeline() {
     if ((e.target as HTMLElement).closest('button')) return
     const rect = e.currentTarget.getBoundingClientRect()
     const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
-    const minute = Math.round(ratio * AXIS_MAX_MINUTE)
-    addChangingPoint(`시점 ${changingPoints.length + 1}`, minute)
+    addChangingPoint(`시점 ${changingPoints.length + 1}`, axisMinuteAt(axis, ratio))
   }
 
   return (
@@ -154,6 +180,21 @@ export function Timeline() {
             >
               <Combine className="h-3 w-3" />
               병합
+            </button>
+          )}
+          {autoAxis.zoomed && (
+            <button
+              type="button"
+              onClick={() => setShowFullAxis((v) => !v)}
+              title={
+                showFullAxis
+                  ? '시점이 몰려 있는 구간만 확대해서 봅니다'
+                  : '0~120분 경기 전체 시간축으로 봅니다'
+              }
+              className="flex items-center gap-1 rounded-full bg-secondary px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            >
+              {showFullAxis ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}
+              {showFullAxis ? '구간 확대' : '전체 보기'}
             </button>
           )}
           <button
@@ -206,42 +247,60 @@ export function Timeline() {
           title="클릭하면 그 시간에 새 시점을 추가합니다"
         >
           <div className="h-1.5 rounded-full bg-muted" />
-          {AXIS_LINES.map((m) => (
+          {axis.lines.map((m) => (
             <div
               key={m}
               className="absolute top-1/2 h-2.5 w-px -translate-y-1/2 bg-border"
-              style={{ left: `${(m / AXIS_MAX_MINUTE) * 100}%` }}
+              style={{ left: `${axisRatio(axis, m)}%` }}
             />
           ))}
-          {AXIS_TICKS.map((m) => (
+          {axis.ticks.map((m, i) => (
             <span
-              key={m}
+              key={`${m}-${i}`}
               className="absolute top-full mt-1 -translate-x-1/2 text-[10px] text-muted-foreground"
-              style={{ left: `${(m / AXIS_MAX_MINUTE) * 100}%` }}
+              style={{ left: `${axisRatio(axis, m)}%` }}
             >
-              {m}&apos;
+              {formatMinute(m)}
             </span>
           ))}
-          {timed.map((cp) => (
-            <button
-              key={cp.id}
-              type="button"
-              disabled={isPlaying}
-              title={`${cp.minute}' — ${cp.label}`}
-              onClick={() => toggleSelect(cp)}
-              style={{ left: `${Math.min(100, ((cp.minute ?? 0) / AXIS_MAX_MINUTE) * 100)}%` }}
-              className={cn(
-                'absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 transition-colors',
-                mergeMode
-                  ? mergeSelected.includes(cp.id)
-                    ? 'border-amber-500 bg-amber-500'
-                    : 'border-muted-foreground bg-background hover:border-foreground'
-                  : cp.id === selectedChangingPointId
-                    ? 'border-primary bg-primary'
-                    : 'border-muted-foreground bg-background hover:border-foreground',
-              )}
-            />
-          ))}
+          {clusters.map((cluster) => {
+            const single = cluster.items.length === 1
+            const active = cluster.items.some((cp) =>
+              mergeMode ? mergeSelected.includes(cp.id) : cp.id === selectedChangingPointId,
+            )
+            return (
+              <button
+                key={cluster.items.map((cp) => cp.id).join('-')}
+                type="button"
+                disabled={isPlaying}
+                title={
+                  single
+                    ? `${formatMinute(cluster.items[0].minute as number)} — ${cluster.items[0].label}`
+                    : [
+                        `시점 ${cluster.items.length}개`,
+                        ...cluster.items.map(
+                          (cp) => `${formatMinute(cp.minute as number)} — ${cp.label}`,
+                        ),
+                      ].join('\n')
+                }
+                onClick={() => handleClusterClick(cluster.items)}
+                style={{ left: `${cluster.ratio}%` }}
+                className={cn(
+                  'absolute top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 transition-colors',
+                  single ? 'h-3 w-3' : 'h-4 min-w-4 px-0.5 text-[9px] font-semibold leading-none',
+                  mergeMode
+                    ? active
+                      ? 'border-amber-500 bg-amber-500 text-white'
+                      : 'border-muted-foreground bg-background hover:border-foreground'
+                    : active
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-muted-foreground bg-background text-muted-foreground hover:border-foreground',
+                )}
+              >
+                {!single && cluster.items.length}
+              </button>
+            )
+          })}
         </div>
       </div>
 
@@ -278,6 +337,8 @@ export function Timeline() {
             type="number"
             min={0}
             max={120}
+            // 명장면 프리셋처럼 초 단위로 쪼갠 시점은 분이 소수(68.52)다.
+            step="any"
             value={selected.minute ?? ''}
             placeholder="분"
             disabled={isPlaying || isReplaying}

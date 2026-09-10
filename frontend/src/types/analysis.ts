@@ -38,6 +38,15 @@ export interface Annotation {
   from: Point
   to: Point
   curved?: boolean // 곡선 화살표(오버랩 런 등) — 없으면 직선(TO-DO, 2026-09-07)
+  /**
+   * 드리블/운반 구간 표시(2026-09-10). pass는 "공만 A에서 B로 간다"라서 공이
+   * 받는 선수의 국면 전환 모프(PHASE_TRANSITION_MS)를 기다렸다가 출발하는데,
+   * 드리블은 공을 몰고 가는 선수 자신이 함께 이동하므로 그 대기가 있으면
+   * "선수가 먼저 도착한 뒤 자기한테 패스하는" 모양이 된다. 이 플래그가 켜진
+   * 화살표로 시작하는 체인은 공이 기다리지 않고 선수와 같이 출발한다.
+   * run과는 다르다 — run은 공 없이 선수만 반복해서 움직이는 오프더볼 패턴이다.
+   */
+  carry?: boolean
 }
 
 export interface PhaseData {

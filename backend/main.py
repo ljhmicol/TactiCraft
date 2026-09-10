@@ -32,6 +32,7 @@ def _ensure_column(table: str, column: str, ddl_type: str) -> None:
 
 _ensure_column("players", "tactical_role", "VARCHAR")
 _ensure_column("annotations", "curved", "BOOLEAN")
+_ensure_column("annotations", "carry", "BOOLEAN")
 _ensure_column("changing_points", "minute", "FLOAT")
 _ensure_column("analyses", "user_id", "INTEGER REFERENCES users(id)")
 _ensure_column("analyses", "thumbnail", "TEXT")
