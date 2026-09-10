@@ -5,6 +5,20 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TactiCore</title>
+    <!-- Hallmark 감사(2026-09-11) 후 폰트 페어링 도입 — 본문은 IBM Plex Sans KR
+         (한글 전체 지원). 헤딩은 원래 IBM Plex Mono(라틴 전용)로 시도했으나,
+         이 앱은 한국어 단일 언어라 헤딩 대부분이 "단어 스페이스 낀 한글
+         문구"다 — Mono가 커버 못 하는 한글은 Sans KR로 글자 단위 폴백되는데,
+         스페이스(U+0020) 자체는 Mono의 넓은 고정폭 그대로 남아 한글 단어
+         사이 간격이 유독 벌어져 보이는 문제를 실제 화면에서 확인했다.
+         대신 한글까지 포함하는 진짜 monospace 폰트 Nanum Gothic Coding으로
+         교체 — 폰트 하나가 라틴·한글 전부 같은 고정폭이라 이 문제가 없다. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Nanum+Gothic+Coding:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <div id="root"></div>

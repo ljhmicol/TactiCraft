@@ -26,7 +26,7 @@ export function CommunityPage() {
 
   return (
     <div className="p-6">
-      <h1 className="mb-1 text-lg font-semibold text-foreground">커뮤니티</h1>
+      <h1 className="mb-1 text-2xl font-semibold text-foreground">커뮤니티</h1>
       <p className="mb-4 text-sm text-muted-foreground">
         다른 사람이 공유한 분석을 둘러보고 댓글을 남겨보세요. 로그인 없이도 볼 수 있습니다.
       </p>

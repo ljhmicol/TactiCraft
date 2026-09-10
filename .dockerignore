@@ -26,3 +26,10 @@ data/
 
 .vscode/
 .idea/
+
+# 에이전트 스킬(예: Hallmark) — 배포 이미지와 무관한 개인 Claude Code 도구
+# 설정. .claude/skills/*가 심볼릭 링크라 .venv-linux와 같은 이유로도 빌드를
+# 깨뜨릴 수 있다.
+.agents/
+.claude/
+skills-lock.json

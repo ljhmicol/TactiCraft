@@ -4,34 +4,39 @@
 
 @layer base {
   :root {
-    /* 2단계 §12.4 — 라이트 모드 단일, slate 기반 + emerald 강조 */
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* 2단계 §12.4 갱신(2026-09-11, Hallmark 감사 결과 반영) — 라이트 모드
+     * 단일 → 다크(테크니컬 톤)로 전환. 원래 결정의 취지("강조색을 피치의
+     * 초록과 같은 계열로 묶는다")는 그대로 유지한다 — --primary를 emerald
+     * 계열에서 벗어나지 않되 어두운 배경 위에서 선명한 "터미널 그린"으로
+     * 조정했다. 자세한 배경은 §12.4 문서 참조.
+     */
+    --background: 224 24% 7%;
+    --foreground: 210 20% 96%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 224 22% 10%;
+    --card-foreground: 210 20% 96%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 224 22% 10%;
+    --popover-foreground: 210 20% 96%;
 
-    --primary: 158 64% 32%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 152 69% 45%;
+    --primary-foreground: 224 30% 8%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 222 20% 14%;
+    --secondary-foreground: 210 20% 90%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 222 18% 13%;
+    --muted-foreground: 215 15% 60%;
 
-    --accent: 152 76% 90%;
-    --accent-foreground: 158 64% 24%;
+    --accent: 152 45% 14%;
+    --accent-foreground: 152 70% 65%;
 
-    --destructive: 350 89% 46%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 350 85% 58%;
+    --destructive-foreground: 210 20% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 158 64% 32%;
+    --border: 222 18% 18%;
+    --input: 222 18% 18%;
+    --ring: 152 69% 45%;
 
     --radius: 0.5rem;
   }
@@ -42,7 +47,15 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
     font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
+  /* 헤딩은 display 폰트(IBM Plex Mono, 한글은 Plex Sans KR로 자동 폴백) —
+   * Hallmark 감사에서 지적된 "타이포그래피 위계 없음"을 전역 한 곳에서
+   * 해결한다. 개별 페이지마다 className을 안 건드려도 모든 h1-h3에 적용된다. */
+  h1,
+  h2,
+  h3 {
+    @apply font-display;
   }
 }

@@ -60,7 +60,7 @@ export function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-sm px-6 py-16">
-      <h1 className="mb-1 text-lg font-semibold text-foreground">내 정보</h1>
+      <h1 className="mb-1 text-2xl font-semibold text-foreground">내 정보</h1>
       <p className="mb-6 text-sm text-muted-foreground">{user.email}</p>
 
       <section className="mb-8">

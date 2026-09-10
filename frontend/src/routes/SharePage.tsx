@@ -91,7 +91,7 @@ export function SharePage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">읽기 전용 공유 링크</p>
-          <h1 className="text-xl font-semibold text-foreground">
+          <h1 className="text-2xl font-semibold text-foreground">
             {analysis.match.matchName || `${analysis.match.homeTeam} vs ${analysis.match.awayTeam}`}
           </h1>
           <p className="text-sm text-muted-foreground">

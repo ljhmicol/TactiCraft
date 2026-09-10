@@ -73,12 +73,23 @@ export const SharePngCard = forwardRef<HTMLDivElement, SharePngCardProps>(functi
           display: 'flex',
           flexDirection: 'column',
           gap: 24,
-          fontFamily: 'system-ui, sans-serif',
+          // Hallmark 감사(2026-09-11) — 시스템 기본 폰트 대신 앱 전역과 같은
+          // 페어링. 제목만 display(모노) 폰트, 나머지는 이 wrapper의 본문 폰트.
+          fontFamily: '"IBM Plex Sans KR", ui-sans-serif, system-ui, sans-serif',
           boxSizing: 'border-box',
         }}
       >
         <div>
-          <div style={{ fontSize: 48, fontWeight: 700, color: SHARE_CARD_COLORS.title }}>
+          <div
+            style={{
+              fontSize: 48,
+              fontWeight: 700,
+              color: SHARE_CARD_COLORS.title,
+              // 한글 포함 진짜 monospace(index.html 주석 참조) — 라틴 전용 폰트 +
+              // 한글 폴백 조합은 단어 사이 스페이스 폭이 어긋나 보였다.
+              fontFamily: '"Nanum Gothic Coding", monospace',
+            }}
+          >
             {analysis.match.matchName || `${analysis.match.homeTeam} vs ${analysis.match.awayTeam}`}
           </div>
           <div style={{ fontSize: 28, color: SHARE_CARD_COLORS.subtitle, marginTop: 8 }}>

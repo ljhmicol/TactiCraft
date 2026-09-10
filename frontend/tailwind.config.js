@@ -51,6 +51,16 @@ export default {
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
       },
+      // 폰트 페어링(Hallmark 감사, 2026-09-11) — display는 헤딩(h1-h3, index.css
+      // @layer base)에, sans는 본문 기본값. display는 라틴 전용 IBM Plex Mono +
+      // 한글 폴백 조합을 처음 썼다가, 한글 단어 사이 스페이스가 Mono의 넓은
+      // 고정폭 그대로 남아 간격이 벌어져 보이는 문제를 화면에서 확인하고
+      // Nanum Gothic Coding(한글까지 포함하는 진짜 monospace, 폴백 경계 없음)
+      // 으로 교체했다 — index.html 주석 참조.
+      fontFamily: {
+        display: ['"Nanum Gothic Coding"', 'ui-monospace', 'monospace'],
+        sans: ['"IBM Plex Sans KR"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      },
     },
   },
   plugins: [require('tailwindcss-animate')],

@@ -22,6 +22,12 @@ frontend/.vite/
 .env.local
 *.env
 
+# --- 에이전트 스킬(예: Hallmark, `npx skills add`) — 개인 Claude Code 도구 설정이라
+# 저장소에 안 넣는다. .claude/scheduled_tasks.lock도 같은 이유(런타임 락 파일). ---
+.agents/
+.claude/
+skills-lock.json
+
 # --- 편집기 / OS ---
 .vscode/
 .idea/

@@ -30,7 +30,7 @@ export function VersusPage() {
   if (!isServerUp) {
     return (
       <div className="p-6">
-        <h1 className="mb-4 text-lg font-semibold text-foreground">전술 대결</h1>
+        <h1 className="mb-4 text-2xl font-semibold text-foreground">전술 대결</h1>
         <div className="rounded-lg border border-border bg-muted p-6 text-center text-sm text-muted-foreground">
           백엔드 서버가 꺼져 있어 저장된 분석을 불러올 수 없습니다.
           <br />
@@ -45,7 +45,7 @@ export function VersusPage() {
   if (!analyses || analyses.length < 2) {
     return (
       <div className="p-6">
-        <h1 className="mb-4 text-lg font-semibold text-foreground">전술 대결</h1>
+        <h1 className="mb-4 text-2xl font-semibold text-foreground">전술 대결</h1>
         <p className="text-sm text-muted-foreground">
           대결시키려면 저장된 분석이 2개 이상 필요합니다. 현재 {analyses?.length ?? 0}개 저장됨.
         </p>
@@ -57,7 +57,7 @@ export function VersusPage() {
 
   return (
     <div className="flex flex-col gap-4 p-6">
-      <h1 className="text-lg font-semibold text-foreground">전술 대결</h1>
+      <h1 className="text-2xl font-semibold text-foreground">전술 대결</h1>
 
       <div className="flex flex-wrap items-end gap-4">
         <div className="flex flex-col gap-1">

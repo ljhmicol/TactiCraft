@@ -59,7 +59,7 @@ export function AnalysesPage() {
 
   return (
     <div className="p-6">
-      <h1 className="mb-4 text-lg font-semibold text-foreground">저장된 분석</h1>
+      <h1 className="mb-4 text-2xl font-semibold text-foreground">저장된 분석</h1>
 
       {isChecking || isCheckingAuth ? (
         <p className="text-muted-foreground">서버 확인 중…</p>

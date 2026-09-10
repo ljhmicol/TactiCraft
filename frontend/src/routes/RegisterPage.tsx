@@ -38,7 +38,7 @@ export function RegisterPage() {
 
   return (
     <div className="mx-auto max-w-sm px-6 py-16">
-      <h1 className="mb-6 text-lg font-semibold text-foreground">회원가입</h1>
+      <h1 className="mb-6 text-2xl font-semibold text-foreground">회원가입</h1>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="email">이메일</Label>

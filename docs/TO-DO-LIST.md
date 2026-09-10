@@ -19,13 +19,25 @@
 
 ## 체크리스트
 
-*(현재 대기 중인 항목 없음 — 1~28번 전부 사용자 확인까지 끝나 `TO-DO-ARCHIVE.md`로 이관됐다. 새 아이디어는 이 목록에 먼저 기록한 뒤 구현을 논의한다.)*
+- [O] **29. UI 리디자인 (Hallmark 감사 기반)** — 중 · 색·폰트 1차 완료, 내비게이션은 다음 단계
 
-2026-09-01부터 순서대로 진행해 전 항목을 완료했다: 권장 순서(14 → 16, 이후 2/3/4/5/10) 소진 후 20·21·22(16번 직후 끼어듦) → 8(공유 링크, 로그인 없이 가능한 것부터) → 25/26/27(로그인 착수 전 브레인스토밍) → 11(로그인)·회원 탈퇴·28(전술 대결 개선)·3(감독 프리셋)·10(Docker 배포)·7(목록 고도화)·9(StatsBomb 실제 경기 프리셋, 2026-09-10 확인)·12(커뮤니티/댓글, 2026-09-10 확인) 순으로 마무리. 각 항목의 구현 배경·검증 내역은 `TO-DO-ARCHIVE.md`에 있다.
+1~28번은 2026-09-01부터 순서대로 진행해 전부 완료(권장 순서 14 → 16 → 2/3/4/5/10 → 20·21·22 → 8 → 25/26/27 → 11·회원 탈퇴·28·3·10·7·9·12), `TO-DO-ARCHIVE.md`에 있다. 29번은 그 이후(2026-09-11) 사용자가 [Hallmark](https://www.usehallmark.com/)라는 외부 디자인 스킬을 어떻게 쓰면 좋을지 물으며 시작됐다.
 
 ## 항목 상세
 
-*(현재 이 문서에서 진행 중인 항목이 없어 비어 있다. 새 항목을 착수하면 여기 상세 내용을 기록한다.)*
+### 29. UI 리디자인 (Hallmark 감사 기반)
+
+- **내용**: "AI가 만든 티 나는 UI"를 잡아내는 Hallmark 스킬(`npx skills add nutlope/hallmark`, 프로젝트 로컬 `.agents/skills/`·`.claude/skills/`에 설치, `.gitignore`/`.dockerignore` 처리)로 TactiCore를 감사(audit)한 뒤, 지적된 항목을 실제로 고친 작업.
+- **감사 결과(2026-09-10, 코드 인용 기반)**: critical 3(순백 배경 — `index.css`가 shadcn 기본값 그대로, 폰트 페어링 전무 — 앱 전체에 `font-family` 지정이 한 곳도 없음, AI 내비게이션 지문 — `App.tsx`의 워드마크 좌측+인라인 링크+CTA 우측 패턴) / major 2(`tabs.tsx`의 `transition-all`, 앱 전체에서 가장 큰 헤딩이 24px뿐인 타이포 위계 없음) / minor 1(프리셋·커뮤니티 카드 그리드 3곳이 같은 모양).
+- **착수 전 확인**: 색·폰트(전역 적용, 리스크 낮음) 먼저 → 내비게이션(구조 변경, 리스크 큼)은 다음 단계로 순서를 제안해 승인받음. 톤은 AskUserQuestion으로 세 가지(테크니컬/에디토리얼/유틸리테리안) 프리뷰를 제시해 **테크니컬**(Bloomberg Terminal/Linear 데이터 화면 느낌) 선택받음.
+- **문서화된 기존 결정과의 충돌 확인**: `2단계_시스템_설계서.md §12.4`에 "라이트 모드 단일, 강조색은 피치의 초록과 같은 계열로 묶는다"는 의도적 결정이 있었다 — 다크 전환이 이를 뒤집는다는 걸 짚고 넘어간 뒤, "악센트는 계속 초록 계열(터미널 그린) 유지"로 원래 취지를 살리는 절충안을 제시·진행. §12.4·§12.5(공유 카드) 문서를 새 값으로 갱신하고 예전 라이트 모드 표는 취소선으로 히스토리로 남겼다.
+- **구현**:
+  - **색**: `frontend/src/index.css`의 HSL 토큰을 다크로 전환(배경 `224 24% 7%`, 카드는 배경보다 살짝 밝게 — 그림자 대신 명도로 입체감, `--primary`는 emerald 계열 유지하되 어두운 배경에서 선명한 `152 69% 45%`). **`PITCH_COLORS`/`PLAYER_COLORS`/`SHARE_CARD_COLORS`(`lib/theme.ts`)는 전혀 안 건드림** — 이 상수들의 독스트링이 "색은 장식이 아니라 데이터, 즉흥적으로 안 바꾼다"고 명시하고 있고, 애초에 피치·선수·공유카드는 라이트/다크 전환과 무관하게 고정 색이라 손댈 이유도 없었다(공유 카드는 원래부터 다크였다 — 2026-09-11 문서 갱신에 "이번 전환이 앱을 오히려 그 카드 톤에 맞춘 셈"이라고 기록).
+  - **폰트**: 처음엔 헤딩=IBM Plex Mono(라틴 전용)+한글은 IBM Plex Sans KR로 폴백하는 조합을 넣었는데, Playwright 스크린샷으로 실제 화면(`/new`의 "감독 스타일로 시작하기")을 보니 **스페이스(한글 단어 사이 띄어쓰기)가 Mono의 넓은 고정폭 그대로 남아 간격이 벌어져 보이는 버그**를 발견 — 한글까지 포함하는 진짜 monospace 폰트 **Nanum Gothic Coding**으로 교체해 해결(폴백 경계 자체가 없어짐). 본문은 IBM Plex Sans KR. `frontend/index.html`에 Google Fonts 링크 추가, `tailwind.config.js`에 `fontFamily.display`/`.sans`, `index.css` `@layer base`에 `h1,h2,h3 { @apply font-display }`(페이지마다 className 안 건드려도 전역 적용). 공유 카드 3종(`ShareCard`/`SharePngCard`/`AnimatedShareCard`)의 하드코딩된 `system-ui, sans-serif`도 새 페어링으로 교체(색은 유지).
+  - **major 수정**: `components/ui/tabs.tsx`의 `transition-all` → `transition-colors`. 저장 목록·커뮤니티·프로필·로그인/회원가입·전술대결·공유 페이지 등 `text-lg`/`text-xl` h1 9곳을 `text-2xl`로 통일해 타이포 위계 부여.
+  - **다음 단계로 미룬 것**: 내비게이션(App.tsx의 AI 내비 지문)과 카드 그리드 다양화(minor)는 이번 패스에 포함 안 함 — 색·폰트가 전역에 자리 잡은 뒤에 구조를 다시 짜는 게 순서라고 판단.
+- **검증**: `tsc -b`/`npm run lint`(0 errors)/`vitest run`(174 tests, 회귀 없음)/`npm run build` 통과. Playwright로 `/new`·`/community`·`/login`·에디터(피치 포함) 스크린샷 확인 — 다크 배경·새 폰트 실제 적용 확인(computed style로 `body` 배경색·`h1` font-family 직접 조회), 피치는 여전히 고유 진한 초록으로 렌더링(다크 UI 위에서 오히려 더 도드라짐), 폰트 교체 후 한글 헤딩 간격 정상 확인, 콘솔 에러 없음.
+- **미확인**: iOS Safari·Android Chrome 실기기에서 다크 배경 대비·Nanum Gothic Coding 렌더링은 사람이 확인해야 한다(6단계 §10과 같은 범주) — 이번 검증은 headless Chromium(Playwright) 기준.
 
 ## 기각 기록
 
