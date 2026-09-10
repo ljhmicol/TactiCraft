@@ -256,6 +256,30 @@ class UserRegister(BaseModel):
         return v
 
 
+class UsernameChange(BaseModel):
+    """내 정보 페이지의 닉네임(사용자명) 변경(TO-DO, 2026-09-11)."""
+
+    username: str = Field(pattern=_USERNAME_RE)
+
+
+class PasswordChange(BaseModel):
+    """내 정보 페이지의 비밀번호 변경. 현재 비밀번호를 같이 받는 이유는
+    세션 쿠키를 탈취당한 경우 그것만으로 비밀번호를 바꿔 계정을 통째로
+    가로채는 걸 막기 위해서다 — 로그인 자체와 같은 검증을 한 번 더 요구한다.
+    """
+
+    current_password: str
+    new_password: str = Field(min_length=8, max_length=100)
+
+    @field_validator("new_password")
+    @classmethod
+    def _check_password_bytes(cls, v: str) -> str:
+        # UserRegister.password와 같은 이유(위 주석 참조) — bcrypt 72바이트 한도.
+        if len(v.encode("utf-8")) > 72:
+            raise ValueError("비밀번호는 72바이트(한글 약 24자)를 넘을 수 없습니다")
+        return v
+
+
 class UserLogin(BaseModel):
     email: str
     password: str

@@ -154,6 +154,20 @@ export function fetchCurrentUser(): Promise<CurrentUser> {
   return apiFetch('/auth/me')
 }
 
+/** 내 정보 페이지의 닉네임 변경. 이미 쓰는 사용자명이면 400 ApiError. */
+export function changeUsername(username: string): Promise<CurrentUser> {
+  return apiFetch('/auth/me/username', { method: 'PATCH', body: JSON.stringify({ username }) })
+}
+
+/** 내 정보 페이지의 비밀번호 변경. 현재 비밀번호가 틀리면 400 ApiError. 성공하면
+ * 서버가 이 브라우저를 뺀 다른 모든 세션을 끊는다(백엔드 change_password 참조). */
+export function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  return apiFetch('/auth/me/password', {
+    method: 'PATCH',
+    body: JSON.stringify({ currentPassword, newPassword }),
+  })
+}
+
 // 댓글(TO-DO 12번) — 분석 전체 하나에 붙는 평평한 목록. 읽기는 공유 링크
 // 방문자 누구나(비로그인 포함), 작성은 로그인 필수(백엔드가 401로 막는다).
 export interface Comment {

@@ -9,6 +9,7 @@ import { CommunityPage } from '@/routes/CommunityPage'
 import { EditorPage } from '@/routes/EditorPage'
 import { LoginPage } from '@/routes/LoginPage'
 import { NewAnalysisPage } from '@/routes/NewAnalysisPage'
+import { ProfilePage } from '@/routes/ProfilePage'
 import { RegisterPage } from '@/routes/RegisterPage'
 import { SharePage } from '@/routes/SharePage'
 import { VersusPage } from '@/routes/VersusPage'
@@ -51,7 +52,9 @@ function AuthNav() {
 
   return (
     <>
-      <span className="text-muted-foreground">{user?.email}</span>
+      <Link to="/profile" className="text-muted-foreground hover:text-foreground" title="내 정보">
+        {user?.email}
+      </Link>
       <button
         type="button"
         onClick={() => logoutMutation.mutate()}
@@ -122,6 +125,7 @@ function App() {
           <Route path="/versus" element={<VersusPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>

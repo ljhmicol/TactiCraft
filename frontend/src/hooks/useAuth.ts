@@ -1,6 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { fetchCurrentUser, loginUser, logoutUser, registerUser, withdrawUser } from '@/lib/api'
+import {
+  changePassword,
+  changeUsername,
+  fetchCurrentUser,
+  loginUser,
+  logoutUser,
+  registerUser,
+  withdrawUser,
+} from '@/lib/api'
 
 const ME_KEY = ['auth', 'me']
 
@@ -55,6 +63,26 @@ export function useLogout() {
       queryClient.invalidateQueries({ queryKey: ME_KEY })
       queryClient.invalidateQueries({ queryKey: ['analyses'] })
     },
+  })
+}
+
+/** 내 정보 페이지(ProfilePage)의 닉네임 변경 — 헤더의 표시명도 즉시 갱신된다. */
+export function useChangeUsername() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (username: string) => changeUsername(username),
+    onSuccess: (user) => {
+      queryClient.setQueryData(ME_KEY, user)
+    },
+  })
+}
+
+/** 내 정보 페이지의 비밀번호 변경. 성공하면 이 탭은 로그인 상태를 유지하지만
+ * (백엔드가 현재 세션은 지우지 않는다) 다른 기기의 세션은 서버에서 끊긴다. */
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: ({ currentPassword, newPassword }: { currentPassword: string; newPassword: string }) =>
+      changePassword(currentPassword, newPassword),
   })
 }
 
