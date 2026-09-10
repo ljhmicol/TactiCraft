@@ -10,7 +10,7 @@ import models  # noqa: F401  (create_all 전에 모델 등록이 필요)
 import schemas
 from config import PROJECT_ROOT, settings
 from database import Base, engine
-from routers import analyses, auth as auth_router, comments as comments_router
+from routers import analyses, auth as auth_router, comments as comments_router, community as community_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -38,6 +38,7 @@ _ensure_column("analyses", "user_id", "INTEGER REFERENCES users(id)")
 _ensure_column("analyses", "thumbnail", "TEXT")
 _ensure_column("analyses", "tags", "TEXT DEFAULT '[]'")
 _ensure_column("users", "username", "VARCHAR")
+_ensure_column("analyses", "is_public", "BOOLEAN DEFAULT 0")
 
 
 def _backfill_usernames() -> None:
@@ -75,13 +76,17 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    # PATCH는 커뮤니티 공개 토글(TO-DO 12번 후속, /analyses/:id/public)에서
+    # 처음 쓰였다 — 브라우저의 preflight(OPTIONS)가 이 목록에 없는 메서드는
+    # 거부해 "Failed to fetch"로 보인다(2026-09-10 Playwright 검증 중 발견).
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["*"],
 )
 
 app.include_router(analyses.router)
 app.include_router(auth_router.router)
 app.include_router(comments_router.router)
+app.include_router(community_router.router)
 
 
 @app.get("/api/health", response_model=schemas.HealthOut, tags=["health"])

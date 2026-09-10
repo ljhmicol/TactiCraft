@@ -81,6 +81,12 @@ class Analysis(Base):
     schema_version = Column(Integer, nullable=False, default=1)
     created_at = Column(String, nullable=False)
     updated_at = Column(String, nullable=False)
+    # 커뮤니티 공개 여부(TO-DO 12번 후속, 2026-09-10) — 기본 비공개.
+    # 사용자가 "작성자가 공유하기를 누른 것만" 공개 목록에 뜨는 opt-in 모델을
+    # 선택했다(전체 자동 공개는 기각) — 기존 저장분도 이 컬럼이 없던 시절엔
+    # 전부 비공개로 취급되도록 기본값 False로 마이그레이션한다
+    # (_ensure_column, curved/carry/username과 같은 패턴).
+    is_public = Column(Boolean, nullable=False, default=False)
 
     players = relationship(
         "Player",

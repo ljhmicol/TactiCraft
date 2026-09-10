@@ -95,6 +95,9 @@ export interface Analysis {
   // 노출 판정용) — 서버가 GET 시점에 계산해 채운다. 저장 페이로드에는
   // 의미가 없지만(백엔드가 무시함) 굳이 걷어내지 않는다.
   isOwner?: boolean
+  // 커뮤니티(/community) 공개 여부(TO-DO 12번 후속) — 전용 토글 API로만
+  // 바뀐다(setAnalysisPublic). 일반 저장(PUT)은 이 필드를 건드리지 않는다.
+  isPublic?: boolean
 }
 
 /** 목록 조회 전용 (좌표 없음) */
@@ -108,6 +111,24 @@ export interface AnalysisSummary {
   updatedAt: string
   tags: string[]
   thumbnail?: string
+  isPublic?: boolean
+}
+
+/** 커뮤니티(/community, TO-DO 12번 후속) 목록 카드 한 장 — AnalysisSummary에
+ * 작성자 표시명·댓글 수가 더해진다. 비공개 필드가 없는 대신(전부 공개 목록에
+ * 실린 것들이라) 누가·얼마나 활발히 논의됐는지가 핵심 정보다. */
+export interface CommunityAnalysis {
+  id: number
+  matchName: string
+  homeTeam: string
+  awayTeam: string
+  matchDate: string
+  competition?: string
+  updatedAt: string
+  tags: string[]
+  thumbnail?: string
+  ownerUsername: string
+  commentCount: number
 }
 
 // 시각화 계산용 타입

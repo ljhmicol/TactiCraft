@@ -5,6 +5,7 @@ import { BrowserRouter, Link, Route, Routes, useNavigate } from 'react-router-do
 import { useCurrentUser, useLogout, useWithdraw } from '@/hooks/useAuth'
 import { AnalysesPage } from '@/routes/AnalysesPage'
 import { AnalysisDetailPage } from '@/routes/AnalysisDetailPage'
+import { CommunityPage } from '@/routes/CommunityPage'
 import { EditorPage } from '@/routes/EditorPage'
 import { LoginPage } from '@/routes/LoginPage'
 import { NewAnalysisPage } from '@/routes/NewAnalysisPage'
@@ -102,6 +103,9 @@ function App() {
             <Link to="/analyses" className="hover:text-foreground">
               저장 목록
             </Link>
+            <Link to="/community" className="hover:text-foreground">
+              커뮤니티
+            </Link>
             <Link to="/versus" className="hover:text-foreground">
               전술 대결
             </Link>
@@ -113,6 +117,7 @@ function App() {
           <Route path="/new" element={<NewAnalysisPage />} />
           <Route path="/analyses" element={<AnalysesPage />} />
           <Route path="/analyses/:id" element={<AnalysisDetailPage />} />
+          <Route path="/community" element={<CommunityPage />} />
           <Route path="/share/:id" element={<SharePage />} />
           <Route path="/versus" element={<VersusPage />} />
           <Route path="/login" element={<LoginPage />} />

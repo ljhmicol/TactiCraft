@@ -8,7 +8,7 @@
 from datetime import datetime
 from typing import List, Optional
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 import models
@@ -263,6 +263,7 @@ def to_analysis_dict(row: models.Analysis) -> dict:
         "thumbnail": row.thumbnail,
         "created_at": row.created_at,
         "updated_at": row.updated_at,
+        "is_public": bool(row.is_public),
     }
 
 
@@ -302,3 +303,59 @@ def get_comment(db: Session, comment_id: int) -> Optional[models.Comment]:
 def delete_comment(db: Session, comment_id: int) -> None:
     db.query(models.Comment).filter(models.Comment.id == comment_id).delete()
     db.commit()
+
+
+# ---------------------------------------------------------------------------
+# 커뮤니티 공개(TO-DO 12번 후속)
+# ---------------------------------------------------------------------------
+
+
+def set_analysis_public(db: Session, analysis_id: int, is_public: bool) -> models.Analysis:
+    row = _load(db, analysis_id)
+    row.is_public = is_public
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def list_public_analyses(db: Session) -> List[dict]:
+    """공개(is_public=True) 분석을 최신순으로 — 작성자 표시명·댓글 수를
+    같이 계산해 카드에 바로 쓸 형태로 돌려준다. N+1을 피하려고 댓글 수는
+    분석 id 목록으로 한 번에 GROUP BY 집계한 뒤 파이썬에서 합친다(분석 수가
+    이 앱 규모에서 수백~수천 단위를 넘지 않을 것으로 보여, 별도 서브쿼리
+    조인보다 이 편이 읽기 쉽다).
+    """
+    rows = (
+        db.query(models.Analysis, models.User.username)
+        .join(models.User, models.Analysis.user_id == models.User.id)
+        .filter(models.Analysis.is_public.is_(True))
+        .order_by(models.Analysis.updated_at.desc())
+        .all()
+    )
+    analysis_ids = [row.id for row, _ in rows]
+    counts: dict[int, int] = {}
+    if analysis_ids:
+        count_rows = (
+            db.query(models.Comment.analysis_id, func.count(models.Comment.id))
+            .filter(models.Comment.analysis_id.in_(analysis_ids))
+            .group_by(models.Comment.analysis_id)
+            .all()
+        )
+        counts = dict(count_rows)
+
+    return [
+        {
+            "id": row.id,
+            "match_name": row.match_name,
+            "home_team": row.home_team,
+            "away_team": row.away_team,
+            "match_date": row.match_date,
+            "competition": row.competition,
+            "updated_at": row.updated_at,
+            "tags": row.tags or [],
+            "thumbnail": row.thumbnail,
+            "owner_username": username or "",
+            "comment_count": counts.get(row.id, 0),
+        }
+        for row, username in rows
+    ]

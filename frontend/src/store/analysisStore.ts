@@ -164,6 +164,7 @@ interface AnalysisStore {
   toggleLayer: (key: keyof LayerToggles) => void
   applyFormation: (name: string) => void // FR-06
   applySavedMeta: (meta: { id: number; createdAt: string; updatedAt: string }) => void // 저장 성공 후 id/시각만 반영
+  applyPublicFlag: (isPublic: boolean) => void // 커뮤니티 공개 토글 성공 후 반영(TO-DO 12번 후속)
   setPressingLineDragging: (v: boolean) => void
   undo: () => void
   redo: () => void
@@ -662,6 +663,16 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
     // — 히스토리에 안 남긴다(저장할 때마다 되돌리기 스택이 오염되면 안 됨).
     suppressHistory = true
     set({ analysis: { ...analysis, ...meta }, isDirty: false })
+    suppressHistory = false
+  },
+
+  applyPublicFlag: (isPublic) => {
+    const { analysis } = get()
+    if (!analysis) return
+    // applySavedMeta와 같은 이유로 되돌리기 히스토리에 안 남긴다 — 토글은
+    // "편집"이 아니라 메타데이터 갱신이다.
+    suppressHistory = true
+    set({ analysis: { ...analysis, isPublic } })
     suppressHistory = false
   },
 

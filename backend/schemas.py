@@ -176,6 +176,8 @@ class AnalysisOut(AnalysisIn):
     # 판정용) — 라우터가 채운다(crud.to_analysis_dict는 요청자를 모른다).
     # 비로그인 방문자에게도 분석 자체는 공개이므로 기본값 False로 안전하게 둔다.
     is_owner: bool = False
+    # 커뮤니티 공개 여부(TO-DO 12번 후속) — 소유자가 에디터에서 토글한다.
+    is_public: bool = False
 
 
 class AnalysisSummary(BaseModel):
@@ -192,6 +194,34 @@ class AnalysisSummary(BaseModel):
     updated_at: str
     tags: List[str] = []
     thumbnail: Optional[str] = None
+    is_public: bool = False
+
+
+class AnalysisPublicIn(BaseModel):
+    """커뮤니티 공개 토글(TO-DO 12번 후속) — 이 필드 하나만 바꾸는 전용
+    엔드포인트를 쓴다(전체 AnalysisIn PUT을 재사용하지 않는 이유는, 그러면
+    에디터에 남아 있는 다른 미저장 변경까지 토글 한 번에 같이 저장돼버려
+    "공유만 켜려고 눌렀는데 다른 것도 저장됐다"는 놀람을 줄 수 있어서다)."""
+
+    is_public: bool
+
+
+class CommunityAnalysisOut(BaseModel):
+    """커뮤니티 목록(TO-DO 12번 후속) 카드 한 장 — AnalysisSummary에 작성자
+    표시 이름과 댓글 수를 더한다. 누가 공유했는지·얼마나 활발한 토론이
+    붙었는지가 커뮤니티 목록의 핵심 정보라 목록 조회 시점에 같이 계산한다."""
+
+    id: int
+    match_name: str
+    home_team: str
+    away_team: str
+    match_date: str
+    competition: Optional[str] = None
+    updated_at: str
+    tags: List[str] = []
+    thumbnail: Optional[str] = None
+    owner_username: str
+    comment_count: int = 0
 
 
 class HealthOut(BaseModel):

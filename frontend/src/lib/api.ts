@@ -1,4 +1,4 @@
-import type { Analysis, AnalysisSummary } from '@/types/analysis'
+import type { Analysis, AnalysisSummary, CommunityAnalysis } from '@/types/analysis'
 
 const BASE = import.meta.env.VITE_API_BASE_URL as string
 
@@ -109,6 +109,18 @@ export function updateAnalysis(id: number, data: AnalysisPayload): Promise<Analy
 
 export function deleteAnalysis(id: number): Promise<void> {
   return apiFetch(`/analyses/${id}`, { method: 'DELETE' })
+}
+
+/** 커뮤니티 공개 토글(TO-DO 12번 후속) — 전용 PATCH, 전체 저장(PUT)과 분리된
+ * 이유는 백엔드 schemas.AnalysisPublicIn의 docstring 참조. */
+export function setAnalysisPublic(id: number, isPublic: boolean): Promise<AnalysisSummary> {
+  return apiFetch(`/analyses/${id}/public`, { method: 'PATCH', body: JSON.stringify({ isPublic }) })
+}
+
+/** 커뮤니티 목록(TO-DO 12번 후속) — 공개(isPublic=true)로 설정된 분석만.
+ * 댓글 읽기와 같은 이유로 로그인 여부와 무관하게 공개다. */
+export function fetchCommunityAnalyses(): Promise<CommunityAnalysis[]> {
+  return apiFetch('/community/analyses')
 }
 
 export interface CurrentUser {

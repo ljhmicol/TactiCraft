@@ -65,6 +65,27 @@ def update_analysis(
     return crud.to_analysis_dict(row)
 
 
+@router.patch("/{analysis_id}/public", response_model=schemas.AnalysisSummary)
+def set_analysis_public(
+    analysis_id: int,
+    payload: schemas.AnalysisPublicIn,
+    db: Session = Depends(get_db),
+    user: models.User = Depends(auth.get_current_user),
+):
+    """커뮤니티 공개 토글(TO-DO 12번 후속). 전체 AnalysisIn PUT과 별개의
+    전용 엔드포인트인 이유는 schemas.AnalysisPublicIn의 docstring 참조 —
+    에디터의 다른 미저장 변경과 뒤섞이지 않게 이 필드 하나만 바꾼다.
+    """
+    try:
+        existing = crud.get_analysis(db, analysis_id)
+    except crud.AnalysisNotFound:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+    if existing.user_id != user.id:
+        raise HTTPException(status_code=403, detail="본인이 저장한 분석만 공개 설정을 바꿀 수 있습니다")
+    row = crud.set_analysis_public(db, analysis_id, payload.is_public)
+    return row
+
+
 @router.delete("/{analysis_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_analysis(
     analysis_id: int,
