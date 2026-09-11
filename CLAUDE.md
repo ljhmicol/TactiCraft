@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 현재 상태
 
-**MVP 구현 완료 (Phase 1~6 전부).** `backend/`에 FastAPI + SQLAlchemy + SQLite, `frontend/`에 React 18 + Vite + TS + Tailwind + shadcn/ui로 피치·드래그·국면 전환·공간 레이어(5채널/압박라인/콤팩트니스/오버로드)·PNG·JSON 입출력·백엔드 저장 연동까지 전부 구현돼 있습니다. `README.md`, `scripts/dev.ps1`, `frontend/public/samples/sample-4-3-3.json`도 있습니다. 진행 상황은 `docs/5단계_기능_완료_보고서.md`가 최신 기준입니다.
+**MVP 구현 완료 (Phase 1~6 전부).** `backend/`에 FastAPI + SQLAlchemy + SQLite, `frontend/`에 React 18 + Vite + TS + Tailwind + shadcn/ui로 피치·드래그·국면 전환·공간 레이어(5채널/압박라인/콤팩트니스/오버로드)·PNG 내보내기·백엔드 저장 연동까지 전부 구현돼 있습니다. `README.md`, `scripts/dev.ps1`, `frontend/public/samples/sample-4-3-3.json`도 있습니다. 진행 상황은 `docs/5단계_기능_완료_보고서.md`가 최신 기준입니다. (JSON 내보내기/가져오기(FR-07)는 MVP 때 구현됐으나 2026-09-11 TO-DO 32번으로 제거됐습니다 — 저장/공유/PNG로 충분하다고 판단.)
 
 **단, AI 세션이 검증할 수 없는 항목이 남아 있습니다** — 실제 조작감, iOS Safari·Android Chrome 실기기 동작, Safari(WebKit) 렌더링 확인은 사람이 해야 합니다. 전체 목록은 `5단계_기능_완료_보고서.md` §10("사람 확인이 필요한 항목")을 참조하세요.
 
@@ -65,7 +65,7 @@ uvicorn main:app --reload          # 백엔드 (8000)
 - **개발은 Docker를 쓰지 않고 로컬 2프로세스(5173 + 8000)로 합니다.** 다만 저장소 루트의 `Dockerfile`/`docker-compose.yml`은 **배포용**으로 별도 존재합니다 — 백엔드만 이미지로 빌드하고 SQLite는 `./data`를 컨테이너의 `/app/data`에 바인드 마운트해 컨테이너를 지워도 데이터가 남게 합니다. Windows에서 컨테이너 안 Vite HMR이 자주 실패하므로 프론트는 Phase 2 이후에도 컨테이너에 넣지 않고 로컬 Vite로 개발하며, 배포 시점에 프론트 빌드 산출물을 이미지에 정적 서빙으로 포함할지는 별도 결정 사항입니다. `backend/config.py`의 `DATABASE_URL` 기본값은 컨테이너·로컬 양쪽에서 동일하게 동작하도록 프로젝트 루트 `data/tacticore.db` 절대경로를 가리킵니다 — 참고 프로젝트 템플릿을 맞추려고 가져온 것이 아니라 이 프로젝트의 배포 경로로 의도적으로 추가된 것이니 되돌리지 마세요.
 - **오버로드(수적 우위) 레이어는 상대팀 좌표가 있어야만 계산됩니다.** 스키마의 `opponentPositions`는 선택 항목이고, 없으면 이 레이어만 비활성화하고 나머지 공간 레이어는 자팀 데이터로 동작시킵니다.
 - **PNG 내보내기는 화면을 그대로 캡처하지 않습니다.** 고정 비율(1:1 / 4:5) 카드를 별도 렌더링 노드로 만들어 캡처합니다. 반응형 뷰포트를 캡처하면 결과물이 기기마다 달라집니다. 또한 Framer Motion 애니메이션이 끝난 뒤 캡처해야 중간 프레임이 찍히지 않습니다.
-- **백엔드가 꺼져 있어도 편집·PNG 내보내기·JSON 내보내기는 동작해야 합니다.** 저장/목록만 비활성화됩니다.
+- **백엔드가 꺼져 있어도 편집·PNG 내보내기는 동작해야 합니다.** 저장/목록만 비활성화됩니다. (JSON 내보내기/가져오기도 원래 이 목록에 있었으나 2026-09-11 TO-DO 32번으로 기능 자체를 제거했습니다.)
 - **MVP 경계를 넘지 마세요.** 로그인, 커뮤니티/댓글, 타임라인 기반 매치 체인징 포인트(자유 시점 드래그)는 2차 항목입니다. 특히 타임라인은 3개 국면 버튼과 별개 기능이며 MVP가 아닙니다.
 - 요구사항 문서의 성능 수치(60fps, PNG 3초, API 500ms)는 원문에 근거가 없는 **작성자 가정값**으로 표기되어 있습니다. 확정 스펙으로 취급하기 전에 사용자에게 확인하세요.
 

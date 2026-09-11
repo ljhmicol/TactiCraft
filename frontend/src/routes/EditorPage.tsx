@@ -8,7 +8,6 @@ import { RecentAnalyses } from '@/components/editor/RecentAnalyses'
 import { useCurrentUser } from '@/hooks/useAuth'
 import { CommentPanel } from '@/components/editor/CommentPanel'
 import { DuplicateButton } from '@/components/editor/DuplicateButton'
-import { JsonIO } from '@/components/editor/JsonIO'
 import { LayerToggleChips } from '@/components/editor/LayerToggleChips'
 import { MatchInfoForm } from '@/components/editor/MatchInfoForm'
 import { TagInput } from '@/components/editor/TagInput'
@@ -169,7 +168,6 @@ export function EditorPage() {
           <ShareLinkButton analysis={analysis} />
           <CommunityShareToggle analysis={analysis} />
           <ExportControls analysis={analysis} phase={currentPhase} />
-          <JsonIO analysis={analysis} />
         </div>
       </div>
 

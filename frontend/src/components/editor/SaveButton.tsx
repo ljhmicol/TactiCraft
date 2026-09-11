@@ -70,10 +70,10 @@ export function SaveButton({ analysis }: { analysis: Analysis }) {
         {saveMutation.isPending ? '저장 중…' : isDirty ? '저장 *' : '저장'}
       </Button>
       {!isServerUp && !isChecking && (
-        <span className="text-xs text-slate-300">서버 미기동 — 편집·PNG·JSON은 계속 사용 가능합니다</span>
+        <span className="text-xs text-slate-300">서버 미기동 — 편집·PNG 내보내기는 계속 사용 가능합니다</span>
       )}
       {isServerUp && !isLoggedIn && !isCheckingAuth && (
-        <span className="text-xs text-slate-300">로그인이 필요합니다 — 편집·PNG·JSON은 계속 사용 가능합니다</span>
+        <span className="text-xs text-slate-300">로그인이 필요합니다 — 편집·PNG 내보내기는 계속 사용 가능합니다</span>
       )}
       {errors && (
         <ul className="max-w-xs list-inside list-disc rounded-md bg-destructive/10 p-2 text-xs text-destructive">
