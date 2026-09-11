@@ -45,6 +45,16 @@ export function GifExportRunner({ analysis, onDone, onError }: GifExportRunnerPr
         const canvas = await toCanvas(ref.current, {
           pixelRatio: 1,
           cacheBust: true,
+          // 이미 document.fonts.ready로 폰트가 로드된 같은 탭에서 캡처하므로
+          // html-to-image가 폰트를 다시 내려받아 base64로 embed할 필요가
+          // 없다(2026-09-11, "GIF 내보내기 했는데 계속 만드는 중" 리포트로
+          // 발견) — Google Fonts <link>(Hallmark 리디자인 때 추가)가
+          // cross-origin이라 embed 시도마다 `cssRules` 접근이 CORS로 막혀
+          // SecurityError가 나는데, 프레임(39장)마다 이 실패를 반복하느라
+          // 한 프레임에 ~2초씩 걸려 39장 전체가 70초 넘게 걸렸다. skipFonts로
+          // 이 단계 자체를 건너뛰면 이미 렌더링된 폰트 그대로 캡처되고 이
+          // CORS 에러도 없어진다.
+          skipFonts: true,
           width: GIF_CARD_SIZE,
           height: GIF_CARD_SIZE,
         })

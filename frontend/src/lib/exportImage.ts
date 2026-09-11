@@ -20,6 +20,11 @@ export async function exportCard(node: HTMLElement, ratio: '1:1' | '4:5'): Promi
   const dataUrl = await toPng(node, {
     pixelRatio: 2,
     cacheBust: true,
+    // GifExportRunner와 같은 이유(2026-09-11) — 이미 로드된 폰트를 다시
+    // embed하려다 cross-origin Google Fonts CSS에서 CORS SecurityError가
+    // 나며 느려지는 걸 막는다. 여기(PNG 1회 캡처)는 안 걸리는 걸로
+    // 보였지만 실제로는 같은 에러를 조용히 겪고 있었다.
+    skipFonts: true,
     width: 1080,
     height: ratio === '1:1' ? 1080 : 1350,
   })
@@ -37,5 +42,5 @@ export async function exportCard(node: HTMLElement, ratio: '1:1' | '4:5'): Promi
  */
 export async function captureThumbnail(node: HTMLElement, width: number, height: number): Promise<string> {
   await document.fonts.ready
-  return toPng(node, { pixelRatio: 2, cacheBust: true, width, height })
+  return toPng(node, { pixelRatio: 2, cacheBust: true, skipFonts: true, width, height })
 }
