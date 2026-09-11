@@ -19,7 +19,7 @@
 
 ## 체크리스트
 
-- [O] **29. UI 리디자인 (Hallmark 감사 기반)** — 중 · 색·폰트·내비게이션·카드 그리드 다양화까지 전부 완료
+- [O] **29. UI 리디자인 (Hallmark 감사 기반)** — 중 · 색·폰트·내비게이션·카드 그리드 다양화·접근성·시작 화면 배경까지 전부 완료
 
 1~28번은 2026-09-01부터 순서대로 진행해 전부 완료(권장 순서 14 → 16 → 2/3/4/5/10 → 20·21·22 → 8 → 25/26/27 → 11·회원 탈퇴·28·3·10·7·9·12), `TO-DO-ARCHIVE.md`에 있다. 29번은 그 이후(2026-09-11) 사용자가 [Hallmark](https://www.usehallmark.com/)라는 외부 디자인 스킬을 어떻게 쓰면 좋을지 물으며 시작됐다.
 
@@ -51,7 +51,11 @@
 - **재감사(2026-09-11, "다음 진행해줘" → "재감사로 마무리 확인")**: `hallmark audit` 절차(`references/verbs/audit.md`)를 그대로 따라 anti-patterns.md 전체 목록으로 코드베이스를 재스캔. 기존 6개 지적은 전부 해소 확인(`transition-all`·`hover:scale-105`·이모지 아이콘·아이콘 라이브러리 혼용(lucide-react 단일 확인)·순수 블랙/화이트·임의 z-index·그라디언트 텍스트 없음). 원래 감사 범위 밖에서 새 발견 1건: **`:focus-visible` 링 누락** — raw `<button type="button">`(shadcn `Button` 컴포넌트를 안 쓴 곳) 다수가 hover 스타일만 있고 키보드 포커스 표시가 없었음. 스코프가 원래 29번(시각적 AI 티 제거)이 아니라 접근성이라 사용자에게 처리 방식을 물어 "지금 바로 수정"으로 진행.
   - **수정**: `App.tsx`·`AnalysisList.tsx`·`CommunityComments.tsx`·`CommentPanel.tsx`·`FormationPicker.tsx`·`LayerToggleChips.tsx`·`ManagerPresetPicker.tsx`·`MatchPresetPicker.tsx`·`PhaseTabs.tsx`·`TagInput.tsx`·`Timeline.tsx`·`AnalysesPage.tsx`·`SharePage.tsx`·`VersusPage.tsx` — raw button마다 `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background`(새 색 추가 없이 기존 shadcn `--ring` 토큰 재사용). 타임라인 축 위의 작은 원형 클러스터 버튼은 `ring-offset-1`, 리스트 행(첫/끝 모서리가 둥근 hairline 리스트)은 잘림 방지를 위해 `ring-inset`으로 조정. shadcn `Button` 컴포넌트를 쓴 곳(`ToolPalette`/`UndoRedoButtons`/`PlayerForm`/`PlayerEditDialog`)은 베이스 컴포넌트에 이미 포커스 링이 있어 손대지 않음.
   - **검증**: 코드베이스 전체를 파싱하는 스크립트로 모든 raw `<button` 태그의 여는 태그 안에 `focus-visible`이 있는지 전수 확인(JSX 중괄호 깊이를 추적해 `onClick={() =>` 안의 `=>`를 태그 종료로 오인하지 않도록 함) — 0건 누락. `tsc -b`/`lint`(0 errors)/`vitest`(174, 회귀 없음)/`build` 통과. Playwright로 감독 리스트 행·실제 경기 카드에 `.focus()`를 걸어 `getComputedStyle().boxShadow`가 실제로 `--ring` 토큰 색(`rgb(36, 194, 120)`)의 링을 그리는지 확인, 스크린샷으로 카드 주변 초록 링 렌더링 육안 확인.
-- **미확인**: iOS Safari·Android Chrome 실기기에서 다크 배경 대비·Nanum Gothic Coding 렌더링·새 내비 레이아웃·리스트/카드 형태·포커스 링은 사람이 확인해야 한다(6단계 §10과 같은 범주) — 이번 검증은 headless Chromium(Playwright) 기준.
+- **시작 화면 배경(2026-09-11 후속, "맨 처음 새분석시작 화면에서 페이지배경이 검은색에다가 흰색 줄로만 해서 축구 그라운드처럼 보이게하면 좋겠어")**: `/new`(`NewAnalysisPage.tsx`) 전용 장식 배경 — 정식 규격(105×68m) 축구장 비율 SVG를 `viewBox`로 그대로 써서 터치라인·골라인·하프라인·센터서클·센터스팟·양쪽 페널티 박스·골에어리어·페널티 스팟·페널티 아크를 그리고, 흰 선을 10% 불투명도로 눌러 본문 텍스트 대비를 해치지 않게 했다. `fixed inset-0 -z-10`로 스크롤해도 고정, `preserveAspectRatio="xMidYMid slice"`로 어떤 화면 비율에서도 항상 중앙(하프라인·센터서클)이 보이게 크롭. 애니메이션 없음(`motion.md`/이번 세션 전반의 모션 절제 원칙 유지).
+  - **`lib/theme.ts`의 `PITCH_COLORS`는 건드리지 않음** — 그건 실제 전술 데이터를 그리는 진짜 피치(초록, 좌표 데이터)이고, 이건 시작 화면 한 곳에만 쓰는 순수 장식용 SVG라 완전히 별개로 `NewAnalysisPage.tsx` 로컬에 둠.
+  - 검은색을 문자 그대로 `#000`으로 바꾸지 않고 기존 `bg-background`(다크 테마 도입 때 이미 골랐던 거의 검정에 가까운 `224 24% 7%`) 위에 흰 선만 얹음 — Hallmark anti-patterns.md가 순수 블랙(`#000000`)을 "flat하고 합성적으로 보인다"고 명시적으로 금지하는 항목이라, 이번 세션에서 이미 없앤 tell을 다시 들여오지 않기 위한 선택.
+  - **검증**: `tsc -b`/`npm run lint`(0 errors)/`vitest run`(174, 회귀 없음)/`npm run build` 통과. Playwright로 1280px(데스크톱, 좌우 여백에 페널티 박스·센터서클 곡선이 뚜렷이 보임)·390px(모바일) 두 폭 스크린샷 확인, SVG의 `getBoundingClientRect`/`position: fixed`/`z-index: -10` 실제 적용 확인, 모바일에서도 하프라인이 옅게 보이는 걸 좁은 크롭 스크린샷으로 재확인. 콘솔 에러는 기존 401(인증 체크, 무관) 하나뿐.
+- **미확인**: iOS Safari·Android Chrome 실기기에서 다크 배경 대비·Nanum Gothic Coding 렌더링·새 내비 레이아웃·리스트/카드 형태·포커스 링·시작 화면 피치 배경은 사람이 확인해야 한다(6단계 §10과 같은 범주) — 이번 검증은 headless Chromium(Playwright) 기준.
 
 ## 기각 기록
 
