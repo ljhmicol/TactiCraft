@@ -17,6 +17,7 @@ export function FormationPicker({ onSelect }: FormationPickerProps) {
           className={cn(
             'flex flex-col items-center gap-2 rounded-lg border border-border bg-card p-4',
             'text-base font-semibold text-foreground transition-colors hover:border-primary hover:bg-accent',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
           )}
         >
           {name}

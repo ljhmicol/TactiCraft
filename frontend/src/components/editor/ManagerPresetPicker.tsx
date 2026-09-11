@@ -115,7 +115,7 @@ export function ManagerPresetPicker({ onSelect }: ManagerPresetPickerProps) {
             disabled={loadingUrl !== null}
             onClick={() => handleClick(preset)}
             className={cn(
-              'flex w-full items-baseline gap-3 px-4 py-3 text-left transition-colors first:rounded-t-lg last:rounded-b-lg hover:bg-accent',
+              'flex w-full items-baseline gap-3 px-4 py-3 text-left transition-colors first:rounded-t-lg last:rounded-b-lg hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
               loadingUrl === preset.url && 'opacity-60',
             )}
           >

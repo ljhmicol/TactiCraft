@@ -50,7 +50,7 @@ export function PhaseTabs() {
             disabled={isPlaying}
             onClick={() => switchPhase(phase)}
             className={cn(
-              'rounded-md px-4 py-1.5 text-sm font-medium transition-colors',
+              'rounded-md px-4 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
               currentPhase === phase && !selectedChangingPointId
                 ? 'bg-primary text-primary-foreground'
                 : 'text-muted-foreground hover:text-foreground',
@@ -66,7 +66,7 @@ export function PhaseTabs() {
           type="button"
           onClick={() => setIsPlaying((v) => !v)}
           className={cn(
-            'rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+            'rounded-md px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
             isPlaying ? 'bg-accent text-accent-foreground' : 'bg-secondary text-muted-foreground',
           )}
         >
@@ -77,7 +77,7 @@ export function PhaseTabs() {
           disabled={isPlaying}
           onClick={() => toggleLayer('ghostView')}
           className={cn(
-            'rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+            'rounded-md px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
             ghostView ? 'bg-accent text-accent-foreground' : 'bg-secondary text-muted-foreground',
             isPlaying && 'cursor-not-allowed opacity-50',
           )}

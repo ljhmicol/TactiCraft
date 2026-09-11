@@ -161,7 +161,7 @@ export function Timeline() {
               type="button"
               onClick={() => setIsPlaying((v) => !v)}
               className={cn(
-                'rounded-full px-2 py-1 text-xs font-medium transition-colors',
+                'rounded-full px-2 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                 isPlaying ? 'bg-accent text-accent-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground',
               )}
             >
@@ -174,7 +174,7 @@ export function Timeline() {
               onClick={() => (mergeMode ? exitMergeMode() : setMergeMode(true))}
               title="여러 시점을 하나로 합치기"
               className={cn(
-                'flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium transition-colors',
+                'flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                 mergeMode ? 'bg-accent text-accent-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground',
               )}
             >
@@ -191,7 +191,7 @@ export function Timeline() {
                   ? '시점이 몰려 있는 구간만 확대해서 봅니다'
                   : '0~120분 경기 전체 시간축으로 봅니다'
               }
-              className="flex items-center gap-1 rounded-full bg-secondary px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+              className="flex items-center gap-1 rounded-full bg-secondary px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               {showFullAxis ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}
               {showFullAxis ? '구간 확대' : '전체 보기'}
@@ -202,7 +202,7 @@ export function Timeline() {
             disabled={isPlaying || mergeMode}
             onClick={handleAdd}
             title="지금 보이는 배치를 시점으로 저장"
-            className="flex items-center gap-1 rounded-full bg-secondary px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex items-center gap-1 rounded-full bg-secondary px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Plus className="h-3 w-3" />
             시점
@@ -218,14 +218,14 @@ export function Timeline() {
               type="button"
               disabled={mergeSelected.length < 2}
               onClick={handleMergeConfirm}
-              className="rounded-full bg-primary px-2 py-0.5 font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-full bg-primary px-2 py-0.5 font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-40"
             >
               병합하기
             </button>
             <button
               type="button"
               onClick={exitMergeMode}
-              className="rounded-full px-2 py-0.5 text-muted-foreground hover:text-foreground"
+              className="rounded-full px-2 py-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               취소
             </button>
@@ -286,7 +286,7 @@ export function Timeline() {
                 onClick={() => handleClusterClick(cluster.items)}
                 style={{ left: `${cluster.ratio}%` }}
                 className={cn(
-                  'absolute top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 transition-colors',
+                  'absolute top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background',
                   single ? 'h-3 w-3' : 'h-4 min-w-4 px-0.5 text-[9px] font-semibold leading-none',
                   mergeMode
                     ? active
@@ -314,7 +314,7 @@ export function Timeline() {
               disabled={isPlaying}
               onClick={() => toggleSelect(cp)}
               className={cn(
-                'rounded-full px-2 py-0.5 text-xs font-medium transition-colors',
+                'rounded-full px-2 py-0.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                 mergeMode
                   ? mergeSelected.includes(cp.id)
                     ? 'bg-amber-500 text-white'
@@ -360,7 +360,7 @@ export function Timeline() {
             disabled={isPlaying || isReplaying || selectedIndex <= 0}
             onClick={() => moveChangingPoint(selected.id, 'left')}
             title="왼쪽으로 이동"
-            className="rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
+            className="rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-30"
           >
             <ChevronLeft className="h-3.5 w-3.5" />
           </button>
@@ -369,7 +369,7 @@ export function Timeline() {
             disabled={isPlaying || isReplaying || selectedIndex < 0 || selectedIndex >= changingPoints.length - 1}
             onClick={() => moveChangingPoint(selected.id, 'right')}
             title="오른쪽으로 이동"
-            className="rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
+            className="rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-30"
           >
             <ChevronRight className="h-3.5 w-3.5" />
           </button>
@@ -378,7 +378,7 @@ export function Timeline() {
             disabled={isPlaying || isReplaying}
             onClick={() => removeChangingPoint(selected.id)}
             title="이 시점 삭제"
-            className="rounded-md p-1 text-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-30"
+            className="rounded-md p-1 text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-30"
           >
             <X className="h-3.5 w-3.5" />
           </button>

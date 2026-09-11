@@ -55,7 +55,7 @@ export function TagInput({ tags }: { tags: string[] }) {
               <button
                 type="button"
                 onClick={() => removeTag(tag)}
-                className="text-muted-foreground hover:text-foreground"
+                className="rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 aria-label={`${tag} 태그 삭제`}
               >
                 ×

@@ -101,7 +101,7 @@ export function AnalysesPage() {
                     key={tag}
                     type="button"
                     onClick={() => setActiveTag((cur) => (cur === tag ? null : tag))}
-                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                       activeTag === tag
                         ? 'bg-accent text-accent-foreground'
                         : 'bg-secondary text-muted-foreground hover:text-foreground'
@@ -118,7 +118,7 @@ export function AnalysesPage() {
                   key={opt.value}
                   type="button"
                   onClick={() => setGroupMode(opt.value)}
-                  className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                  className={`rounded-full px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                     groupMode === opt.value
                       ? 'bg-accent text-accent-foreground'
                       : 'bg-secondary text-muted-foreground hover:text-foreground'

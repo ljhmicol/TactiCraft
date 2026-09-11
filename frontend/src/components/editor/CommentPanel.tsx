@@ -52,7 +52,7 @@ export function CommentPanel({
                 key={player.id}
                 type="button"
                 onClick={() => insertSuggestion(`${player.name}(${role.label}) — ${role.blurb}`)}
-                className="rounded-full bg-secondary px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                className="rounded-full bg-secondary px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 title="클릭하면 이 역할 설명을 코멘트 끝에 붙입니다"
               >
                 + {player.name} · {role.label}

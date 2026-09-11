@@ -77,7 +77,7 @@ export function CommunityComments({ analysisId, isOwner }: CommunityCommentsProp
                         title="댓글 삭제"
                         disabled={deleteMutation.isPending}
                         onClick={() => deleteMutation.mutate(c.id)}
-                        className="text-muted-foreground transition-colors hover:text-destructive disabled:opacity-50"
+                        className="rounded-sm text-muted-foreground transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>

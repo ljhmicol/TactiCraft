@@ -64,7 +64,7 @@ function AuthNav() {
         type="button"
         onClick={() => logoutMutation.mutate()}
         disabled={logoutMutation.isPending}
-        className="text-sm text-muted-foreground hover:text-foreground"
+        className="rounded-sm text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         로그아웃
       </button>
@@ -72,7 +72,7 @@ function AuthNav() {
         type="button"
         onClick={handleWithdraw}
         disabled={withdrawMutation.isPending}
-        className="text-sm text-destructive/80 hover:text-destructive"
+        className="rounded-sm text-sm text-destructive/80 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         회원 탈퇴
       </button>

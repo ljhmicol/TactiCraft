@@ -74,7 +74,7 @@ export function MatchPresetPicker({ onSelect }: MatchPresetPickerProps) {
             disabled={loadingUrl !== null}
             onClick={() => handleClick(preset)}
             className={cn(
-              'rounded-lg border border-border bg-card p-5 text-left transition-colors hover:border-primary hover:bg-accent',
+              'rounded-lg border border-border bg-card p-5 text-left transition-colors hover:border-primary hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
               loadingUrl === preset.url && 'opacity-60',
             )}
           >
