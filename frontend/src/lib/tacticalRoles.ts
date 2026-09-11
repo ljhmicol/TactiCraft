@@ -7,8 +7,8 @@
  * 목록의 키로 쓰면 사실상 같은 자리인데 목록이 중복되므로, 더 성긴
  * `PositionGroup`으로 먼저 묶은 뒤 그룹별 역할을 고른다.
  *
- * blurb는 국면 코멘트 작성 보조(CommentPanel의 "문구 삽입")에 그대로 쓰이는
- * 문장이라, 사람이 쓴 코멘트 톤에 맞춰 완결된 한 문장으로 적는다.
+ * blurb는 역할 선택 드롭다운(PlayerForm·PlayerEditDialog)의 title 툴팁으로
+ * 쓰이는 문장이라, 완결된 한 문장으로 적는다.
  */
 import type { PositionInfo, PositionLine } from '@/lib/positions'
 

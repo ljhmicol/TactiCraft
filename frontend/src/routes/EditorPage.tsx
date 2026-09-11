@@ -329,7 +329,6 @@ export function EditorPage() {
               title={changingPoint ? changingPoint.label : PHASE_LABELS[currentPhase]}
               comment={phase.comment}
               summary={analysis.summary}
-              phasePositions={phase.positions}
             />
           </section>
         </div>

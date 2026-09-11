@@ -1,9 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { MouseEvent } from 'react'
-import { BrowserRouter, Link, NavLink, Route, Routes, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Link, NavLink, Route, Routes } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
-import { useCurrentUser, useLogout, useWithdraw } from '@/hooks/useAuth'
+import { useCurrentUser, useLogout } from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
 import { AnalysesPage } from '@/routes/AnalysesPage'
 import { AnalysisDetailPage } from '@/routes/AnalysisDetailPage'
@@ -24,15 +24,14 @@ const queryClient = new QueryClient({
 function AuthNav() {
   const { user, isLoggedIn, isChecking } = useCurrentUser()
   const logoutMutation = useLogout()
-  const withdrawMutation = useWithdraw()
-  const closeAnalysis = useAnalysisStore((s) => s.closeAnalysis)
-  const navigate = useNavigate()
 
   if (isChecking) return null
 
   // 로그아웃 상태 — N1b(component-cookbook.md) 패턴의 "로그인 텍스트 링크 +
   // 채워진 CTA" 조합. 로그인된 쪽엔 이 짝에 대응하는 단일 주요 동작이
-  // 없어서(이메일·로그아웃·탈퇴 셋 다 동급) 그 상태는 아래에서 텍스트로만 둔다.
+  // 없어서(이메일·로그아웃 둘 다 동급) 그 상태는 아래에서 텍스트로만 둔다.
+  // 회원 탈퇴는 2026-09-11 "회원탈퇴를 내 정보로 옮기면 좋겠어" 요청으로
+  // ProfilePage.tsx로 옮겼다 — 상단 내비는 자주 쓰는 동작만 남긴다.
   if (!isLoggedIn) {
     return (
       <>
@@ -44,15 +43,6 @@ function AuthNav() {
         </Button>
       </>
     )
-  }
-
-  // 탈퇴(TO-DO 11번 연장) — 본인 소유 분석까지 서버에서 함께 지워지므로
-  // 되돌릴 수 없다는 걸 확인창에서 분명히 알린다.
-  const handleWithdraw = async () => {
-    if (!window.confirm('탈퇴하면 저장한 분석이 모두 함께 삭제됩니다. 되돌릴 수 없습니다. 계속할까요?')) return
-    await withdrawMutation.mutateAsync()
-    closeAnalysis()
-    navigate('/')
   }
 
   return (
@@ -67,14 +57,6 @@ function AuthNav() {
         className="shrink-0 whitespace-nowrap rounded-sm text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         로그아웃
-      </button>
-      <button
-        type="button"
-        onClick={handleWithdraw}
-        disabled={withdrawMutation.isPending}
-        className="shrink-0 whitespace-nowrap rounded-sm text-sm text-destructive/80 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-      >
-        회원 탈퇴
       </button>
     </>
   )

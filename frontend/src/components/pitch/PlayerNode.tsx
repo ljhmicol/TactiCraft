@@ -18,6 +18,12 @@ interface PlayerNodeProps {
 }
 
 const OWN_RADIUS = circularRadius(PLAYER_COLORS.own.radius)
+// 선수 수정 다이얼로그가 열려 있는 동안 그 선수를 표시하는 얇은 링(2026-09-11
+// "선수 노드 주변에 생기는 검은색흰색 원이 너무 두툼해") — 브라우저 기본
+// 포커스 아웃라인 대신 이 얇은 SVG 링으로 대체한다. 원인: Pan 제스처가 있는
+// motion.g에 Framer Motion이 자동으로 tabindex=0을 붙이는데, 탭하는 순간
+// 그 g가 포커스를 받아 Safari 기본 포커스 링(두꺼운 이중 테두리)이 그려졌다.
+const SELECT_RING_RADIUS = circularRadius(PLAYER_COLORS.own.radius + 0.7)
 const RUN_LOOP_DURATION = 0.9 // 오버랩 구간 전진에 걸리는 시간(초)
 const RUN_LOOP_DELAY = 0.5 // 전진 끝점에서 리셋 전까지 머무는 시간(초)
 
@@ -81,6 +87,7 @@ export function PlayerNode({ player, position }: PlayerNodeProps) {
   const svgRef = usePitchSvg()
   const movePlayer = useAnalysisStore((s) => s.movePlayer)
   const setEditingPlayer = useAnalysisStore((s) => s.setEditingPlayer)
+  const isEditing = useAnalysisStore((s) => s.editingPlayerId === player.id)
   const index = useAnalysisStore((s) => s.analysis?.players.findIndex((p) => p.id === player.id) ?? -1)
   const formation = useAnalysisStore((s) => s.analysis?.formation)
   const isPressingLineDragging = useAnalysisStore((s) => s.isPressingLineDragging)
@@ -168,8 +175,20 @@ export function PlayerNode({ player, position }: PlayerNodeProps) {
       onPan={handlePan}
       onPanEnd={() => setDragging(false)}
       onTap={() => setEditingPlayer(player.id)}
-      style={{ cursor: 'grab', touchAction: 'none' }}
+      style={{ cursor: 'grab', touchAction: 'none', outline: 'none' }}
     >
+      {isEditing && (
+        <motion.ellipse
+          initial={{ cx: position.x, cy: position.y }}
+          animate={{ cx, cy }}
+          transition={activeTransition}
+          rx={SELECT_RING_RADIUS.rx}
+          ry={SELECT_RING_RADIUS.ry}
+          fill="none"
+          stroke="hsl(var(--ring))"
+          strokeWidth={0.35}
+        />
+      )}
       <motion.ellipse
         initial={{ cx: position.x, cy: position.y }}
         animate={{ cx, cy }}

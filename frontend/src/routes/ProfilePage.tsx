@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useChangePassword, useChangeUsername, useCurrentUser } from '@/hooks/useAuth'
+import { useChangePassword, useChangeUsername, useCurrentUser, useWithdraw } from '@/hooks/useAuth'
 import { ApiError } from '@/lib/api'
+import { useAnalysisStore } from '@/store/analysisStore'
 
 /**
  * /profile — 내 정보. 상단 네비게이션의 이메일을 눌러 들어온다(2026-09-11
@@ -14,9 +15,16 @@ import { ApiError } from '@/lib/api'
  * 이메일은 로그인 식별자라 여기서 바꾸지 않는다 — 요청받은 범위(비밀번호·
  * 닉네임)만 구현한다. 두 폼은 서로 독립된 뮤테이션이라 하나가 실패해도
  * 다른 쪽엔 영향이 없다.
+ *
+ * 회원 탈퇴(TO-DO 11번 연장)는 원래 상단 내비에 있었는데, 2026-09-11
+ * "회원탈퇴를 내 정보로 옮기면 좋겠어" 요청으로 여기로 옮겼다 — 자주 쓰지
+ * 않는 파괴적 동작을 상단 내비에서 덜어내고, 계정 관련 설정이 모이는
+ * 이 페이지에 모아둔다.
  */
 export function ProfilePage() {
   const { user, isLoggedIn, isChecking } = useCurrentUser()
+  const navigate = useNavigate()
+  const closeAnalysis = useAnalysisStore((s) => s.closeAnalysis)
 
   const changeUsernameMutation = useChangeUsername()
   const [username, setUsername] = useState(user?.username ?? '')
@@ -28,6 +36,8 @@ export function ProfilePage() {
   const [newPassword, setNewPassword] = useState('')
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [passwordSaved, setPasswordSaved] = useState(false)
+
+  const withdrawMutation = useWithdraw()
 
   if (isChecking) return null
   if (!isLoggedIn || !user) return <Navigate to="/login" replace />
@@ -42,6 +52,15 @@ export function ProfilePage() {
     } catch (err) {
       setUsernameError(err instanceof ApiError ? err.message : '사용자명을 바꾸지 못했습니다.')
     }
+  }
+
+  // 본인 소유 분석까지 서버에서 함께 지워지므로 되돌릴 수 없다는 걸
+  // 확인창에서 분명히 알린다.
+  const handleWithdraw = async () => {
+    if (!window.confirm('탈퇴하면 저장한 분석이 모두 함께 삭제됩니다. 되돌릴 수 없습니다. 계속할까요?')) return
+    await withdrawMutation.mutateAsync()
+    closeAnalysis()
+    navigate('/')
   }
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
@@ -131,6 +150,21 @@ export function ProfilePage() {
             {changePasswordMutation.isPending ? '변경 중…' : '비밀번호 변경'}
           </Button>
         </form>
+      </section>
+
+      <section className="mt-8 border-t border-border pt-6">
+        <h2 className="mb-1 text-sm font-semibold text-destructive">회원 탈퇴</h2>
+        <p className="mb-3 text-xs text-muted-foreground">탈퇴하면 저장한 분석이 모두 함께 삭제됩니다. 되돌릴 수 없습니다.</p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="self-start border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          onClick={handleWithdraw}
+          disabled={withdrawMutation.isPending}
+        >
+          {withdrawMutation.isPending ? '탈퇴 처리 중…' : '회원 탈퇴'}
+        </Button>
       </section>
     </div>
   )
