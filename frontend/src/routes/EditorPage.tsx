@@ -2,6 +2,7 @@ import { ChevronDown } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
+import { PitchFieldBackdrop } from '@/components/decor/PitchFieldBackdrop'
 import { BottomActionBar } from '@/components/editor/BottomActionBar'
 import { RecentAnalyses } from '@/components/editor/RecentAnalyses'
 import { useCurrentUser } from '@/hooks/useAuth'
@@ -89,26 +90,31 @@ export function EditorPage() {
 
   if (!analysis) {
     return (
-      <div className="mx-auto flex max-w-md flex-col items-center gap-6 px-6 py-24 text-center">
-        <div className="flex flex-col items-center gap-4">
-          <p className="text-muted-foreground">아직 분석이 없습니다.</p>
-          <div className="flex flex-col items-center gap-2">
-            <Button asChild>
-              <Link to="/new">새 분석 시작</Link>
-            </Button>
-            {!isCheckingAuth && !isLoggedIn && (
-              <div className="flex items-center gap-2">
-                <Button asChild variant="outline">
-                  <Link to="/login">로그인</Link>
-                </Button>
-                <Button asChild variant="outline">
-                  <Link to="/register">회원가입</Link>
-                </Button>
-              </div>
-            )}
+      <div className="relative">
+        {/* 2026-09-11 "첫번째 화면에서도 이렇게 나오면 좋겠어" — /new의 축구장
+         * 배경을 앱을 열었을 때 가장 먼저 보이는 이 빈 안내 화면(/)에도 확장. */}
+        <PitchFieldBackdrop />
+        <div className="relative mx-auto flex max-w-md flex-col items-center gap-6 px-6 py-24 text-center">
+          <div className="flex flex-col items-center gap-4">
+            <p className="text-muted-foreground">아직 분석이 없습니다.</p>
+            <div className="flex flex-col items-center gap-2">
+              <Button asChild>
+                <Link to="/new">새 분석 시작</Link>
+              </Button>
+              {!isCheckingAuth && !isLoggedIn && (
+                <div className="flex items-center gap-2">
+                  <Button asChild variant="outline">
+                    <Link to="/login">로그인</Link>
+                  </Button>
+                  <Button asChild variant="outline">
+                    <Link to="/register">회원가입</Link>
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
+          <RecentAnalyses />
         </div>
-        <RecentAnalyses />
       </div>
     )
   }

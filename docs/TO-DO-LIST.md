@@ -55,7 +55,9 @@
   - **`lib/theme.ts`의 `PITCH_COLORS`는 건드리지 않음** — 그건 실제 전술 데이터를 그리는 진짜 피치(초록, 좌표 데이터)이고, 이건 시작 화면 한 곳에만 쓰는 순수 장식용 SVG라 완전히 별개로 `NewAnalysisPage.tsx` 로컬에 둠.
   - 검은색을 문자 그대로 `#000`으로 바꾸지 않고 기존 `bg-background`(다크 테마 도입 때 이미 골랐던 거의 검정에 가까운 `224 24% 7%`) 위에 흰 선만 얹음 — Hallmark anti-patterns.md가 순수 블랙(`#000000`)을 "flat하고 합성적으로 보인다"고 명시적으로 금지하는 항목이라, 이번 세션에서 이미 없앤 tell을 다시 들여오지 않기 위한 선택.
   - **검증**: `tsc -b`/`npm run lint`(0 errors)/`vitest run`(174, 회귀 없음)/`npm run build` 통과. Playwright로 1280px(데스크톱, 좌우 여백에 페널티 박스·센터서클 곡선이 뚜렷이 보임)·390px(모바일) 두 폭 스크린샷 확인, SVG의 `getBoundingClientRect`/`position: fixed`/`z-index: -10` 실제 적용 확인, 모바일에서도 하프라인이 옅게 보이는 걸 좁은 크롭 스크린샷으로 재확인. 콘솔 에러는 기존 401(인증 체크, 무관) 하나뿐.
-- **미확인**: iOS Safari·Android Chrome 실기기에서 다크 배경 대비·Nanum Gothic Coding 렌더링·새 내비 레이아웃·리스트/카드 형태·포커스 링·시작 화면 피치 배경은 사람이 확인해야 한다(6단계 §10과 같은 범주) — 이번 검증은 headless Chromium(Playwright) 기준.
+- **`/`(첫 화면)까지 확장(2026-09-11 후속, "아예 첫번쨰 화면에서도 이렇게 나오면 좋겠어")**: `PitchFieldBackdrop`을 `NewAnalysisPage.tsx` 로컬 함수에서 `frontend/src/components/decor/PitchFieldBackdrop.tsx`로 뽑아 공유 컴포넌트로 만들고, `EditorPage.tsx`의 `!analysis` 빈 안내 화면(앱을 처음 열었을 때 `/`에서 가장 먼저 보이는 화면 — "아직 분석이 없습니다" + 새 분석 시작 버튼)에도 같은 배경을 적용했다. 실제 편집기(피치가 있는 화면, `analysis`가 있을 때)에는 적용하지 않음 — 거기는 진짜 초록 전술 피치가 이미 있어서 장식 배경을 더하면 두 피치가 겹쳐 보여 혼란스럽다.
+  - **검증**: `tsc -b`/`lint`(0 errors)/`vitest`(174, 회귀 없음)/`build` 통과. Playwright로 `localStorage.clear()` 후 `/`를 새로고침해 진짜 빈 상태로 만들고 스크린샷 확인 — 센터서클·하프라인·양쪽 페널티 박스가 온전히 보이고 "아직 분석이 없습니다"·버튼들이 배경 위에서 잘 읽힘, 콘솔 에러는 기존 401(무관) 2건뿐.
+- **미확인**: iOS Safari·Android Chrome 실기기에서 다크 배경 대비·Nanum Gothic Coding 렌더링·새 내비 레이아웃·리스트/카드 형태·포커스 링·`/new`·`/` 피치 배경은 사람이 확인해야 한다(6단계 §10과 같은 범주) — 이번 검증은 headless Chromium(Playwright) 기준.
 
 ## 기각 기록
 
