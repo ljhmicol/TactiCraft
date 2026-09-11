@@ -12,9 +12,9 @@
   "players": [
     { "id": "p1", "name": "알리송", "number": 1, "role": "GK", "tacticalRole": "sweeper-keeper" },
     { "id": "p5", "name": "로버트슨", "number": 26, "role": "LB", "tacticalRole": "overlapping-fb" },
-    { "id": "p3", "name": "반데이크", "number": 4, "role": "CB", "tacticalRole": "cover-cb" },
+    { "id": "p3", "name": "반다이크", "number": 4, "role": "CB", "tacticalRole": "cover-cb" },
     { "id": "p4", "name": "코나테", "number": 5, "role": "CB", "tacticalRole": "stopper-cb" },
-    { "id": "p2", "name": "알렉산더-아널드", "number": 66, "role": "RB", "tacticalRole": "inverted-fb" },
+    { "id": "p2", "name": "알렉산더-아놀드", "number": 66, "role": "RB", "tacticalRole": "inverted-fb" },
     { "id": "p6", "name": "파비뉴", "number": 3, "role": "DM", "tacticalRole": "box-to-box" },
     { "id": "p7", "name": "티아구", "number": 6, "role": "CM", "tacticalRole": "deep-playmaker-cm" },
     { "id": "p8", "name": "헨더슨", "number": 14, "role": "CM", "tacticalRole": "advanced-playmaker-cm" },
@@ -67,7 +67,7 @@
         { "id": "klo-atk-p1", "type": "pass", "from": { "x": 68, "y": 52 }, "to": { "x": 86, "y": 24 } },
         { "id": "klo-atk-p2", "type": "pass", "from": { "x": 88, "y": 62 }, "to": { "x": 58, "y": 15 } }
       ],
-      "comment": "팀 전체를 극단적으로 높이 올린 뒤 양 풀백(66번 알렉산더-아널드·26번 로버트슨)이 윙처럼 오버래핑한다. 같은 측면에 윙이 함께 서면서 상대 풀백을 상대로 2:1을 만들고, 인사이드 미드(6번 티아구·14번 헨더슨)의 수직 패스가 윙과 풀백의 '달리는 발'에 꽂힌다. 종료는 크로스(66번→9번 피르미누) 또는 백라인 뒤 침투 패스 — 골문을 정면으로 노리는 직선 축구."
+      "comment": "팀 전체를 극단적으로 높이 올린 뒤 양 풀백(66번 알렉산더-아놀드·26번 로버트슨)이 윙처럼 오버래핑한다. 같은 측면에 윙이 함께 서면서 상대 풀백을 상대로 2:1을 만들고, 인사이드 미드(6번 티아구·14번 헨더슨)의 수직 패스가 윙과 풀백의 '달리는 발'에 꽂힌다. 종료는 크로스(66번→9번 피르미누) 또는 백라인 뒤 침투 패스 — 골문을 정면으로 노리는 직선 축구."
     },
     "defense": {
       "positions": [

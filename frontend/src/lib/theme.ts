@@ -10,6 +10,18 @@ export const PITCH_COLORS = {
   lineWidth: 0.3,
 } as const
 
+/**
+ * 피치 위 선수 라벨(이름·등번호·포지션)이 쓰는 폰트 — `tailwind.config.js`의
+ * `fontFamily.sans`(IBM Plex Sans KR)와 정확히 같은 값이다. SVG `<text>`는
+ * 보통 문서 `<body>`의 font-family를 상속해 별도 지정 없이도 같은 폰트로
+ * 보이지만, HTML→SVG 경계를 넘는 상속은 브라우저마다(특히 Safari) 다르게
+ * 동작할 위험이 있어(2026-09-11, 이번 세션에서 반복된 "헤드리스에선 되는데
+ * 실기기 Safari에서만 깨지는" 패턴과 같은 종류) 이 세션에서 명시적으로
+ * 지정하기로 했다 — PlayerNode/PrintPlayerNode/SharePlayerNode/
+ * StaticPlayerNode 네 곳이 전부 이 상수를 쓴다.
+ */
+export const PITCH_TEXT_FONT_FAMILY = '"IBM Plex Sans KR", ui-sans-serif, system-ui, sans-serif'
+
 export const PLAYER_COLORS = {
   own: {
     fill: '#F8FAFC',

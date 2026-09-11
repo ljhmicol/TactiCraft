@@ -13,13 +13,13 @@
     { "id": "p1", "name": "돈나룸마", "number": 99, "role": "GK", "tacticalRole": "traditional-gk" },
     { "id": "p5", "name": "누누 멘드스", "number": 25, "role": "LB", "tacticalRole": "overlapping-fb" },
     { "id": "p3", "name": "마르킨요스", "number": 5, "role": "CB", "tacticalRole": "cover-cb" },
-    { "id": "p4", "name": "스크리니아르", "number": 37, "role": "CB", "tacticalRole": "stopper-cb" },
-    { "id": "p2", "name": "하킴미", "number": 2, "role": "RB", "tacticalRole": "overlapping-fb" },
-    { "id": "p6", "name": "우가르트", "number": 4, "role": "DM", "tacticalRole": "box-to-box" },
+    { "id": "p4", "name": "슈크리니아르", "number": 37, "role": "CB", "tacticalRole": "stopper-cb" },
+    { "id": "p2", "name": "하키미", "number": 2, "role": "RB", "tacticalRole": "overlapping-fb" },
+    { "id": "p6", "name": "우가르테", "number": 4, "role": "DM", "tacticalRole": "box-to-box" },
     { "id": "p7", "name": "비티냐", "number": 17, "role": "CM", "tacticalRole": "deep-playmaker-cm" },
     { "id": "p8", "name": "파비안 루이스", "number": 8, "role": "CM", "tacticalRole": "advanced-playmaker-cm" },
-    { "id": "p10", "name": "돔벨레", "number": 10, "role": "LW", "tacticalRole": "inverted-winger" },
-    { "id": "p11", "name": "공살루 하무스", "number": 9, "role": "ST", "tacticalRole": "deep-lying-forward" },
+    { "id": "p10", "name": "뎀벨레", "number": 10, "role": "LW", "tacticalRole": "inverted-winger" },
+    { "id": "p11", "name": "곤살루 하무스", "number": 9, "role": "ST", "tacticalRole": "deep-lying-forward" },
     { "id": "p9", "name": "음바페", "number": 7, "role": "RW", "tacticalRole": "inverted-winger" },
     { "id": "b1", "name": "케일러 나바스", "number": 1, "role": "GK(백업)", "tacticalRole": "traditional-gk" },
     { "id": "b2", "name": "루카스 에르난데스", "number": 21, "role": "LB — summary 참조: 멘드스 부상 공백을 대신함", "tacticalRole": "defensive-fb" },
@@ -46,7 +46,7 @@
       "annotations": [
         { "id": "le-base-rb", "type": "run", "from": { "x": 84, "y": 74 }, "to": { "x": 90, "y": 40 } }
       ],
-      "comment": "기본 대형은 4-3-3. 수비형 미드 우가르트(4번)가 혼자 백4 앞을 지키는 1피벗 구조이고, 양 인사이드 미드(8번 파비안 루이스·17번 비티냐)가 자유롭게 전진한다. 양 풀백(2번 하킴미·25번 멘드스)의 높은 공격 가담이 이 시스템의 주 무기다."
+      "comment": "기본 대형은 4-3-3. 수비형 미드 우가르테(4번)가 혼자 백4 앞을 지키는 1피벗 구조이고, 양 인사이드 미드(8번 파비안 루이스·17번 비티냐)가 자유롭게 전진한다. 양 풀백(2번 하키미·25번 멘드스)의 높은 공격 가담이 이 시스템의 주 무기다."
     },
     "attack": {
       "positions": [
@@ -69,7 +69,7 @@
         { "id": "le-atk-p1", "type": "pass", "from": { "x": 65, "y": 78 }, "to": { "x": 90, "y": 30 } },
         { "id": "le-atk-p2", "type": "pass", "from": { "x": 45, "y": 44 }, "to": { "x": 50, "y": 12 } }
       ],
-      "comment": "공격 시 수비형 미드 우가르트(4번)가 센터백(마르킨요스 5번·스크리니아르 37번) 사이로 내려와 백3을 완성한다. 그 대신 양 풀백(2번 하킴미·25번 멘드스)은 윙 자리까지 말려 올라가 사실상 양쪽 윙어가 되고, 원래 윙 음바페(7번)·돔벨레(10번)는 안쪽 하프스페이스로 파고든다. 그 결과 3-2-5 공격 대형이 완성되어 상대 백4를 공격 5명으로 압도하고, 중앙의 파비안 루이스(8번)·비티냐(17번)가 라인 사이에서 마지막 패스를 찾는다. 마르킨요스(5번)의 대각 스위치 패스가 올라간 풀백의 돌파를 여는 것이 대표 루트다."
+      "comment": "공격 시 수비형 미드 우가르테(4번)가 센터백(마르킨요스 5번·슈크리니아르 37번) 사이로 내려와 백3을 완성한다. 그 대신 양 풀백(2번 하키미·25번 멘드스)은 윙 자리까지 말려 올라가 사실상 양쪽 윙어가 되고, 원래 윙 음바페(7번)·뎀벨레(10번)는 안쪽 하프스페이스로 파고든다. 그 결과 3-2-5 공격 대형이 완성되어 상대 백4를 공격 5명으로 압도하고, 중앙의 파비안 루이스(8번)·비티냐(17번)가 라인 사이에서 마지막 패스를 찾는다. 마르킨요스(5번)의 대각 스위치 패스가 올라간 풀백의 돌파를 여는 것이 대표 루트다."
     },
     "defense": {
       "positions": [
@@ -89,7 +89,7 @@
         { "id": "le-def-st", "type": "run", "from": { "x": 50, "y": 26 }, "to": { "x": 44, "y": 18 } },
         { "id": "le-def-mid", "type": "run", "from": { "x": 30, "y": 46 }, "to": { "x": 26, "y": 38 } }
       ],
-      "comment": "비보유 시 4-1-4-1로 전환해 전방 압박을 건다. 우가르트(4번)가 백4 앞에서 단독 커버를 맡고, 미드 4명(파비안 루이스 8번·비티냐 17번과 안으로 접어든 윙 2명)이 좁게 서서 상대 빌드업의 중앙 루트를 지운다. 볼을 빼앗으면 그 자리에서 즉시 마르킨요스(5번)·스크리니아르(37번)의 빠른 패스로 역습을 시작한다."
+      "comment": "비보유 시 4-1-4-1로 전환해 전방 압박을 건다. 우가르테(4번)가 백4 앞에서 단독 커버를 맡고, 미드 4명(파비안 루이스 8번·비티냐 17번과 안으로 접어든 윙 2명)이 좁게 서서 상대 빌드업의 중앙 루트를 지운다. 볼을 빼앗으면 그 자리에서 즉시 마르킨요스(5번)·슈크리니아르(37번)의 빠른 패스로 역습을 시작한다."
     }
   },
   "summary": "양쪽 풀백이 극단적으로 전진해 사실상 3-2-5 공격 대형을 만드는 것이 핵심. 볼을 잃으면 즉시 강하게 압박해 되찾는다. (왼쪽 풀백은 멘드스의 부상 공백 동안 루카스 에르난데스가 상당 기간 대신했다.)"

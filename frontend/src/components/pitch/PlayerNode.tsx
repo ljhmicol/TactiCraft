@@ -6,7 +6,7 @@ import { clampCoord, pagePointToPitch } from '@/lib/coords'
 import { circularRadius } from '@/lib/pitchMarkings'
 import { positionInfoAt } from '@/lib/positions'
 import { findTacticalRole } from '@/lib/tacticalRoles'
-import { PLAYER_COLORS, POSITION_LINE_COLORS } from '@/lib/theme'
+import { PITCH_TEXT_FONT_FAMILY, PLAYER_COLORS, POSITION_LINE_COLORS } from '@/lib/theme'
 import { getActivePhaseData, PHASE_TRANSITION_MS, useAnalysisStore } from '@/store/analysisStore'
 import type { Player, Point } from '@/types/analysis'
 
@@ -212,7 +212,7 @@ export function PlayerNode({ player, position }: PlayerNodeProps) {
           fillOpacity={0.9}
           fontSize={topLabelFontSize}
           textAnchor="middle"
-          style={{ userSelect: 'none' }}
+          style={{ userSelect: 'none', fontFamily: PITCH_TEXT_FONT_FAMILY }}
         >
           {topLabel}
         </motion.text>
@@ -225,7 +225,7 @@ export function PlayerNode({ player, position }: PlayerNodeProps) {
         fontSize={2.4}
         textAnchor="middle"
         dominantBaseline="central"
-        style={{ userSelect: 'none' }}
+        style={{ userSelect: 'none', fontFamily: PITCH_TEXT_FONT_FAMILY }}
       >
         {player.number}
       </motion.text>
@@ -240,7 +240,7 @@ export function PlayerNode({ player, position }: PlayerNodeProps) {
         fontSize={2}
         fontWeight={700}
         textAnchor="middle"
-        style={{ userSelect: 'none', paintOrder: 'stroke' }}
+        style={{ userSelect: 'none', paintOrder: 'stroke', fontFamily: PITCH_TEXT_FONT_FAMILY }}
         stroke="#0F172A"
         strokeWidth={0.35}
         strokeOpacity={0.55}

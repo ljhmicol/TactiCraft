@@ -12,7 +12,7 @@
   "players": [
     { "id": "p1", "name": "쿠르투아", "number": 1, "role": "GK", "tacticalRole": "traditional-gk" },
     { "id": "p5", "name": "쿠쿠레야", "number": 17, "role": "LB", "tacticalRole": "defensive-fb" },
-    { "id": "p3", "name": "우이센", "number": 4, "role": "CB", "tacticalRole": "cover-cb" },
+    { "id": "p3", "name": "후이센", "number": 4, "role": "CB", "tacticalRole": "cover-cb" },
     { "id": "p4", "name": "코나테", "number": 16, "role": "CB", "tacticalRole": "stopper-cb" },
     { "id": "p2", "name": "덤프리스", "number": 24, "role": "RB", "tacticalRole": "inverted-fb" },
     { "id": "p6", "name": "카마빙가", "number": 6, "role": "DM", "tacticalRole": "anchor" },

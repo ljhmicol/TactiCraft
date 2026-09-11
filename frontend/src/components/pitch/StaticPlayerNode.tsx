@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { transposePoint } from '@/lib/coords'
 import { circularRadius, swapForLandscape } from '@/lib/pitchMarkings'
 import { positionInfoAt } from '@/lib/positions'
-import { VERSUS_TEAM_COLORS } from '@/lib/theme'
+import { PITCH_TEXT_FONT_FAMILY, VERSUS_TEAM_COLORS } from '@/lib/theme'
 import { PHASE_TRANSITION_MS } from '@/store/analysisStore'
 import type { Player, Point } from '@/types/analysis'
 
@@ -93,7 +93,7 @@ export function StaticPlayerNode({
         fontSize={2.4}
         textAnchor="middle"
         dominantBaseline="central"
-        style={{ userSelect: 'none' }}
+        style={{ userSelect: 'none', fontFamily: PITCH_TEXT_FONT_FAMILY }}
       >
         {player.number}
       </motion.text>
@@ -105,7 +105,7 @@ export function StaticPlayerNode({
         fontSize={2}
         fontWeight={700}
         textAnchor="middle"
-        style={{ userSelect: 'none', paintOrder: 'stroke' }}
+        style={{ userSelect: 'none', paintOrder: 'stroke', fontFamily: PITCH_TEXT_FONT_FAMILY }}
         stroke="#0F172A"
         strokeWidth={0.35}
         strokeOpacity={0.55}

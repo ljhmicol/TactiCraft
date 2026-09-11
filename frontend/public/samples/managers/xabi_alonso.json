@@ -21,7 +21,7 @@
     { "id": "p9", "name": "호프만", "number": 7, "role": "AM", "tacticalRole": "shadow-striker" },
     { "id": "p10", "name": "비르츠", "number": 10, "role": "AM", "tacticalRole": "trequartista" },
     { "id": "p11", "name": "보니파스", "number": 22, "role": "ST", "tacticalRole": "target-forward" },
-    { "id": "b1", "name": "마테이 코바르시", "number": 17, "role": "GK(백업)", "tacticalRole": "traditional-gk" },
+    { "id": "b1", "name": "마테이 코바르", "number": 17, "role": "GK(백업)", "tacticalRole": "traditional-gk" },
     { "id": "b2", "name": "오딜론 코수누", "number": 6, "role": "CB", "tacticalRole": "cover-cb" },
     { "id": "b3", "name": "엑세키엘 팔라시오스", "number": 25, "role": "CM", "tacticalRole": "box-to-box" },
     { "id": "b4", "name": "아민 아들리", "number": 21, "role": "LW", "tacticalRole": "inside-forward" },
