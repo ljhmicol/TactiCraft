@@ -14,6 +14,19 @@ export function clientToPitch(svg: SVGSVGElement, clientX: number, clientY: numb
   return { x, y }
 }
 
+/**
+ * Framer Motion의 `PanInfo.point`는 clientX/clientY가 아니라 pageX/pageY다
+ * (스크롤 오프셋 포함) — `clientToPitch`에 그대로 넘기면 페이지가 스크롤된
+ * 만큼 좌표가 어긋난다. 모바일 레이아웃(에디터 페이지가 1열로 쌓여 피치까지
+ * 꽤 스크롤해야 하는)에서 선수를 드래그하면 y가 맨 아래로 튀는 버그로
+ * 발견됐다(2026-09-11 실기기 리포트) — 데스크톱은 피치가 스크롤 없이
+ * 바로 보여서 지금까지 드러나지 않았다. `window.scrollX/Y`를 빼서
+ * client 좌표로 되돌린 뒤 넘긴다.
+ */
+export function pagePointToPitch(svg: SVGSVGElement, pageX: number, pageY: number): { x: number; y: number } {
+  return clientToPitch(svg, pageX - window.scrollX, pageY - window.scrollY)
+}
+
 /** 0~99.9로 클램프한다. 100을 배제해 오버로드 경계 계산이 항상 어떤 구역에 속하도록 한다. */
 export function clampCoord(v: number): number {
   return Math.min(99.9, Math.max(0, v))

@@ -2,7 +2,7 @@ import { motion, type PanInfo } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 
 import { ANNOTATION_LINK_EPS, annotationSamplePoints, travelTimes } from '@/lib/annotations'
-import { clampCoord, clientToPitch } from '@/lib/coords'
+import { clampCoord, pagePointToPitch } from '@/lib/coords'
 import { circularRadius } from '@/lib/pitchMarkings'
 import { positionInfoAt } from '@/lib/positions'
 import { findTacticalRole } from '@/lib/tacticalRoles'
@@ -158,7 +158,7 @@ export function PlayerNode({ player, position }: PlayerNodeProps) {
 
   const handlePan = (_: PointerEvent | MouseEvent | TouchEvent, info: PanInfo) => {
     if (!svgRef.current) return
-    const next = clientToPitch(svgRef.current, info.point.x, info.point.y)
+    const next = pagePointToPitch(svgRef.current, info.point.x, info.point.y)
     movePlayer(player.id, clampCoord(next.x), clampCoord(next.y))
   }
 

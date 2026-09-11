@@ -1,7 +1,7 @@
 import { motion, type PanInfo } from 'framer-motion'
 
 import { autoPressingLine, pressingLineLevel } from '@/lib/compactness'
-import { clampCoord, clientToPitch } from '@/lib/coords'
+import { clampCoord, pagePointToPitch } from '@/lib/coords'
 import { LAYER_COLORS } from '@/lib/theme'
 import type { PlayerPosition } from '@/types/analysis'
 
@@ -80,7 +80,7 @@ export function PressingLine({
 
   const handlePan = (_: PointerEvent | MouseEvent | TouchEvent, info: PanInfo) => {
     if (!onDragY || !svgRef.current) return
-    const next = clientToPitch(svgRef.current, info.point.x, info.point.y)
+    const next = pagePointToPitch(svgRef.current, info.point.x, info.point.y)
     onDragY(clampCoord(next.y))
   }
 

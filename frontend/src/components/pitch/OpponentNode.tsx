@@ -1,7 +1,7 @@
 import { motion, type PanInfo } from 'framer-motion'
 import { useState } from 'react'
 
-import { clampCoord, clientToPitch } from '@/lib/coords'
+import { clampCoord, pagePointToPitch } from '@/lib/coords'
 import { circularRadius } from '@/lib/pitchMarkings'
 import { PLAYER_COLORS } from '@/lib/theme'
 import { useAnalysisStore } from '@/store/analysisStore'
@@ -29,7 +29,7 @@ export function OpponentNode({ slot, position }: OpponentNodeProps) {
 
   const handlePan = (_: PointerEvent | MouseEvent | TouchEvent, info: PanInfo) => {
     if (!svgRef.current) return
-    const next = clientToPitch(svgRef.current, info.point.x, info.point.y)
+    const next = pagePointToPitch(svgRef.current, info.point.x, info.point.y)
     moveOpponent(slot, clampCoord(next.x), clampCoord(next.y))
   }
 
