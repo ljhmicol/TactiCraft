@@ -183,15 +183,21 @@ export function EditorPage() {
             <UndoRedoButtons />
           </div>
           <ToolPalette />
-          {/* 실기기 리포트(2026-09-11, "그래도 전술판이 안 보여") — 헤드리스
-           * Chromium·WebKit 둘 다 정상 렌더링해서 재현이 안 됐는데, 두 엔진
-           * 모두 데스크톱 빌드라 iOS Safari 특유의 동적 주소창 때문에 `vh`가
-           * 뷰포트 대비 잘못 계산되는(실기기에서만 나는) 버그를 재현하지
-           * 못한 것으로 추정 — `vh`를 그대로 쓰고 지원 브라우저에서만
-           * `dvh`(동적 뷰포트 높이, 이 문제를 해결하려고 나온 단위)로
-           * 덮어써 구형 브라우저는 `vh` 폴백을 그대로 쓰게 한다. */}
+          {/* 실기기 리포트(2026-09-11, "그래도 전술판이 안 보여") — 화면에 직접
+           * 찍은 진단 배너로 실제 iPhone Safari에서 이 div의 계산된 너비가
+           * 0px임을 확인했다(높이는 474px로 정상). 원인: 이 div는 `flex-col
+           * items-center`인 부모의 flex 아이템인데 너비 클래스가 전혀
+           * 없었다 — 형제 요소들(PhaseTabs 줄·UndoRedoButtons 줄)은 전부
+           * `w-full max-w-md`를 명시하는데 이 div만 빠져 있었다. 너비가
+           * 없는 flex 아이템은 `align-items:center`에서 내용물 기준으로
+           * shrink-to-fit되는데, 내용물(Pitch)이 다시 퍼센트(`w-full`)로
+           * 이 div를 기준 삼는 순환 참조라 데스크톱 엔진(Chromium·데스크톱
+           * WebKit)은 남는 공간으로 관대하게 처리했지만 이 iOS Safari
+           * 빌드는 0으로 접었다. `vh`→`dvh`(아래)는 높이 쪽 문제였고 실제
+           * 사라진 원인은 이 너비 누락이었다 — 형제와 같은 `w-full
+           * max-w-md`를 명시해 순환 참조 자체를 없앤다. */}
           <div
-            className="h-[65vh] supports-[height:100dvh]:h-[65dvh]"
+            className="h-[65vh] w-full max-w-md supports-[height:100dvh]:h-[65dvh]"
             data-testid="editor-pitch"
             onPointerDown={() => setSelectedAnnotationId(null)}
           >

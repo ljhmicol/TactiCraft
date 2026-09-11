@@ -43,7 +43,11 @@
 - **버그 4 — `dvh` 수정 후 PC 데스크톱 헤더가 2행으로 깨짐(2026-09-11 후속, "그래도 이제 피씨에서 헤더 부분 글씨들 위치가 이상해")**: 원인은 버그 2(모바일 내비 대응)에서 만든 CSS Grid에 있었다 — `md:grid-cols-[1fr_auto_1fr]`로 3개 열은 지정했지만 행(`grid-template-rows`)을 하나도 지정하지 않았고, 워드마크(Link)는 명시적 열 위치가 아예 없고(auto) 나머지 둘만 `md:col-start-2`/`md:col-start-3`였다. Playwright로 각 자식의 computed style을 직접 조회해보니 브라우저가 이걸 암시적 2행(`gridTemplateRows: "36px 20px"`)으로 풀어서, nav(링크 4개)만 2번째 행으로 밀려나 있었다 — 기존 코드에서 없던 문제가 아니라 애초에 이 모바일 대응 리팩터에서 "행"을 지정하지 않은 게 원인.
   - **수정**: 워드마크·로그인상태·nav 3개 모두에 `md:row-start-1`을 명시적으로 줘서 항상 같은 행에 놓이도록 고정.
   - **검증**: `tsc -b`/`lint`(0 errors)/`vitest`(174, 회귀 없음)/`build` 통과. Playwright로 각 헤더 자식의 `getComputedStyle().gridRowStart`가 전부 `"1"`이고 컨테이너의 `gridTemplateRows`가 단일 행(`"56px"`)인 것을 직접 확인, 1280px(데스크톱)·390px(모바일) 두 폭 모두 스크린샷으로 한 줄 레이아웃 재확인.
-- **미확인**: 이번 `dvh` 수정이 실제 iOS Safari/Android Chrome 기기에서 피치를 보이게 하는지는 사용자가 재확인해야 한다 — 애초에 이 버그 자체가 자동화 도구로는 재현·검증이 구조적으로 불가능한 종류라, 실기기 확인이 유일한 최종 검증 수단이다.
+- **`dvh` 수정 후에도 재현("사파리에서 아직 전술판이 안 떠") — 리모트 디버깅 없이 실기기 원인 확정**: 자동화 도구로 재현이 안 되고 사용자 폰에 원격 디버깅(Mac+Safari 개발자 도구)도 붙일 수 없어서, 화면에 직접 진단 정보를 찍는 임시 컴포넌트(`components/debug/PitchDebugBanner.tsx`)를 만들어 사용자에게 "이 글자를 그대로 읽어달라"고 요청 — 실제 iPhone Safari(iOS 18.7)에서 받은 값이 결정적이었다: **`pitch computed height=474px width=0px`**. 높이는 정상(`dvh` 수정이 실제로 먹힘), 너비만 0.
+  - **버그 5(진짜 원인) — 피치 wrapper `<div>`에 너비 클래스가 아예 없었음**: `EditorPage.tsx`의 `data-testid="editor-pitch"` 이 `<div>`는 `h-[65vh]`류 높이 클래스만 있고 너비 클래스가 전혀 없었다 — 같은 부모(`flex flex-col items-center gap-3`) 안의 형제 요소들(PhaseTabs 줄, UndoRedoButtons 줄)은 전부 `w-full max-w-md`를 명시하는데 이 div만 빠져 있었다. `align-items:center`인 flex 컬럼의 자식은 너비가 없으면 **내용물 기준으로 shrink-to-fit**되는데, 내용물(`<Pitch>`)이 다시 퍼센트(`w-full`)로 이 div 자신을 기준 삼는 **순환 참조**라 — Chromium·데스크톱 WebKit(둘 다 이번 세션에서 확인)은 이 모호한 경우를 "남는 공간 사용"으로 관대하게 풀었지만, 이 iOS Safari 빌드는 0으로 접었다. `vh`→`dvh`(버그 3)는 진짜 있던 별개의 버그였지만 실제로 화면이 사라진 결정적 원인은 이 너비 누락이었다 — 두 버그가 겹쳐 있었다.
+  - **수정**: 형제 요소와 똑같이 `w-full max-w-md`를 명시해 순환 참조 자체를 없앴다. 진단용 `PitchDebugBanner`/`PitchErrorBoundary`는 원인을 찾자마자 통째로 제거(정식 코드가 아니었음).
+  - **검증**: `tsc -b`/`lint`(0 errors)/`vitest`(174, 회귀 없음)/`build` 통과. Playwright로 데스크톱(1280px)에서 피치 박스가 `max-w-md`(448px)로 예전과 동일하게 렌더링되는 것 확인(회귀 없음) — 실기기 재현이었던 너비 0 문제 자체는 데스크톱에서 애초에 발생하지 않아 이 확인은 "고치기 전과 같은 크기"라는 회귀 테스트 성격.
+- **미확인**: 이번 너비 수정이 실제 iOS Safari에서 전술판을 보이게 하는지는 사용자가 재확인해야 한다 — 다만 이번엔 진단 배너로 실측한 값(width=0px)에서 역산한 수정이라 확신도가 높다.
 
 ## 기각 기록
 
