@@ -149,15 +149,15 @@ function App() {
             <Link
               to="/"
               onClick={handleLogoClick}
-              className="order-1 shrink-0 font-display text-lg font-semibold text-foreground hover:text-foreground/80 md:order-none md:justify-self-start"
+              className="order-1 shrink-0 font-display text-lg font-semibold text-foreground hover:text-foreground/80 md:order-none md:row-start-1 md:justify-self-start"
             >
               TactiCore
             </Link>
-            <div className="order-2 flex shrink-0 items-center gap-4 md:order-none md:col-start-3 md:justify-self-end">
+            <div className="order-2 flex shrink-0 items-center gap-4 md:order-none md:col-start-3 md:row-start-1 md:justify-self-end">
               <AuthNav />
             </div>
             <nav
-              className="order-3 flex w-full items-center gap-5 overflow-x-auto md:order-none md:col-start-2 md:w-auto md:justify-self-center md:overflow-visible"
+              className="order-3 flex w-full items-center gap-5 overflow-x-auto md:order-none md:col-start-2 md:row-start-1 md:w-auto md:justify-self-center md:overflow-visible"
               aria-label="주요 메뉴"
             >
               <NavItem to="/" end>
