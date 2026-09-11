@@ -183,7 +183,18 @@ export function EditorPage() {
             <UndoRedoButtons />
           </div>
           <ToolPalette />
-          <div className="h-[65vh]" data-testid="editor-pitch" onPointerDown={() => setSelectedAnnotationId(null)}>
+          {/* 실기기 리포트(2026-09-11, "그래도 전술판이 안 보여") — 헤드리스
+           * Chromium·WebKit 둘 다 정상 렌더링해서 재현이 안 됐는데, 두 엔진
+           * 모두 데스크톱 빌드라 iOS Safari 특유의 동적 주소창 때문에 `vh`가
+           * 뷰포트 대비 잘못 계산되는(실기기에서만 나는) 버그를 재현하지
+           * 못한 것으로 추정 — `vh`를 그대로 쓰고 지원 브라우저에서만
+           * `dvh`(동적 뷰포트 높이, 이 문제를 해결하려고 나온 단위)로
+           * 덮어써 구형 브라우저는 `vh` 폴백을 그대로 쓰게 한다. */}
+          <div
+            className="h-[65vh] supports-[height:100dvh]:h-[65dvh]"
+            data-testid="editor-pitch"
+            onPointerDown={() => setSelectedAnnotationId(null)}
+          >
             <Pitch>
               {layers.channelGrid && <ChannelGrid halfSpaces={layers.halfSpaces} />}
               {layers.compactness && <CompactnessBox positions={phase.positions} />}
@@ -280,7 +291,7 @@ export function EditorPage() {
             </summary>
             {/* 목록 자체만 스크롤된다 — 선수가 많아져도(최대 23명) 페이지 전체가
                 늘어나지 않고 이 박스 안에서만 스크롤바가 생긴다 (2026-09-07). */}
-            <div className="max-h-[70vh] space-y-2 overflow-y-auto px-3 pb-3">
+            <div className="max-h-[70vh] supports-[height:100dvh]:max-h-[70dvh] space-y-2 overflow-y-auto px-3 pb-3">
               {analysis.players.map((player, i) => (
                 <PlayerForm key={player.id} player={player} index={i} />
               ))}

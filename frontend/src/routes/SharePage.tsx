@@ -162,7 +162,12 @@ export function SharePage() {
         ))}
       </div>
 
-      <div className="mx-auto h-[65vh] w-full max-w-md" data-testid="share-pitch">
+      {/* EditorPage와 같은 이유(2026-09-11)로 dvh 폴백 — 모바일 실기기에서만
+       * 주소창 때문에 vh가 잘못 계산되는 문제 대응. */}
+      <div
+        className="mx-auto h-[65vh] w-full max-w-md supports-[height:100dvh]:h-[65dvh]"
+        data-testid="share-pitch"
+      >
         <Pitch>
           {layers.channelGrid && <ChannelGrid halfSpaces={layers.halfSpaces} />}
           {layers.compactness && <CompactnessBox positions={phase.positions} />}
