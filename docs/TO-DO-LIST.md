@@ -19,11 +19,20 @@
 
 ## 체크리스트
 
-현재 대기 중인 항목이 없다. 1~30번은 전부 완료해 `TO-DO-ARCHIVE.md`에 있다(권장 순서 14 → 16 → 2/3/4/5/10 → 20·21·22 → 8 → 25/26/27 → 11·회원 탈퇴·28·3·10·7·9·12·29·30). 새 항목은 논의하는 즉시 여기 먼저 기록한다.
+- [O] **31. UI 정리 3건 (회원 탈퇴 이동·역할 칩 제거·선수 선택 링)** — 소 · 구현 완료, 사용자 확인 전
+
+1~30번은 전부 완료해 `TO-DO-ARCHIVE.md`에 있다(권장 순서 14 → 16 → 2/3/4/5/10 → 20·21·22 → 8 → 25/26/27 → 11·회원 탈퇴·28·3·10·7·9·12·29·30). 31번은 실기기 확인 뒤 사용자가 UI 세부 사항 3가지를 한 번에 요청하며 시작됐다.
 
 ## 항목 상세
 
-(현재 없음 — 완료된 항목의 상세는 `TO-DO-ARCHIVE.md` 참조.)
+### 31. UI 정리 3건 (회원 탈퇴 이동·역할 칩 제거·선수 선택 링)
+
+- **내용**: "회원탈퇴를 내 정보로 옮기면 좋겠어. 그리고 기본 코멘트 밑에 선수: 역할 은 필요없는거 같아 지우자. 선수 노드를 눌러서 선수수정에 들어갈때 선수 노드 주변에 생기는 검은색흰색 원이 너무 두툼해 다르게 수정해줘" — 서로 무관한 UI 정리 3건을 한 메시지로 요청받아 함께 처리.
+- **회원 탈퇴 이동**: `App.tsx`의 `AuthNav`(상단 내비)에 있던 회원 탈퇴 버튼·확인창·뮤테이션 호출을 통째로 `routes/ProfilePage.tsx`로 옮겼다. 내비에는 이메일 링크(내 정보로 이동)·로그아웃만 남는다. 페이지 하단에 `border-t`로 구분한 별도 섹션(destructive 스타일)으로 배치 — 사용자명·비밀번호 변경 폼과 시각적으로 분리해 실수로 누르기 어렵게 했다. `App.tsx`에서 안 쓰게 된 `useWithdraw`·`useNavigate`(AuthNav 로컬)·`closeAnalysis`(AuthNav 로컬) 정리.
+- **역할 제안 칩 제거**: `CommentPanel.tsx`의 "+ 이름 · 역할" 칩 목록(전술 역할이 지정된 선수의 역할 설명을 코멘트 끝에 붙여주던 TO-DO 20번 보조 기능)을 통째로 제거. `phasePositions` prop과 `findTacticalRole`/`players` 조회 로직도 같이 정리. `EditorPage.tsx`의 `<CommentPanel>` 호출부에서 `phasePositions` 전달 제거. `TacticalRole.blurb`는 역할 선택 드롭다운(PlayerForm·PlayerEditDialog)의 title 툴팁으로 계속 쓰이므로 `lib/tacticalRoles.ts` 자체는 유지하고 stale해진 doc comment만 갱신.
+- **선수 선택 링 개선**: 원인 조사 — 선수 노드(`PlayerNode.tsx`)를 감싸는 `motion.g`가 pan 제스처(`onPan`)를 갖고 있어 Framer Motion이 자동으로 `tabindex="0"`을 붙이는데, 탭하는 순간 그 `<g>`가 브라우저 포커스를 받아 Safari 기본 포커스 아웃라인(두꺼운 이중 테두리)이 그려지고 있었다(Playwright로 `tabindex`/`outline` computed style 직접 확인). 수정: `motion.g`의 인라인 style에 `outline: 'none'`을 추가해 브라우저 기본값을 끄고, `editingPlayerId === player.id`일 때만 보이는 얇은 SVG `<ellipse>` 링(`stroke="hsl(var(--ring))"`, `strokeWidth=0.35`, `fill="none"`, 반지름은 선수 원보다 0.7유닛만 큼)을 새로 추가 — 국면 전환·드래그 애니메이션과 같은 `cx/cy`·`transition`을 공유해 선수를 따라 자연스럽게 움직인다.
+- **검증**: `tsc -b`/`npm run lint`(0 errors)/`vitest run`(174, 회귀 없음)/`npm run build` 통과(CommentPanel의 `phasePositions` prop 제거로 EditorPage 호출부가 타입 에러 없이 컴파일되는 것도 이 단계에서 확인). Playwright로 (1) 감독 프리셋 선택 후 코멘트 패널에 역할 제안 칩이 0개인 것 확인, (2) 선수 노드 클릭 → 다이얼로그가 열린 상태에서 그 노드에 얇은 `--ring` 색 스트로크 링이 그려지고(스크린샷으로 육안 확인) 기본 `outline`은 `none`인 것 확인, (3) 실제 계정을 새로 등록해 로그인 상태로 상단 내비에 "회원 탈퇴" 버튼이 0개, "로그아웃"이 1개인 것 확인, (4) `/profile`로 이메일 링크를 클릭해 클라이언트 라우팅으로 이동한 뒤(직접 URL 이동은 인증 체크 타이밍 이슈로 로그인 화면으로 튕겨서 링크 클릭으로 재확인) 회원 탈퇴 버튼이 1개 있는 것을 스크린샷으로 확인. 검증에 쓴 테스트 계정 2개는 `data/tacticore.db`에서 `PRAGMA foreign_keys = ON` 상태로 직접 삭제해 정리.
+- **미확인**: 사용자가 브라우저(가능하면 실기기)에서 세 가지 모두 확인해야 한다 — 특히 선수 선택 링은 이번 세션에서 반복적으로 실기기 전용 버그가 나왔던 영역(Safari 포커스 렌더링)이라 데스크톱 Chromium 검증만으로는 완전히 확신하기 어렵다.
 
 ## 기각 기록
 
