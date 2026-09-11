@@ -101,22 +101,33 @@ export function ManagerPresetPicker({ onSelect }: ManagerPresetPickerProps) {
 
   return (
     <div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {MANAGER_PRESETS.map((preset) => (
+      {/* Hallmark 감사의 minor 지적(2026-09-11) — 프리셋 고르기 3곳이 전부
+       * 똑같은 테두리 카드 그리드였다. 여기는 10개짜리 텍스트 전용 목록이라
+       * "훑어보기"에 맞는 조밀한 리스트로 바꿨다 — 카드 상자 대신 hairline
+       * 구분선, 번호는 tabular-nums로 정렬해 스캔하기 쉽게 한다. 썸네일이
+       * 있는 커뮤니티(그리드 유지)·2개뿐인 실제 경기 프리셋(큰 카드)과
+       * 형태 자체가 다르다. */}
+      <div className="divide-y divide-border rounded-lg border border-border">
+        {MANAGER_PRESETS.map((preset, i) => (
           <button
             key={preset.url}
             type="button"
             disabled={loadingUrl !== null}
             onClick={() => handleClick(preset)}
             className={cn(
-              'rounded-lg border border-border bg-card p-4 text-left transition-colors hover:border-primary hover:bg-accent',
+              'flex w-full items-baseline gap-3 px-4 py-3 text-left transition-colors first:rounded-t-lg last:rounded-b-lg hover:bg-accent',
               loadingUrl === preset.url && 'opacity-60',
             )}
           >
-            <p className="font-semibold text-foreground">
-              {preset.manager} <span className="font-normal text-muted-foreground">· {preset.club}</span>
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">{preset.blurb}</p>
+            <span className="w-6 shrink-0 font-display text-xs tabular-nums text-muted-foreground">
+              {String(i + 1).padStart(2, '0')}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="font-semibold text-foreground">
+                {preset.manager} <span className="font-normal text-muted-foreground">· {preset.club}</span>
+              </span>
+              <span className="block text-xs text-muted-foreground">{preset.blurb}</span>
+            </span>
           </button>
         ))}
       </div>

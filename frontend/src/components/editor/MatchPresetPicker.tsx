@@ -62,7 +62,11 @@ export function MatchPresetPicker({ onSelect }: MatchPresetPickerProps) {
 
   return (
     <div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {/* Hallmark 감사의 minor 지적(2026-09-11) — 이 프리셋은 딱 2개뿐이고
+       * 감독 프리셋(재구성)과 달리 실측 트래킹 데이터 기반이라는 점이 특별해
+       * 세로로 쌓은 큰 카드 + "실제 경기 데이터" 배지로 그 희소성을 드러낸다.
+       * 감독 프리셋(조밀한 리스트)·커뮤니티(썸네일 그리드)와 모양이 다르다. */}
+      <div className="flex flex-col gap-4">
         {MATCH_PRESETS.map((preset) => (
           <button
             key={preset.url}
@@ -70,13 +74,16 @@ export function MatchPresetPicker({ onSelect }: MatchPresetPickerProps) {
             disabled={loadingUrl !== null}
             onClick={() => handleClick(preset)}
             className={cn(
-              'rounded-lg border border-border bg-card p-4 text-left transition-colors hover:border-primary hover:bg-accent',
+              'rounded-lg border border-border bg-card p-5 text-left transition-colors hover:border-primary hover:bg-accent',
               loadingUrl === preset.url && 'opacity-60',
             )}
           >
-            <p className="font-semibold text-foreground">{preset.title}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">{preset.matchup}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{preset.blurb}</p>
+            <span className="inline-block rounded-full bg-accent px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent-foreground">
+              실제 경기 데이터
+            </span>
+            <p className="mt-2 text-lg font-semibold text-foreground">{preset.title}</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">{preset.matchup}</p>
+            <p className="mt-2 text-sm text-muted-foreground">{preset.blurb}</p>
           </button>
         ))}
       </div>
