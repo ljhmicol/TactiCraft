@@ -1,8 +1,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { MouseEvent } from 'react'
-import { BrowserRouter, Link, Route, Routes, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Link, NavLink, Route, Routes, useNavigate } from 'react-router-dom'
 
+import { Button } from '@/components/ui/button'
 import { useCurrentUser, useLogout, useWithdraw } from '@/hooks/useAuth'
+import { cn } from '@/lib/utils'
 import { AnalysesPage } from '@/routes/AnalysesPage'
 import { AnalysisDetailPage } from '@/routes/AnalysisDetailPage'
 import { CommunityPage } from '@/routes/CommunityPage'
@@ -28,15 +30,18 @@ function AuthNav() {
 
   if (isChecking) return null
 
+  // 로그아웃 상태 — N1b(component-cookbook.md) 패턴의 "로그인 텍스트 링크 +
+  // 채워진 CTA" 조합. 로그인된 쪽엔 이 짝에 대응하는 단일 주요 동작이
+  // 없어서(이메일·로그아웃·탈퇴 셋 다 동급) 그 상태는 아래에서 텍스트로만 둔다.
   if (!isLoggedIn) {
     return (
       <>
-        <Link to="/login" className="hover:text-foreground">
+        <Link to="/login" className="text-sm text-muted-foreground hover:text-foreground">
           로그인
         </Link>
-        <Link to="/register" className="hover:text-foreground">
-          회원가입
-        </Link>
+        <Button asChild size="sm">
+          <Link to="/register">회원가입</Link>
+        </Button>
       </>
     )
   }
@@ -52,14 +57,14 @@ function AuthNav() {
 
   return (
     <>
-      <Link to="/profile" className="text-muted-foreground hover:text-foreground" title="내 정보">
+      <Link to="/profile" className="text-sm text-muted-foreground hover:text-foreground" title="내 정보">
         {user?.email}
       </Link>
       <button
         type="button"
         onClick={() => logoutMutation.mutate()}
         disabled={logoutMutation.isPending}
-        className="hover:text-foreground"
+        className="text-sm text-muted-foreground hover:text-foreground"
       >
         로그아웃
       </button>
@@ -67,11 +72,30 @@ function AuthNav() {
         type="button"
         onClick={handleWithdraw}
         disabled={withdrawMutation.isPending}
-        className="text-destructive hover:text-destructive/80"
+        className="text-sm text-destructive/80 hover:text-destructive"
       >
         회원 탈퇴
       </button>
     </>
+  )
+}
+
+/** 상단 내비 가운데 클러스터의 링크 하나 — 지금 보고 있는 경로면 밑줄+본문색,
+ * 아니면 옅은 회색. 예전 내비는 활성 경로 표시가 아예 없었다. */
+function NavItem({ to, children, end }: { to: string; children: string; end?: boolean }) {
+  return (
+    <NavLink
+      to={to}
+      end={end}
+      className={({ isActive }) =>
+        cn(
+          'text-sm underline-offset-4 transition-colors hover:text-foreground',
+          isActive ? 'text-foreground underline' : 'text-muted-foreground',
+        )
+      }
+    >
+      {children}
+    </NavLink>
   )
 }
 
@@ -95,26 +119,44 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <div className="flex h-14 items-center justify-between border-b border-border px-6">
-          <Link to="/" onClick={handleLogoClick} className="font-semibold text-foreground hover:text-foreground/80">
-            TactiCore
-          </Link>
-          <nav className="flex gap-4 text-sm text-muted-foreground">
-            <Link to="/" className="hover:text-foreground">
-              편집기
+        {/*
+          Hallmark 감사(2026-09-11) 후속 — 내비게이션 재설계. 예전 구조는
+          워드마크 왼쪽 고정 + 인라인 텍스트 링크 여러 개 + CTA 오른쪽 고정,
+          h-14, border-b — anti-patterns.md가 "가장 많이 인식되는 AI 내비
+          지문"으로 지목하는 모양과 거의 일치했다(N1a). component-cookbook.md
+          라우팅표의 modern-minimal 기본값 N1b(Canonical SaaS three-section)로
+          교체 — TactiCore가 실제로 "진짜 목적지 4개 + 로그인 상태"를 가진
+          제품 내비라 이 아키타입의 "Use when"과 정확히 맞는다.
+          knob 선택: 가운데 링크 4개 · 드롭다운 없음 · scroll state=always-solid
+          (원본 예시의 "투명하게 시작해 스크롤하면 프로스트"는 마케팅 히어로
+          이미지 위에 얹는 용도라, 항상 조밀한 유틸리티 화면인 이 앱에는 안
+          맞아 always-solid를 골랐다 — N1b 문서가 이걸 정식 knob 값으로
+          제공한다) · CTA 쌍=로그인 텍스트+회원가입 채움(로그아웃 상태만).
+          그리드 3분할(brand-start / links-center / auth-end)이라, 예전처럼
+          모든 걸 오른쪽 한 덩어리로 밀어붙이지 않고 시각적으로 구역이 나뉜다.
+        */}
+        <header className="border-b border-border bg-card">
+          <div className="mx-auto grid h-14 max-w-[1400px] grid-cols-[1fr_auto_1fr] items-center px-6">
+            <Link
+              to="/"
+              onClick={handleLogoClick}
+              className="justify-self-start font-display text-lg font-semibold text-foreground hover:text-foreground/80"
+            >
+              TactiCore
             </Link>
-            <Link to="/analyses" className="hover:text-foreground">
-              저장 목록
-            </Link>
-            <Link to="/community" className="hover:text-foreground">
-              커뮤니티
-            </Link>
-            <Link to="/versus" className="hover:text-foreground">
-              전술 대결
-            </Link>
-            <AuthNav />
-          </nav>
-        </div>
+            <nav className="col-start-2 flex items-center gap-5 justify-self-center" aria-label="주요 메뉴">
+              <NavItem to="/" end>
+                편집기
+              </NavItem>
+              <NavItem to="/analyses">저장 목록</NavItem>
+              <NavItem to="/community">커뮤니티</NavItem>
+              <NavItem to="/versus">전술 대결</NavItem>
+            </nav>
+            <div className="col-start-3 flex items-center gap-4 justify-self-end">
+              <AuthNav />
+            </div>
+          </div>
+        </header>
         <Routes>
           <Route path="/" element={<EditorPage />} />
           <Route path="/new" element={<NewAnalysisPage />} />
