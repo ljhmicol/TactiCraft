@@ -7,6 +7,14 @@ import { axisMinuteAt, axisRatio, clusterByAxis, formatMinute, FULL_AXIS, timeli
 import { useAnalysisStore } from '@/store/analysisStore'
 import type { ChangingPoint } from '@/types/analysis'
 
+// changingPoints가 없는 분석(대부분의 프리셋)에서 `s.analysis?.changingPoints ?? []`을
+// 셀렉터 안에 인라인으로 쓰면 렌더마다 새 배열이 생겨 아래 useEffect(line 93 부근,
+// [changingPoints] 의존)가 매 렌더 재실행 → setState → 재렌더가 무한 반복된다
+// (2026-09-11, 모바일 실기기에서 "전술판이 안 보여" 리포트로 발견 — 헤드리스
+// Chromium 콘솔의 "Maximum update depth exceeded" 경고로 원인 확인). 참조가
+// 안정적인 모듈 스코프 상수로 폴백해 해결한다.
+const EMPTY_CHANGING_POINTS: ChangingPoint[] = []
+
 // 축 범위·눈금은 lib/timelineAxis가 정한다 — 보통은 0~120분(2026-09-09,
 // "타임라인이 나는 시간대도 있어야 할 것 같아" 요청)이지만, 시점들이 좁은
 // 구간에 몰려 있으면 그 구간으로 확대한다(2026-09-10).
@@ -27,7 +35,7 @@ const AUTO_PLAY_INTERVAL_MS = 1800
  * 만들 수 있어야 하기 때문(구버전 데이터에도 minute이 없다).
  */
 export function Timeline() {
-  const changingPoints = useAnalysisStore((s) => s.analysis?.changingPoints ?? [])
+  const changingPoints = useAnalysisStore((s) => s.analysis?.changingPoints ?? EMPTY_CHANGING_POINTS)
   const selectedChangingPointId = useAnalysisStore((s) => s.selectedChangingPointId)
   const addChangingPoint = useAnalysisStore((s) => s.addChangingPoint)
   const renameChangingPoint = useAnalysisStore((s) => s.renameChangingPoint)
@@ -161,7 +169,7 @@ export function Timeline() {
               type="button"
               onClick={() => setIsPlaying((v) => !v)}
               className={cn(
-                'rounded-full px-2 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                'whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                 isPlaying ? 'bg-accent text-accent-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground',
               )}
             >
@@ -174,7 +182,7 @@ export function Timeline() {
               onClick={() => (mergeMode ? exitMergeMode() : setMergeMode(true))}
               title="여러 시점을 하나로 합치기"
               className={cn(
-                'flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                'flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                 mergeMode ? 'bg-accent text-accent-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground',
               )}
             >
@@ -191,7 +199,7 @@ export function Timeline() {
                   ? '시점이 몰려 있는 구간만 확대해서 봅니다'
                   : '0~120분 경기 전체 시간축으로 봅니다'
               }
-              className="flex items-center gap-1 rounded-full bg-secondary px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-secondary px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               {showFullAxis ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}
               {showFullAxis ? '구간 확대' : '전체 보기'}
@@ -202,7 +210,7 @@ export function Timeline() {
             disabled={isPlaying || mergeMode}
             onClick={handleAdd}
             title="지금 보이는 배치를 시점으로 저장"
-            className="flex items-center gap-1 rounded-full bg-secondary px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-secondary px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Plus className="h-3 w-3" />
             시점
@@ -218,14 +226,14 @@ export function Timeline() {
               type="button"
               disabled={mergeSelected.length < 2}
               onClick={handleMergeConfirm}
-              className="rounded-full bg-primary px-2 py-0.5 font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-40"
+              className="shrink-0 whitespace-nowrap rounded-full bg-primary px-2 py-0.5 font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-40"
             >
               병합하기
             </button>
             <button
               type="button"
               onClick={exitMergeMode}
-              className="rounded-full px-2 py-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               취소
             </button>
@@ -286,7 +294,7 @@ export function Timeline() {
                 onClick={() => handleClusterClick(cluster.items)}
                 style={{ left: `${cluster.ratio}%` }}
                 className={cn(
-                  'absolute top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background',
+                  'absolute top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center whitespace-nowrap rounded-full border-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background',
                   single ? 'h-3 w-3' : 'h-4 min-w-4 px-0.5 text-[9px] font-semibold leading-none',
                   mergeMode
                     ? active
@@ -314,7 +322,7 @@ export function Timeline() {
               disabled={isPlaying}
               onClick={() => toggleSelect(cp)}
               className={cn(
-                'rounded-full px-2 py-0.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                'whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                 mergeMode
                   ? mergeSelected.includes(cp.id)
                     ? 'bg-amber-500 text-white'

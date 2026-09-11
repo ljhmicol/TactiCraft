@@ -28,7 +28,7 @@ export function LayerToggleChips({ hasOpponent }: { hasOpponent: boolean }) {
             title={disabled ? '상대팀 위치를 입력하면 사용할 수 있습니다' : undefined}
             onClick={() => toggleLayer(key)}
             className={cn(
-              'shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+              'shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
               disabled
                 ? 'cursor-not-allowed bg-secondary text-slate-300'
                 : on

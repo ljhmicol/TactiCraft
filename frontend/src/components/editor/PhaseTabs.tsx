@@ -40,9 +40,15 @@ export function PhaseTabs() {
     return () => clearInterval(timer)
   }, [isPlaying, switchPhase])
 
+  // 모바일 실기기 리포트(2026-09-11, "글자크기들도 안 맞아서 튀어나오고")로
+  // 발견 — 좁은 화면에서 이 줄이 justify-between으로 양쪽에 붙은 두 그룹을
+  // 한 줄에 욱여넣으려다 flex-shrink 기본값 때문에 버튼이 눌려 "기\n본"처럼
+  // 글자 단위로 줄바꿈됐다(App.tsx 내비 모바일 수정과 같은 원인·같은 패턴).
+  // flex-wrap으로 안 맞으면 두 그룹이 줄바꿈되게 하고, 각 버튼엔
+  // whitespace-nowrap·shrink-0을 줘서 버튼 안의 글자 자체는 절대 안 깨지게 한다.
   return (
-    <div className="flex items-center justify-between gap-2">
-      <div className="inline-flex rounded-lg border border-border bg-muted p-1">
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="inline-flex shrink-0 rounded-lg border border-border bg-muted p-1">
         {PHASES.map((phase) => (
           <button
             key={phase}
@@ -50,7 +56,7 @@ export function PhaseTabs() {
             disabled={isPlaying}
             onClick={() => switchPhase(phase)}
             className={cn(
-              'rounded-md px-4 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+              'shrink-0 whitespace-nowrap rounded-md px-4 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
               currentPhase === phase && !selectedChangingPointId
                 ? 'bg-primary text-primary-foreground'
                 : 'text-muted-foreground hover:text-foreground',
@@ -61,12 +67,12 @@ export function PhaseTabs() {
           </button>
         ))}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2">
         <button
           type="button"
           onClick={() => setIsPlaying((v) => !v)}
           className={cn(
-            'rounded-md px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+            'shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
             isPlaying ? 'bg-accent text-accent-foreground' : 'bg-secondary text-muted-foreground',
           )}
         >
@@ -77,7 +83,7 @@ export function PhaseTabs() {
           disabled={isPlaying}
           onClick={() => toggleLayer('ghostView')}
           className={cn(
-            'rounded-md px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+            'shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
             ghostView ? 'bg-accent text-accent-foreground' : 'bg-secondary text-muted-foreground',
             isPlaying && 'cursor-not-allowed opacity-50',
           )}

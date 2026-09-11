@@ -36,7 +36,7 @@ function AuthNav() {
   if (!isLoggedIn) {
     return (
       <>
-        <Link to="/login" className="text-sm text-muted-foreground hover:text-foreground">
+        <Link to="/login" className="shrink-0 whitespace-nowrap text-sm text-muted-foreground hover:text-foreground">
           로그인
         </Link>
         <Button asChild size="sm">
@@ -57,14 +57,14 @@ function AuthNav() {
 
   return (
     <>
-      <Link to="/profile" className="text-sm text-muted-foreground hover:text-foreground" title="내 정보">
+      <Link to="/profile" className="max-w-[40vw] truncate text-sm text-muted-foreground hover:text-foreground" title="내 정보">
         {user?.email}
       </Link>
       <button
         type="button"
         onClick={() => logoutMutation.mutate()}
         disabled={logoutMutation.isPending}
-        className="rounded-sm text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="shrink-0 whitespace-nowrap rounded-sm text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         로그아웃
       </button>
@@ -72,7 +72,7 @@ function AuthNav() {
         type="button"
         onClick={handleWithdraw}
         disabled={withdrawMutation.isPending}
-        className="rounded-sm text-sm text-destructive/80 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="shrink-0 whitespace-nowrap rounded-sm text-sm text-destructive/80 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         회원 탈퇴
       </button>
@@ -89,7 +89,7 @@ function NavItem({ to, children, end }: { to: string; children: string; end?: bo
       end={end}
       className={({ isActive }) =>
         cn(
-          'text-sm underline-offset-4 transition-colors hover:text-foreground',
+          'shrink-0 whitespace-nowrap text-sm underline-offset-4 transition-colors hover:text-foreground',
           isActive ? 'text-foreground underline' : 'text-muted-foreground',
         )
       }
@@ -134,17 +134,32 @@ function App() {
           제공한다) · CTA 쌍=로그인 텍스트+회원가입 채움(로그아웃 상태만).
           그리드 3분할(brand-start / links-center / auth-end)이라, 예전처럼
           모든 걸 오른쪽 한 덩어리로 밀어붙이지 않고 시각적으로 구역이 나뉜다.
+
+          모바일 대응(2026-09-11 후속, 실기기 리포트 "글자크기들도 안 맞아서
+          튀어나오고") — 3분할 그리드를 좁은 화면에도 한 줄로 욱여넣었더니
+          "편\n집\n기"처럼 링크 텍스트가 글자 단위로 줄바꿈됐다(anti-patterns.md
+          gate 49가 금지하는 "두 줄로 잘리는 클릭 텍스트"). md 미만에서는
+          [워드마크 …… 로그인상태]를 1행, 링크 4개를 2행(가로 스크롤, 각
+          링크는 whitespace-nowrap로 항상 한 줄)으로 바꾸고, md 이상에서는
+          원래 3분할 그리드 한 줄로 되돌아간다 — LayerToggleChips가 이미 쓰는
+          "좁으면 가로 스크롤" 패턴과 같은 방식이라 이 앱에서 낯설지 않다.
         */}
         <header className="border-b border-border bg-card">
-          <div className="mx-auto grid h-14 max-w-[1400px] grid-cols-[1fr_auto_1fr] items-center px-6">
+          <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2 md:grid md:h-14 md:flex-nowrap md:grid-cols-[1fr_auto_1fr] md:px-6 md:py-0">
             <Link
               to="/"
               onClick={handleLogoClick}
-              className="justify-self-start font-display text-lg font-semibold text-foreground hover:text-foreground/80"
+              className="order-1 shrink-0 font-display text-lg font-semibold text-foreground hover:text-foreground/80 md:order-none md:justify-self-start"
             >
               TactiCore
             </Link>
-            <nav className="col-start-2 flex items-center gap-5 justify-self-center" aria-label="주요 메뉴">
+            <div className="order-2 flex shrink-0 items-center gap-4 md:order-none md:col-start-3 md:justify-self-end">
+              <AuthNav />
+            </div>
+            <nav
+              className="order-3 flex w-full items-center gap-5 overflow-x-auto md:order-none md:col-start-2 md:w-auto md:justify-self-center md:overflow-visible"
+              aria-label="주요 메뉴"
+            >
               <NavItem to="/" end>
                 편집기
               </NavItem>
@@ -152,9 +167,6 @@ function App() {
               <NavItem to="/community">커뮤니티</NavItem>
               <NavItem to="/versus">전술 대결</NavItem>
             </nav>
-            <div className="col-start-3 flex items-center gap-4 justify-self-end">
-              <AuthNav />
-            </div>
           </div>
         </header>
         <Routes>

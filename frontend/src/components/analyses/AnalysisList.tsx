@@ -90,7 +90,7 @@ export function AnalysisList({ analyses }: { analyses: AnalysisSummary[] }) {
               <td className="py-2 text-right">
                 <button
                   type="button"
-                  className="rounded-sm text-xs text-destructive hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  className="whitespace-nowrap rounded-sm text-xs text-destructive hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   onClick={() => setPending(a)}
                 >
                   삭제

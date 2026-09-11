@@ -134,7 +134,7 @@ export function SharePage() {
               type="button"
               onClick={() => setView({ kind: 'phase', phase: p })}
               className={cn(
-                'rounded-md px-4 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                'whitespace-nowrap rounded-md px-4 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                 view.kind === 'phase' && view.phase === p
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:text-foreground',
@@ -150,7 +150,7 @@ export function SharePage() {
             type="button"
             onClick={() => setView({ kind: 'cp', id: cp.id })}
             className={cn(
-              'rounded-full px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+              'whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
               view.kind === 'cp' && view.id === cp.id
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-secondary text-muted-foreground hover:text-foreground',
@@ -203,7 +203,7 @@ export function SharePage() {
             disabled={key === 'overload' && !hasOpponent}
             onClick={() => setLayers((l) => ({ ...l, [key]: !l[key] }))}
             className={cn(
-              'rounded-full px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+              'whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
               key === 'overload' && !hasOpponent
                 ? 'cursor-not-allowed bg-secondary text-slate-300'
                 : layers[key]
