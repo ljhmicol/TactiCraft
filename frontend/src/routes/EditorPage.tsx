@@ -98,10 +98,18 @@ export function EditorPage() {
          * 오른쪽에 둔다(TO-DO 37 후속) — 왼쪽(주 액션 "새 분석 시작" → 최근
          * 작업)은 원래 순서 그대로, 캐러셀은 곁들이는 정보라 시선이 먼저
          * 가는 왼쪽을 액션에 내준다. 모바일(`lg` 미만)은 세로 스택이라
-         * 왼쪽 내용이 먼저, 캐러셀이 그 아래로 온다. */}
-        <div className="relative mx-auto flex max-w-4xl flex-col items-center gap-10 px-6 py-16 lg:flex-row lg:items-start lg:justify-center">
-          <div className="flex w-full max-w-md flex-col items-center gap-6 text-center">
-            <Button asChild>
+         * 왼쪽 내용이 먼저, 캐러셀이 그 아래로 온다. pt를 늘려 화면 맨 위
+         * 내비 바로 아래 붙지 않고 아래쪽으로 내렸다("전체적으로 좀더
+         * 아래쪽으로 내려야할 것 같고" 후속 요청). */}
+        <div className="relative mx-auto flex max-w-4xl flex-col items-center gap-10 px-6 pb-16 pt-24 lg:flex-row lg:items-start lg:justify-center lg:pt-32">
+          <div className="flex w-full max-w-md flex-col items-center gap-5 text-center">
+            <p className="text-lg font-semibold text-foreground">
+              전술을 그리고, 국면별로 비교하고, 카드로 공유하세요
+            </p>
+            {/* 참고 사이트처럼 타원형(pill) 버튼으로 — 기본 Button은 rounded-md라
+             * 이 버튼에만 rounded-full을 얹는다(사이트 전역 버튼 모양을 바꾸는
+             * 게 아니라 이 히어로 CTA 하나만). */}
+            <Button asChild size="lg" className="rounded-full px-10">
               <Link to="/new">새 분석 시작</Link>
             </Button>
             <RecentAnalyses />
