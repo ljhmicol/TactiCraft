@@ -75,3 +75,35 @@ export function suggestImprovement(weakestZone: ZoneOverload | null, third: Reco
   if (!weakestZone) return '뚜렷한 열세 구역이 없어요 — 지금 배치를 유지해도 좋아 보입니다.'
   return `${zoneLabel(weakestZone, third)}에서 수적 열세 — 이 구역에 인원을 보강하는 재배치를 고려해보세요.`
 }
+
+/**
+ * "왼쪽/중앙/오른쪽 3구역으로 나눠서... 게이지바로"(TO-DO 40) — 기존
+ * AdvantageBadge의 게이지 바(전체 15구역 중 A/B 우세 비율)는 5채널×3서드를
+ * 전부 합친 하나의 숫자라 "왼쪽은 누가 우세한지"처럼 좌우로 나눠 보기엔
+ * 너무 뭉뚱그려져 있었다. 5채널(leftWing/leftHalf/center/rightHalf/
+ * rightWing)을 3구역으로 묶어(왼쪽=leftWing+leftHalf, 중앙=center,
+ * 오른쪽=rightHalf+rightWing) 각각 같은 computeMatchupAdvantage를
+ * 재사용해서 구한다 — 새로운 판정 기준이 아니라 기존 15구역 집계를
+ * 다른 묶음으로 다시 나눈 것뿐이다.
+ */
+export type PitchSide = 'left' | 'center' | 'right'
+
+export const SIDE_KOREAN: Record<PitchSide, string> = {
+  left: '왼쪽',
+  center: '중앙',
+  right: '오른쪽',
+}
+
+const SIDE_CHANNELS: Record<PitchSide, Channel[]> = {
+  left: ['leftWing', 'leftHalf'],
+  center: ['center'],
+  right: ['rightHalf', 'rightWing'],
+}
+
+export function computeSideAdvantage(zones: ZoneOverload[]): Record<PitchSide, MatchupAdvantage> {
+  return {
+    left: computeMatchupAdvantage(zones.filter((z) => SIDE_CHANNELS.left.includes(z.channel))),
+    center: computeMatchupAdvantage(zones.filter((z) => SIDE_CHANNELS.center.includes(z.channel))),
+    right: computeMatchupAdvantage(zones.filter((z) => SIDE_CHANNELS.right.includes(z.channel))),
+  }
+}

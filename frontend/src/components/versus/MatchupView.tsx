@@ -2,6 +2,7 @@ import { AdvantageBadge } from '@/components/versus/AdvantageBadge'
 import { KeyZoneCallout } from '@/components/versus/KeyZoneCallout'
 import { MatchupOverloadLayer } from '@/components/versus/MatchupOverloadLayer'
 import { TacticalSuggestions } from '@/components/versus/TacticalSuggestions'
+import { ZoneSideGauges } from '@/components/versus/ZoneSideGauges'
 import { AnnotationLayer } from '@/components/pitch/AnnotationLayer'
 import { ChannelGrid } from '@/components/pitch/ChannelGrid'
 import { LANDSCAPE_RADIUS, StaticPlayerNode } from '@/components/pitch/StaticPlayerNode'
@@ -192,6 +193,7 @@ export function MatchupView({
       {showOverload && (
         <>
           <AdvantageBadge zones={zones} labelA={labelA} labelB={labelB} />
+          <ZoneSideGauges zones={zones} labelA={labelA} labelB={labelB} />
           <KeyZoneCallout advantage={matchupAdvantage} labelA={labelA} labelB={labelB} />
         </>
       )}

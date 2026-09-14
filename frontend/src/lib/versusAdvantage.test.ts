@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { computeMatchupAdvantage, suggestImprovement, THIRD_KOREAN, zoneLabel } from '@/lib/versusAdvantage'
+import { computeMatchupAdvantage, computeSideAdvantage, suggestImprovement, THIRD_KOREAN, zoneLabel } from '@/lib/versusAdvantage'
 import type { ZoneOverload } from '@/types/analysis'
 
 function zone(diff: number, channel: ZoneOverload['channel'] = 'center', third: ZoneOverload['third'] = 'middle'): ZoneOverload {
@@ -71,5 +71,32 @@ describe('suggestImprovement', () => {
 
   it('falls back to a neutral message when there is no weakest zone', () => {
     expect(suggestImprovement(null, third)).toBe('뚜렷한 열세 구역이 없어요 — 지금 배치를 유지해도 좋아 보입니다.')
+  })
+})
+
+describe('computeSideAdvantage', () => {
+  it('groups leftWing+leftHalf into left, center alone, rightHalf+rightWing into right', () => {
+    const zones = [
+      zone(2, 'leftWing'),
+      zone(1, 'leftHalf'),
+      zone(3, 'center'),
+      zone(-1, 'rightHalf'),
+      zone(-2, 'rightWing'),
+    ]
+    const result = computeSideAdvantage(zones)
+    expect(result.left.totalZones).toBe(2)
+    expect(result.left.aZones).toHaveLength(2)
+    expect(result.center.totalZones).toBe(1)
+    expect(result.center.aZones).toHaveLength(1)
+    expect(result.right.totalZones).toBe(2)
+    expect(result.right.bZones).toHaveLength(2)
+  })
+
+  it('does not leak zones from one side into another', () => {
+    const zones = [zone(5, 'center')]
+    const result = computeSideAdvantage(zones)
+    expect(result.left.totalZones).toBe(0)
+    expect(result.center.totalZones).toBe(1)
+    expect(result.right.totalZones).toBe(0)
   })
 })
