@@ -149,6 +149,9 @@ export const VersusShareCard = forwardRef<HTMLDivElement, VersusShareCardProps>(
                 )
               })}
             </div>
+            <div style={{ textAlign: 'center', fontSize: 11, color: SHARE_CARD_COLORS.subtitle, marginTop: 6 }}>
+              왼쪽·오른쪽은 {labelA} 공격 방향 기준(공수 교대와 무관) · 가로 화면에서는 위아래로 표시됩니다
+            </div>
           </div>
         )}
 

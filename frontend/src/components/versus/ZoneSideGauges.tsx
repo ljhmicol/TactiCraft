@@ -25,29 +25,39 @@ export function ZoneSideGauges({ zones, labelA, labelB }: ZoneSideGaugesProps) {
   const colorB = VERSUS_TEAM_COLORS.B.fill
 
   return (
-    <div className="grid grid-cols-3 gap-3">
-      {SIDES.map((side) => {
-        const { aZones, bZones, neutralZoneCount, totalZones } = bySide[side]
-        const aPct = totalZones === 0 ? 0 : (aZones.length / totalZones) * 100
-        const bPct = totalZones === 0 ? 0 : (bZones.length / totalZones) * 100
-        return (
-          <div
-            key={side}
-            className="space-y-1 text-center"
-            title={`${SIDE_KOREAN[side]}: ${labelA} ${aZones.length}구역 우세 · ${labelB} ${bZones.length}구역 우세 · 동률 ${neutralZoneCount}구역`}
-          >
-            <p className="text-xs font-medium text-muted-foreground">{SIDE_KOREAN[side]}</p>
-            <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-              <div style={{ width: `${aPct}%`, background: colorA }} />
-              <div style={{ width: `${neutralZoneCount === totalZones ? 100 : 100 - aPct - bPct}%` }} />
-              <div style={{ width: `${bPct}%`, background: colorB }} />
+    <div className="space-y-1">
+      <div className="grid grid-cols-3 gap-3">
+        {SIDES.map((side) => {
+          const { aZones, bZones, neutralZoneCount, totalZones } = bySide[side]
+          const aPct = totalZones === 0 ? 0 : (aZones.length / totalZones) * 100
+          const bPct = totalZones === 0 ? 0 : (bZones.length / totalZones) * 100
+          return (
+            <div
+              key={side}
+              className="space-y-1 text-center"
+              title={`${SIDE_KOREAN[side]}: ${labelA} ${aZones.length}구역 우세 · ${labelB} ${bZones.length}구역 우세 · 동률 ${neutralZoneCount}구역`}
+            >
+              <p className="text-xs font-medium text-muted-foreground">{SIDE_KOREAN[side]}</p>
+              <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                <div style={{ width: `${aPct}%`, background: colorA }} />
+                <div style={{ width: `${neutralZoneCount === totalZones ? 100 : 100 - aPct - bPct}%` }} />
+                <div style={{ width: `${bPct}%`, background: colorB }} />
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                <span style={{ color: colorA }}>{aZones.length}</span> : <span style={{ color: colorB }}>{bZones.length}</span>
+              </p>
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              <span style={{ color: colorA }}>{aZones.length}</span> : <span style={{ color: colorB }}>{bZones.length}</span>
-            </p>
-          </div>
-        )
-      })}
+          )
+        })}
+      </div>
+      {/* "왼쪽 오른쪽이 공격팀 기준이잖아... 헷갈려"(TO-DO 43) — 실제로는
+          공수 교대와 무관하게 항상 labelA(전술 A) 기준이고, 가로 화면에서는
+          채널(좌우) 축이 화면상 위아래로 그려진다(전진 방향=서드 축이
+          화면 좌우). 둘 다 안 적어두면 화면을 직접 보고 "왼쪽"을 화면
+          왼쪽이라고 오해하기 쉽다. */}
+      <p className="text-center text-[10px] text-muted-foreground">
+        왼쪽·오른쪽은 {labelA} 공격 방향 기준(공수 교대와 무관) · 가로 화면에서는 위아래로 표시됩니다
+      </p>
     </div>
   )
 }
