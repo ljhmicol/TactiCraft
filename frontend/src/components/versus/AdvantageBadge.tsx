@@ -1,3 +1,4 @@
+import { InfoDialogButton } from '@/components/versus/InfoDialogButton'
 import { VERSUS_TEAM_COLORS } from '@/lib/theme'
 import { computeMatchupAdvantage, computeThreatWeightedScore, THIRD_KOREAN, zoneLabel } from '@/lib/versusAdvantage'
 import type { ZoneOverload } from '@/types/analysis'
@@ -78,11 +79,23 @@ export function AdvantageBadge({ zones, labelA, labelB }: AdvantageBadgeProps) {
         {teamSummary(labelA, colorA, aZones)}
         {teamSummary(labelB, colorB, bZones)}
       </div>
-      <p className="text-xs text-muted-foreground" title="구역 개수가 같아도 중앙·상대 진영에 가까운 구역일수록 더 위험하다고 보고 가중치를 곱해 합산한 점수 — 골 확률 예측이 아니다.">
+      <p className="flex items-center gap-1 text-xs text-muted-foreground">
         위협 가중 점수(중앙·상대 진영에 가까울수록 가중치 큼):{' '}
         <span style={{ color: colorA }}>{labelA} {threatScore.aScore}</span>
         {' · '}
         <span style={{ color: colorB }}>{labelB} {threatScore.bScore}</span>
+        <InfoDialogButton title="위협 가중 점수란?" ariaLabel="위협 가중 점수 설명 보기">
+          <p>
+            바로 위 &quot;N구역 우세&quot;는 15구역(5채널×3서드)을 똑같이 1표씩 세기 때문에, 자기 진영 구석에서 딴
+            우위와 상대 골문 바로 앞 중앙에서 딴 우위가 똑같이 1구역으로 상쇄될 수 있습니다.
+          </p>
+          <p>
+            위협 가중 점수는 각 구역의 수적 차이(own−opp)에 <strong>중앙에 가까울수록, 상대 진영(공격 방향
+            앞쪽)에 가까울수록</strong> 더 크게 매긴 고정 가중치를 곱해 합산한 값입니다 — 측면·자기 진영 구석보다
+            중앙·상대 박스 앞 구역의 가중치가 훨씬 큽니다.
+          </p>
+          <p>골 확률을 예측한 값이 아니라, 지금 배치를 기준으로 &quot;어디서 난 우위가 더 위험한 자리인지&quot;를 보여주는 상대적인 점수입니다.</p>
+        </InfoDialogButton>
       </p>
     </div>
   )

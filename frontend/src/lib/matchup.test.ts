@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 
 import { describe, expect, it } from 'vitest'
 
-import { computeMatchupData } from '@/lib/matchup'
+import { computeMatchupData, playersInZone } from '@/lib/matchup'
 import { analysisSchema } from '@/lib/schema'
 import type { Analysis } from '@/types/analysis'
 
@@ -50,5 +50,25 @@ describe('computeMatchupData', () => {
     // 밀려 이 조합 자체가 달라진다. 실제 브라우저로 이미 확인한 값과 같다.
     expect(result.matchupAdvantage.aTopZone).toMatchObject({ channel: 'leftHalf', third: 'middle', own: 2, opp: 1 })
     expect(result.matchupAdvantage.bTopZone).toMatchObject({ channel: 'leftWing', third: 'middle', own: 0, opp: 1 })
+  })
+})
+
+describe('playersInZone', () => {
+  it('returns exactly as many players as the zone own/opp count for the browser-verified top zones (TO-DO 46)', () => {
+    const result = computeMatchupData(guardiola, arteta, 'A')
+    const { aTopZone, bTopZone } = result.matchupAdvantage
+    const aPlayers = playersInZone(result.dataA.positions, guardiola.players, guardiola.formation, aTopZone!.channel, aTopZone!.third)
+    const bPlayers = playersInZone(result.positionsB, arteta.players, arteta.formation, bTopZone!.channel, bTopZone!.third)
+    expect(aPlayers).toHaveLength(aTopZone!.own) // City: 2
+    expect(bPlayers).toHaveLength(bTopZone!.opp) // Arsenal: 1
+    expect(aPlayers.every((p) => p.line !== 'GK')).toBe(true)
+  })
+
+  it('excludes goalkeepers even when a GK would geometrically fall inside the zone bounds', () => {
+    const result = computeMatchupData(guardiola, arteta, 'A')
+    // City GK(attack 국면 x=50,y=90)는 center/defensive 구역에 기하학적으로
+    // 들어간다 — 그 구역을 직접 조회해도 목록에 GK가 나오면 안 된다.
+    const players = playersInZone(result.dataA.positions, guardiola.players, guardiola.formation, 'center', 'defensive')
+    expect(players.every((p) => p.line !== 'GK')).toBe(true)
   })
 })

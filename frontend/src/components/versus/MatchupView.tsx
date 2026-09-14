@@ -64,7 +64,15 @@ export function MatchupView({
         <>
           <AdvantageBadge zones={zones} labelA={labelA} labelB={labelB} />
           <ZoneSideGauges zones={zones} labelA={labelA} labelB={labelB} />
-          <KeyZoneCallout advantage={matchupAdvantage} labelA={labelA} labelB={labelB} />
+          <KeyZoneCallout
+            advantage={matchupAdvantage}
+            labelA={labelA}
+            labelB={labelB}
+            analysisA={analysisA}
+            analysisB={analysisB}
+            dataA={dataA}
+            positionsB={positionsB}
+          />
         </>
       )}
       <div className="min-h-0 flex-1">

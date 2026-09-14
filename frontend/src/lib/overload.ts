@@ -2,7 +2,7 @@ import { CHANNEL_BOUNDS, CHANNELS, THIRD_BOUNDS, THIRDS } from '@/lib/zones'
 import type { PhaseData, Point, ZoneOverload } from '@/types/analysis'
 
 /** 하한 포함, 상한 배제. 단 마지막 구역(상한 100)만 100을 포함시킨다 (2단계 §9.1, 4단계 §5.2). */
-function within(v: number, lo: number, hi: number): boolean {
+export function within(v: number, lo: number, hi: number): boolean {
   return v >= lo && (hi >= 100 ? v <= 100 : v < hi)
 }
 

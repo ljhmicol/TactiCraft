@@ -1,11 +1,12 @@
 import { LANDSCAPE_RADIUS } from '@/components/pitch/StaticPlayerNode'
 import { mirrorPoint, resolveDefendingPressingLineLevel, resolveDefendingPressingLineY, transposePoint } from '@/lib/coords'
 import { resolveLabelOverlap, type LabelBox } from '@/lib/labelPlacement'
-import { computeOverload } from '@/lib/overload'
+import { computeOverload, within } from '@/lib/overload'
 import { LANDSCAPE_TEXT_X_SCALE } from '@/lib/pitchMarkings'
-import { positionInfoAt } from '@/lib/positions'
+import { positionInfoAt, type PositionLine } from '@/lib/positions'
 import { computeMatchupAdvantage, type MatchupAdvantage } from '@/lib/versusAdvantage'
-import type { Analysis, Annotation, PhaseData, PhaseType, Player, PlayerPosition, Point, ZoneOverload } from '@/types/analysis'
+import { CHANNEL_BOUNDS, THIRD_BOUNDS } from '@/lib/zones'
+import type { Analysis, Annotation, Channel, PhaseData, PhaseType, Player, PlayerPosition, Point, Third, ZoneOverload } from '@/types/analysis'
 
 /**
  * 전술 대결(MatchupView, TO-DO 16/21/36/38)의 핵심 파생 데이터 계산 —
@@ -43,6 +44,40 @@ function excludeGoalkeepers(positions: PlayerPosition[], players: Player[], form
     players.flatMap((player, index) => (positionInfoAt(formation, index)?.line === 'GK' ? [player.id] : [])),
   )
   return positions.filter((p) => !gkIds.has(p.playerId))
+}
+
+export interface ZonePlayer {
+  player: Player
+  line: PositionLine
+}
+
+/**
+ * "키포인트 포지션에도 버튼을 만들어서... 지금 현재로는 이 선수가 있다"(TO-DO
+ * 46) — 키포인트 구역(가장 격차 큰 구역)에 실제로 누가 서 있는지 알려주려면
+ * 좌표만으로는 부족하고 선수 신원이 필요하다. `computeOverload`가 세는
+ * own/opp 숫자와 정확히 같은 선수 집합이 나와야 하므로, 경계 판정은
+ * `computeOverload`와 똑같이 `within`(하한 포함·상한 배제, 마지막 구간만
+ * 100 포함)을 그대로 재사용하고, 골키퍼도 같은 `excludeGoalkeepers`로 뺀다
+ * — 안 그러면 배지의 "2:0"과 여기 나열되는 선수 수가 어긋나 보인다.
+ */
+export function playersInZone(
+  positions: PlayerPosition[],
+  players: Player[],
+  formation: string,
+  channel: Channel,
+  third: Third,
+): ZonePlayer[] {
+  const [x0, x1] = CHANNEL_BOUNDS[channel]
+  const [y0, y1] = THIRD_BOUNDS[third]
+  const inZone = excludeGoalkeepers(positions, players, formation).filter(
+    (p) => within(p.x, x0, x1) && within(p.y, y0, y1),
+  )
+  return inZone.flatMap((pos) => {
+    const index = players.findIndex((pl) => pl.id === pos.playerId)
+    const player = players[index]
+    const info = index >= 0 ? positionInfoAt(formation, index) : null
+    return player && info ? [{ player, line: info.line }] : []
+  })
 }
 
 /**
