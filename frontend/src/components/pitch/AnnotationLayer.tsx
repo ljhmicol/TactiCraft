@@ -39,11 +39,28 @@ interface AnnotationLayerProps {
    * 전체 경로를 처음부터 다시 흐른다(2026-09-10 사용자 리포트).
    */
   animated?: boolean
+  /**
+   * 기본 false(한 번만 움직이고 도착점에 멈춤) — true면 공이 계속 반복해서
+   * 흐른다(2026-09-14, "전술 대결에서 패스길에 공이 계속 움직이면 좋겠어").
+   * 한 번만 재생하는 기본값은 2026-09-10에 편집기에서 발견된 두 가지 어긋남
+   * (드리블 구간에서 선수는 멈췄는데 공만 왕복, 병합 시점 재생 사이 정지 중
+   * 공만 왕복) 때문에 정착한 것인데, 둘 다 **살아있는 선수 모프·시점 스텝
+   * 재생이 있는 컨텍스트**(편집기)에서만 나는 문제다. 전술 대결 뷰
+   * (MatchupView)의 선수는 두 분석의 고정 스냅샷이라 이런 어긋남 자체가
+   * 생길 수 없어서, 이 컨텍스트에서는 반복 재생이 안전하다 — 그래서 이
+   * 스코프를 편집기 나머지 사용처(EditorPage/SharePage/ShareCard 등)는
+   * 그대로 두고 MatchupView 호출부에서만 켠다.
+   */
+  loop?: boolean
 }
 
 const BADGE_RADIUS = circularRadius(1.7)
 const DELETE_OFFSET = 2.2 // 선분 중점에서 화살표 진행 방향의 수직으로 치울 거리
 const BALL_RADIUS = circularRadius(1.1)
+// PlayerNode의 run 반복 루프(RUN_LOOP_DELAY)와 같은 값 — 도착점에서 잠깐
+// 머문 뒤에 처음부터 다시 흐른다. 부드럽게 역재생(왕복)하지 않는 이유도
+// 같다: 패스는 방향성이 있어서 거꾸로 흐르면 어색하다.
+const BALL_LOOP_DELAY = 0.5
 
 /**
  * 국면의 화살표(움직임/패스)를 그린다. 편집 화면과 PNG 카드(ShareCard)가 같은
@@ -62,7 +79,7 @@ const BALL_RADIUS = circularRadius(1.1)
  * 시작점 근처에서 시작하는 run 화살표를 찾아 스스로 그 방향으로 왕복한다.
  * 화살표는 여기서 모양·클릭 판정만 그린다.
  */
-export function AnnotationLayer({ annotations, interactive, animated = true }: AnnotationLayerProps) {
+export function AnnotationLayer({ annotations, interactive, animated = true, loop = false }: AnnotationLayerProps) {
   const passChains = useMemo(
     () => (animated ? buildPassChains(annotations.filter((a) => a.type === 'pass')) : []),
     [annotations, animated],
@@ -130,7 +147,7 @@ export function AnnotationLayer({ annotations, interactive, animated = true }: A
         );
       })}
       {passChains.map((chain) => (
-        <PassChainBall key={chain.map((a) => a.id).join('-')} chain={chain} />
+        <PassChainBall key={chain.map((a) => a.id).join('-')} chain={chain} loop={loop} />
       ))}
     </g>
   )
@@ -164,7 +181,7 @@ export function AnnotationLayer({ annotations, interactive, animated = true }: A
  * PHASE_TRANSITION_MS만큼 정지해 있다가(시작점에 가만히) 그 뒤에 출발한다 —
  * 받을 선수가 자리를 잡은 뒤에 패스가 오는 순서가 된다.
  */
-function PassChainBall({ chain }: { chain: Annotation[] }) {
+function PassChainBall({ chain, loop }: { chain: Annotation[]; loop: boolean }) {
   const points = chainSamplePoints(chain)
   // 드리블(carry)로 시작하는 체인은 기다리지 않는다 — 공을 몰고 가는 선수
   // 자신이 같은 순간 같은 방향으로 모프하므로, 대기를 두면 선수가 먼저
@@ -204,7 +221,11 @@ function PassChainBall({ chain }: { chain: Annotation[] }) {
               duration: chainBallDuration(chain),
               times: travelTimes(points),
               ease: segments > 1 ? 'linear' : 'easeInOut',
-              // 딱 한 번만 재생하고 도착점에 멈춘다 — 위 함수 doc 참고.
+              // loop=false(기본)면 딱 한 번만 재생하고 도착점에 멈춘다 — 위
+              // 함수 doc 참고. loop=true면 도착점에서 잠깐 머물다 처음부터
+              // 다시 흐른다(repeatType 기본값 'loop' — PlayerNode의 run
+              // 반복과 같은 패턴, 역재생 없이 매번 처음부터).
+              ...(loop ? { repeat: Infinity, repeatDelay: BALL_LOOP_DELAY } : {}),
             }
           : { duration: 0 }
       }

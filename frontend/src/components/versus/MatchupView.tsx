@@ -170,8 +170,8 @@ export function MatchupView({
           {showOverload && <MatchupOverloadLayer zones={zones} orientation="landscape" />}
           {showAnnotations && (
             <g opacity={0.55}>
-              <AnnotationLayer annotations={transformAnnotationsForMatchup(dataA.annotations, false, true)} />
-              <AnnotationLayer annotations={transformAnnotationsForMatchup(dataB.annotations, true, true)} />
+              <AnnotationLayer annotations={transformAnnotationsForMatchup(dataA.annotations, false, true)} loop />
+              <AnnotationLayer annotations={transformAnnotationsForMatchup(dataB.annotations, true, true)} loop />
             </g>
           )}
           {markers.map((marker) => (
