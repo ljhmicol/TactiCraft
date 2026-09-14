@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 import { cn } from '@/lib/utils'
 
-interface ManagerPreset {
+export interface ManagerPreset {
   url: string
   manager: string
   club: string
@@ -15,8 +15,12 @@ interface ManagerPreset {
  * 모두 넣었다. 무리뉴·안첼로티·투헬은 2026-09-07 기준 조사로 각각 레알
  * 마드리드·브라질·잉글랜드 대표팀 부임 이후 전술을 담았다. 좌표는 실제 선수
  * 트래킹 데이터가 아니라 공개된 전술 분석을 바탕으로 재구성한 예시다.
+ *
+ * export한다 — 시작 화면 예시 전술판 캐러셀(StartScreenPitchShowcase,
+ * TO-DO 37)이 같은 목록에서 일부를 골라 재사용한다. 별도 목록을 만들면
+ * 프리셋이 추가/삭제될 때 두 곳을 따로 챙겨야 해서 하나로 공유한다.
  */
-const MANAGER_PRESETS: ManagerPreset[] = [
+export const MANAGER_PRESETS: ManagerPreset[] = [
   {
     url: '/samples/managers/guardiola.json',
     manager: '펩 과르디올라',

@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import { PitchFieldBackdrop } from '@/components/decor/PitchFieldBackdrop'
 import { BottomActionBar } from '@/components/editor/BottomActionBar'
 import { RecentAnalyses } from '@/components/editor/RecentAnalyses'
-import { useCurrentUser } from '@/hooks/useAuth'
+import { StartScreenPitchShowcase } from '@/components/editor/StartScreenPitchShowcase'
 import { CommentPanel } from '@/components/editor/CommentPanel'
 import { DuplicateButton } from '@/components/editor/DuplicateButton'
 import { LayerToggleChips } from '@/components/editor/LayerToggleChips'
@@ -85,7 +85,6 @@ export function EditorPage() {
   // 화살표 선택 상태. 피치 어디를 눌러도(pointerdown 버블링) 해제된다 —
   // 화살표 자체는 stopPropagation으로 해제를 막는다.
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null)
-  const { isLoggedIn, isChecking: isCheckingAuth } = useCurrentUser()
 
   if (!analysis) {
     return (
@@ -93,25 +92,15 @@ export function EditorPage() {
         {/* 2026-09-11 "첫번째 화면에서도 이렇게 나오면 좋겠어" — /new의 축구장
          * 배경을 앱을 열었을 때 가장 먼저 보이는 이 빈 안내 화면(/)에도 확장. */}
         <PitchFieldBackdrop />
-        <div className="relative mx-auto flex max-w-md flex-col items-center gap-6 px-6 py-24 text-center">
-          <div className="flex flex-col items-center gap-4">
-            <p className="text-muted-foreground">아직 분석이 없습니다.</p>
-            <div className="flex flex-col items-center gap-2">
-              <Button asChild>
-                <Link to="/new">새 분석 시작</Link>
-              </Button>
-              {!isCheckingAuth && !isLoggedIn && (
-                <div className="flex items-center gap-2">
-                  <Button asChild variant="outline">
-                    <Link to="/login">로그인</Link>
-                  </Button>
-                  <Button asChild variant="outline">
-                    <Link to="/register">회원가입</Link>
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
+        <div className="relative mx-auto flex max-w-md flex-col items-center gap-6 px-6 py-16 text-center">
+          {/* "아직 분석이 없습니다" 안내문과 로그인/회원가입 버튼은 뺐다(TO-DO 37) —
+           * 로그인/회원가입은 상단 내비(AuthNav)에 이미 항상 있어서 중복이었다.
+           * 그 자리에 예시 전술판 캐러셀을 넣어 "이 앱으로 뭘 만들 수 있는지"를
+           * 바로 보여준다. */}
+          <StartScreenPitchShowcase />
+          <Button asChild>
+            <Link to="/new">새 분석 시작</Link>
+          </Button>
           <RecentAnalyses />
         </div>
       </div>
