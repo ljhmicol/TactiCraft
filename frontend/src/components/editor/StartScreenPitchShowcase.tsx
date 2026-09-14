@@ -66,7 +66,7 @@ export function StartScreenPitchShowcase() {
   const preset = MANAGER_PRESETS.find((p) => p.url === SHOWCASE_URLS[index])
 
   return (
-    <div className="flex w-full flex-col items-center gap-3">
+    <div className="flex w-full max-w-xs shrink-0 flex-col items-center gap-3">
       <div className="h-[38vh] w-full max-w-xs supports-[height:100dvh]:h-[38dvh]">
         <Pitch>
           <AnimatePresence mode="wait">

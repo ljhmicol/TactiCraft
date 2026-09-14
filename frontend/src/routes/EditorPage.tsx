@@ -92,16 +92,21 @@ export function EditorPage() {
         {/* 2026-09-11 "첫번째 화면에서도 이렇게 나오면 좋겠어" — /new의 축구장
          * 배경을 앱을 열었을 때 가장 먼저 보이는 이 빈 안내 화면(/)에도 확장. */}
         <PitchFieldBackdrop />
-        <div className="relative mx-auto flex max-w-md flex-col items-center gap-6 px-6 py-16 text-center">
-          {/* "아직 분석이 없습니다" 안내문과 로그인/회원가입 버튼은 뺐다(TO-DO 37) —
-           * 로그인/회원가입은 상단 내비(AuthNav)에 이미 항상 있어서 중복이었다.
-           * 그 자리에 예시 전술판 캐러셀을 넣어 "이 앱으로 뭘 만들 수 있는지"를
-           * 바로 보여준다. */}
+        {/* "아직 분석이 없습니다" 안내문과 로그인/회원가입 버튼은 뺐다(TO-DO 37) —
+         * 로그인/회원가입은 상단 내비(AuthNav)에 이미 항상 있어서 중복이었다.
+         * 예시 전술판 캐러셀은 참고 사이트(formationbuilder.com/ko)처럼
+         * 오른쪽에 둔다(TO-DO 37 후속) — 왼쪽(주 액션 "새 분석 시작" → 최근
+         * 작업)은 원래 순서 그대로, 캐러셀은 곁들이는 정보라 시선이 먼저
+         * 가는 왼쪽을 액션에 내준다. 모바일(`lg` 미만)은 세로 스택이라
+         * 왼쪽 내용이 먼저, 캐러셀이 그 아래로 온다. */}
+        <div className="relative mx-auto flex max-w-4xl flex-col items-center gap-10 px-6 py-16 lg:flex-row lg:items-start lg:justify-center">
+          <div className="flex w-full max-w-md flex-col items-center gap-6 text-center">
+            <Button asChild>
+              <Link to="/new">새 분석 시작</Link>
+            </Button>
+            <RecentAnalyses />
+          </div>
           <StartScreenPitchShowcase />
-          <Button asChild>
-            <Link to="/new">새 분석 시작</Link>
-          </Button>
-          <RecentAnalyses />
         </div>
       </div>
     )
