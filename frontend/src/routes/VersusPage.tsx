@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
+import { VersusShareCard } from '@/components/export/VersusShareCard'
 import { MatchupView } from '@/components/versus/MatchupView'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useAnalyses, useAnalysis } from '@/hooks/useAnalyses'
 import { useServerHealth } from '@/hooks/useServerHealth'
+import { exportCard } from '@/lib/exportImage'
 
 /**
  * /versus — 저장된 전술 2개를 겹쳐서 A의 공격 국면이 B의 수비 국면을 어떻게
@@ -21,9 +23,22 @@ export function VersusPage() {
   const [showOverload, setShowOverload] = useState(true)
   const [showPressingLine, setShowPressingLine] = useState(true)
   const [showAnnotations, setShowAnnotations] = useState(true)
+  const [exportRatio, setExportRatio] = useState<'1:1' | '4:5'>('1:1')
+  const [exporting, setExporting] = useState(false)
+  const cardRef = useRef<HTMLDivElement>(null)
 
   const analysisA = useAnalysis(idA ? Number(idA) : undefined)
   const analysisB = useAnalysis(idB ? Number(idB) : undefined)
+
+  const handleExport = async () => {
+    if (!cardRef.current) return
+    setExporting(true)
+    try {
+      await exportCard(cardRef.current, exportRatio)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   if (isChecking) return <p className="p-6 text-muted-foreground">서버 확인 중…</p>
 
@@ -131,10 +146,41 @@ export function VersusPage() {
       ) : analysisA.isError || analysisB.isError || !analysisA.data || !analysisB.data ? (
         <p className="text-sm text-destructive">분석을 불러오지 못했습니다.</p>
       ) : (
-        // EditorPage와 같은 이유(2026-09-11)로 dvh 폴백 — 모바일 실기기에서만
-        // 주소창 때문에 vh가 잘못 계산되는 문제 대응.
-        <div className="mx-auto h-[82vh] w-full max-w-6xl supports-[height:100dvh]:h-[82dvh]">
-          <MatchupView
+        <>
+          {/* 전술 대결 결과 PNG 내보내기(TO-DO 41) — 에디터는 PNG/GIF 내보내기가
+           * 있는데 /versus에는 전혀 없었다("더 추가할 기능들은 없을지" 요청에서
+           * 가장 확실한 공백으로 골라 먼저 구현). ExportControls(에디터)와 같은
+           * exportCard/ratio 패턴을 그대로 재사용한다. */}
+          <div className="flex items-center gap-2">
+            <Select value={exportRatio} onValueChange={(v) => setExportRatio(v as '1:1' | '4:5')}>
+              <SelectTrigger className="w-20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1:1">1:1</SelectItem>
+                <SelectItem value="4:5">4:5</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button size="sm" onClick={handleExport} disabled={exporting}>
+              {exporting ? '내보내는 중…' : 'PNG 내보내기'}
+            </Button>
+          </div>
+
+          {/* EditorPage와 같은 이유(2026-09-11)로 dvh 폴백 — 모바일 실기기에서만
+              주소창 때문에 vh가 잘못 계산되는 문제 대응. */}
+          <div className="mx-auto h-[82vh] w-full max-w-6xl supports-[height:100dvh]:h-[82dvh]">
+            <MatchupView
+              analysisA={analysisA.data}
+              analysisB={analysisB.data}
+              attacker={attacker}
+              showChannelGrid={showChannelGrid}
+              showOverload={showOverload}
+              showPressingLine={showPressingLine}
+              showAnnotations={showAnnotations}
+            />
+          </div>
+          <VersusShareCard
+            ref={cardRef}
             analysisA={analysisA.data}
             analysisB={analysisB.data}
             attacker={attacker}
@@ -142,8 +188,9 @@ export function VersusPage() {
             showOverload={showOverload}
             showPressingLine={showPressingLine}
             showAnnotations={showAnnotations}
+            ratio={exportRatio}
           />
-        </div>
+        </>
       )}
     </div>
   )
