@@ -88,8 +88,8 @@ export function StaticPlayerNode({
         rx={RADIUS.rx}
         ry={RADIUS.ry}
         fill={team.fill}
-        stroke={variant === 'A' ? '#0F172A' : '#F8FAFC'}
-        strokeOpacity={variant === 'A' ? 0.4 : 0.65}
+        stroke="#0F172A"
+        strokeOpacity={0.4}
         strokeWidth={0.3}
       />
       <motion.text
