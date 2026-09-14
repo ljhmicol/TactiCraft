@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { transposePoint } from '@/lib/coords'
 import { circularRadius, swapForLandscape } from '@/lib/pitchMarkings'
 import { positionInfoAt } from '@/lib/positions'
-import { PITCH_TEXT_FONT_FAMILY, VERSUS_TEAM_COLORS } from '@/lib/theme'
+import { PITCH_TEXT_FONT_FAMILY, POSITION_LINE_COLORS, VERSUS_TEAM_COLORS } from '@/lib/theme'
 import { PHASE_TRANSITION_MS } from '@/store/analysisStore'
 import type { Player, Point } from '@/types/analysis'
 
@@ -25,11 +25,13 @@ interface StaticPlayerNodeProps {
   labelYOffset?: number
 }
 
-const PORTRAIT_RADIUS = circularRadius(2.6)
+// 22명이 한 피치에 겹치는 대결 뷰 전용 축소 반지름(TO-DO 36) — 에디터의
+// PLAYER_COLORS.own.radius(2.6)와는 별개로 이 파일에서만 줄인다.
+const PORTRAIT_RADIUS = circularRadius(2.1)
 // 라벨 배치 계산(MatchupView, TO-DO 28)이 이 마커 반지름과 일치해야 해서
 // export한다 — 값이 어긋나면 라벨 겹침 판정이 실제 렌더링과 안 맞게 된다.
 export const LANDSCAPE_RADIUS = swapForLandscape(PORTRAIT_RADIUS)
-const GK_RING_RADIUS_PORTRAIT = circularRadius(3.1)
+const GK_RING_RADIUS_PORTRAIT = circularRadius(2.6)
 const GK_RING_RADIUS_LANDSCAPE = swapForLandscape(GK_RING_RADIUS_PORTRAIT)
 
 /**
@@ -43,6 +45,11 @@ const GK_RING_RADIUS_LANDSCAPE = swapForLandscape(GK_RING_RADIUS_PORTRAIT)
  * 팔레트(GK 노랑/DF 파랑…)를 쓰면 "다 같은 팀 선수 같다"는 문제가 생겼다
  * (2026-09-07 사용자 피드백). 실제 골키퍼 유니폼이 필드 플레이어와 다른
  * 것처럼, GK만 팀 색 위에 흰 링을 하나 더 둘러 구분한다.
+ *
+ * (TO-DO 36) 위 결정은 "마커 색"에 한정된다 — 이름표 앞에 붙는 포지션
+ * 코드(FW/MF/…)는 POSITION_LINE_COLORS로 칠한다. 마커 자체는 여전히 팀
+ * 색이라 두 팀 구분은 그대로 유지되고, 라벨의 포지션 코드만 어느 라인
+ * 선수인지 한눈에 보여주는 별개의 추가 정보다.
  */
 export function StaticPlayerNode({
   player,
@@ -101,7 +108,6 @@ export function StaticPlayerNode({
         initial={{ x: p.x, y: p.y + RADIUS.ry + 3 + labelYOffset }}
         animate={{ x: p.x, y: p.y + RADIUS.ry + 3 + labelYOffset }}
         transition={TRANSITION}
-        fill="#F8FAFC"
         fontSize={2}
         fontWeight={700}
         textAnchor="middle"
@@ -110,7 +116,8 @@ export function StaticPlayerNode({
         strokeWidth={0.35}
         strokeOpacity={0.55}
       >
-        {player.name}
+        {info && <tspan fill={POSITION_LINE_COLORS[info.line].fill}>{info.line}</tspan>}
+        <tspan fill="#F8FAFC">{player.name}</tspan>
       </motion.text>
     </g>
   )

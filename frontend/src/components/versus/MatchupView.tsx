@@ -8,7 +8,22 @@ import { PressingLine } from '@/components/pitch/PressingLine'
 import { mirrorPoint, resolveDefendingPressingLineLevel, resolveDefendingPressingLineY, transposePoint } from '@/lib/coords'
 import { resolveLabelOverlap, type LabelBox } from '@/lib/labelPlacement'
 import { computeOverload } from '@/lib/overload'
+import { positionInfoAt } from '@/lib/positions'
 import type { Analysis, Annotation, PhaseData, PhaseType, Player, PlayerPosition, Point } from '@/types/analysis'
+
+/**
+ * 구역별 수적 우위(3:0 표시, TO-DO 36)에서 골키퍼는 뺀다 — 골키퍼는 필드
+ * 플레이어 수적 우위와 무관하고, 항상 자기 진영 구역에 서 있어서 넣으면
+ * 특정 구역 카운트가 실제 대형 우위와 무관하게 왜곡된다. 마커 자체는
+ * (StaticPlayerNode) 이 필터와 별개로 GK를 계속 그린다 — 오버로드 집계
+ * 에서만 빼는 것이지 화면에서 지우는 게 아니다.
+ */
+function excludeGoalkeepers(positions: PlayerPosition[], players: Player[], formation: string): PlayerPosition[] {
+  const gkIds = new Set(
+    players.flatMap((player, index) => (positionInfoAt(formation, index)?.line === 'GK' ? [player.id] : [])),
+  )
+  return positions.filter((p) => !gkIds.has(p.playerId))
+}
 
 /**
  * 각 분석의 런/패스 화살표(에디터에서 그린 것)를 대결 뷰 좌표계로 옮긴다
@@ -37,7 +52,11 @@ interface MatchupMarker {
   landscapePoint: Point
 }
 
-const LABEL_STEP = 2.4 // 라벨 한 칸 밀어낼 때 y 증가량
+// 라벨 한 칸 밀어낼 때 y 증가량 — 라벨 height(2.6)보다 작으면 한 칸 밀어도
+// 잔여 겹침이 남는다(TO-DO 36, 이름 앞에 포지션 코드가 붙으며 너비가 늘어나
+// 겹침 판정 쌍이 늘어서 이 여유 부족이 더 자주 드러남). height보다 살짝
+// 크게 잡아 한 번만 밀어도 확실히 떨어지게 한다.
+const LABEL_STEP = 2.8
 
 interface MatchupViewProps {
   analysisA: Analysis
@@ -75,9 +94,10 @@ export function MatchupView({
 
   // 오버로드는 기존 computeOverload(own vs opponentPositions)를 그대로 재사용한다 —
   // A를 own, 미러링한 B를 opponent로 두면 15구역 우위 계산이 그대로 맞아떨어진다.
+  // 골키퍼는 양쪽 다 집계에서 뺀다(TO-DO 36, excludeGoalkeepers 참조).
   const syntheticPhase: PhaseData = {
-    positions: dataA.positions,
-    opponentPositions: positionsB.map(({ x, y }) => ({ x, y })),
+    positions: excludeGoalkeepers(dataA.positions, analysisA.players, analysisA.formation),
+    opponentPositions: excludeGoalkeepers(positionsB, analysisB.players, analysisB.formation).map(({ x, y }) => ({ x, y })),
     comment: '',
     annotations: [],
   }
@@ -148,7 +168,8 @@ export function MatchupView({
     id: marker.key,
     x: marker.landscapePoint.x,
     defaultY: marker.landscapePoint.y + LANDSCAPE_RADIUS.ry + 3,
-    width: Math.max(6, marker.player.name.length * 1.6),
+    // +2는 이름 앞에 붙는 포지션 코드(GK/DF/MF/FW, 항상 2글자, TO-DO 36) 몫이다.
+    width: Math.max(6, (marker.player.name.length + 2) * 1.6),
     height: 2.6,
   }))
   const labelOffsets = resolveLabelOverlap(labelBoxes, LABEL_STEP)
