@@ -88,7 +88,7 @@ export function EditorPage() {
 
   if (!analysis) {
     return (
-      <div className="relative">
+      <div className="flex min-h-[80vh] flex-col justify-center supports-[height:100dvh]:min-h-[80dvh]">
         {/* 2026-09-11 "첫번째 화면에서도 이렇게 나오면 좋겠어" — /new의 축구장
          * 배경을 앱을 열었을 때 가장 먼저 보이는 이 빈 안내 화면(/)에도 확장. */}
         <PitchFieldBackdrop />
@@ -98,10 +98,13 @@ export function EditorPage() {
          * 오른쪽에 둔다(TO-DO 37 후속) — 왼쪽(주 액션 "새 분석 시작" → 최근
          * 작업)은 원래 순서 그대로, 캐러셀은 곁들이는 정보라 시선이 먼저
          * 가는 왼쪽을 액션에 내준다. 모바일(`lg` 미만)은 세로 스택이라
-         * 왼쪽 내용이 먼저, 캐러셀이 그 아래로 온다. pt를 늘려 화면 맨 위
-         * 내비 바로 아래 붙지 않고 아래쪽으로 내렸다("전체적으로 좀더
-         * 아래쪽으로 내려야할 것 같고" 후속 요청). */}
-        <div className="relative mx-auto flex max-w-4xl flex-col items-center gap-10 px-6 pb-16 pt-24 lg:flex-row lg:items-start lg:justify-center lg:pt-32">
+         * 왼쪽 내용이 먼저, 캐러셀이 그 아래로 온다. 패딩으로 아래로 미는
+         * 대신("전체적으로 좀더 아래쪽으로 내려야할 것 같고" 후속 요청 이후
+         * "모든게 페이지 중앙으로 내려오면 좋겠어"로 더 구체화됨) 바깥
+         * div를 `min-h-[80vh] flex justify-center`로 세로 중앙 정렬한다 —
+         * 화면 높이에 상관없이 항상 화면 중앙쯤에 오고, 내용이 늘어나도
+         * (최근 작업 목록 등) 깨지지 않는다. */}
+        <div className="relative mx-auto flex w-full max-w-4xl flex-col items-center gap-10 px-6 py-10 lg:flex-row lg:items-center lg:justify-center">
           <div className="flex w-full max-w-md flex-col items-center gap-5 text-center">
             <p className="text-lg font-semibold text-foreground">
               전술을 그리고, 국면별로 비교하고, 카드로 공유하세요
