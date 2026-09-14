@@ -1,5 +1,5 @@
 import { VERSUS_TEAM_COLORS } from '@/lib/theme'
-import { computeMatchupAdvantage, THIRD_KOREAN, zoneLabel } from '@/lib/versusAdvantage'
+import { computeMatchupAdvantage, computeThreatWeightedScore, THIRD_KOREAN, zoneLabel } from '@/lib/versusAdvantage'
 import type { ZoneOverload } from '@/types/analysis'
 
 interface AdvantageBadgeProps {
@@ -26,6 +26,7 @@ const TOP_ZONE_COUNT = 3
  */
 export function AdvantageBadge({ zones, labelA, labelB }: AdvantageBadgeProps) {
   const { aZones, bZones, neutralZoneCount, totalZones } = computeMatchupAdvantage(zones)
+  const threatScore = computeThreatWeightedScore(zones)
   const third = THIRD_KOREAN(labelA, labelB)
   const colorA = VERSUS_TEAM_COLORS.A.fill
   const colorB = VERSUS_TEAM_COLORS.B.fill
@@ -77,6 +78,12 @@ export function AdvantageBadge({ zones, labelA, labelB }: AdvantageBadgeProps) {
         {teamSummary(labelA, colorA, aZones)}
         {teamSummary(labelB, colorB, bZones)}
       </div>
+      <p className="text-xs text-muted-foreground" title="구역 개수가 같아도 중앙·상대 진영에 가까운 구역일수록 더 위험하다고 보고 가중치를 곱해 합산한 점수 — 골 확률 예측이 아니다.">
+        위협 가중 점수(중앙·상대 진영에 가까울수록 가중치 큼):{' '}
+        <span style={{ color: colorA }}>{labelA} {threatScore.aScore}</span>
+        {' · '}
+        <span style={{ color: colorB }}>{labelB} {threatScore.bScore}</span>
+      </p>
     </div>
   )
 }

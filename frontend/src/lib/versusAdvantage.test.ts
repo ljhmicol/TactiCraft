@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { computeMatchupAdvantage, computeSideAdvantage, suggestImprovement, THIRD_KOREAN, zoneLabel } from '@/lib/versusAdvantage'
+import {
+  computeMatchupAdvantage,
+  computeSideAdvantage,
+  computeThreatWeightedScore,
+  suggestImprovement,
+  THIRD_KOREAN,
+  zoneLabel,
+} from '@/lib/versusAdvantage'
 import type { ZoneOverload } from '@/types/analysis'
 
 function zone(diff: number, channel: ZoneOverload['channel'] = 'center', third: ZoneOverload['third'] = 'middle'): ZoneOverload {
@@ -98,5 +105,37 @@ describe('computeSideAdvantage', () => {
     expect(result.left.totalZones).toBe(0)
     expect(result.center.totalZones).toBe(1)
     expect(result.right.totalZones).toBe(0)
+  })
+})
+
+describe('computeThreatWeightedScore', () => {
+  it('flips the Ancelotti(A) vs 이정효 수원삼성(B) 2:2 tie toward B once zone danger is weighted', () => {
+    // 안첼로티 브라질(A) vs 이정효 수원삼성(B) 실제 프리셋(A 공격×B 수비)을
+    // 손으로 대조해서 나온 4개 비동률 구역 그대로다(TO-DO 45 대화 참조).
+    // 단순 구역 개수로는 2:2 동률이지만, 브라질의 두 우위는 전부 자기
+    // 진영(defensive)이고 수원의 두 우위는 middle·attacking(그중 하나는
+    // 상대 박스 앞 중앙)이라 실제로는 수원 쪽이 훨씬 위협적이었다.
+    const zones = [
+      zone(2, 'leftHalf', 'defensive'), // 브라질 우위 — 자기 진영 구석
+      zone(1, 'center', 'defensive'), // 브라질 우위 — 자기 진영 중앙
+      zone(-1, 'leftWing', 'middle'), // 수원 우위 — 중원
+      zone(-2, 'center', 'attacking'), // 수원 우위 — 상대(브라질) 박스 앞 중앙
+    ]
+    const equalWeightResult = computeMatchupAdvantage(zones)
+    expect(equalWeightResult.aZones).toHaveLength(2)
+    expect(equalWeightResult.bZones).toHaveLength(2) // 동률(2:2) — 단순 개수로는 이게 사용자가 봤던 "상쇄"
+
+    const weighted = computeThreatWeightedScore(zones)
+    expect(weighted.bScore).toBeGreaterThan(weighted.aScore) // 가중치를 곱하면 수원 쪽으로 뒤집힘
+  })
+
+  it('ignores tied zones and returns 0/0 when nobody is ahead anywhere', () => {
+    expect(computeThreatWeightedScore([zone(0), zone(0)])).toEqual({ aScore: 0, bScore: 0 })
+  })
+
+  it('weighs leftWing/rightWing and leftHalf/rightHalf identically (no left/right bias in the score itself)', () => {
+    const leftHeavy = computeThreatWeightedScore([zone(3, 'leftWing', 'attacking'), zone(2, 'leftHalf', 'middle')])
+    const rightHeavy = computeThreatWeightedScore([zone(3, 'rightWing', 'attacking'), zone(2, 'rightHalf', 'middle')])
+    expect(leftHeavy).toEqual(rightHeavy)
   })
 })

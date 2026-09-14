@@ -1,3 +1,4 @@
+import { zoneThreatWeight } from '@/lib/zones'
 import type { Channel, Third, ZoneOverload } from '@/types/analysis'
 
 /**
@@ -106,4 +107,35 @@ export function computeSideAdvantage(zones: ZoneOverload[]): Record<PitchSide, M
     center: computeMatchupAdvantage(zones.filter((z) => SIDE_CHANNELS.center.includes(z.channel))),
     right: computeMatchupAdvantage(zones.filter((z) => SIDE_CHANNELS.right.includes(z.channel))),
   }
+}
+
+export interface ThreatWeightedScore {
+  aScore: number
+  bScore: number
+}
+
+/**
+ * 위협 가중 점수(TO-DO 45) — "왼쪽/중앙/오른쪽으로 세면 1:1인데, 실제로는
+ * 한쪽은 자기 진영 구석 우위고 한쪽은 상대 박스 앞 중앙 우위라 훨씬
+ * 위험한데 똑같이 상쇄돼 안 보인다"는 지적(안첼로티 브라질 vs 이정효
+ * 수원삼성 예시로 확인)에서 나왔다. `computeOverload`가 이미 낸 15구역
+ * own/opp 차이(diff)에 `zoneThreatWeight`(중앙·전방일수록 큼)를 곱해
+ * 합산한다 — 새 판정 기준이 아니라 기존 구역 우세 집계에 가중치만 얹은
+ * 것이다. 동률(diff=0) 구역은 애초에 어느 쪽에도 기여하지 않는다.
+ *
+ * 기존 "N구역 우세" 카운트를 대체하지 않는다 — 둘 다 같이 보여줘야 이
+ * 점수가 어디서 나왔는지 사용자가 검증할 수 있다(AdvantageBadge 참조).
+ * 반올림은 소수 첫째 자리까지만 — 확률처럼 보일 정도로 정밀하게 보이지
+ * 않게 한다.
+ */
+export function computeThreatWeightedScore(zones: ZoneOverload[]): ThreatWeightedScore {
+  let aScore = 0
+  let bScore = 0
+  for (const z of zones) {
+    if (z.diff === 0) continue
+    const weight = zoneThreatWeight(z.channel, z.third)
+    if (z.diff > 0) aScore += z.diff * weight
+    else bScore += -z.diff * weight
+  }
+  return { aScore: Math.round(aScore * 10) / 10, bScore: Math.round(bScore * 10) / 10 }
 }
