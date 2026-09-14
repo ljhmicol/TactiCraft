@@ -209,7 +209,11 @@ class AnalysisPublicIn(BaseModel):
 class CommunityAnalysisOut(BaseModel):
     """커뮤니티 목록(TO-DO 12번 후속) 카드 한 장 — AnalysisSummary에 작성자
     표시 이름과 댓글 수를 더한다. 누가 공유했는지·얼마나 활발한 토론이
-    붙었는지가 커뮤니티 목록의 핵심 정보라 목록 조회 시점에 같이 계산한다."""
+    붙었는지가 커뮤니티 목록의 핵심 정보라 목록 조회 시점에 같이 계산한다.
+
+    like_count/liked_by_me는 TO-DO 41 후속("커뮤니티 좋아요/인기순 정렬")에서
+    추가됐다. liked_by_me는 비로그인 조회 시 항상 False다(좋아요 누른 계정을
+    알 수 없으므로)."""
 
     id: int
     match_name: str
@@ -222,6 +226,16 @@ class CommunityAnalysisOut(BaseModel):
     thumbnail: Optional[str] = None
     owner_username: str
     comment_count: int = 0
+    like_count: int = 0
+    liked_by_me: bool = False
+
+
+class LikeToggleOut(BaseModel):
+    """좋아요 토글 응답 — 누른 뒤 상태(liked)와 최신 총 개수를 한 번에 돌려줘서
+    프론트가 별도로 목록을 다시 불러오지 않고도 버튼·카운트를 즉시 갱신할 수 있게 한다."""
+
+    liked: bool
+    like_count: int
 
 
 class HealthOut(BaseModel):

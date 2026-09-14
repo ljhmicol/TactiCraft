@@ -1,11 +1,22 @@
-import { MessageCircle } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Heart, MessageCircle } from 'lucide-react'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 
-import { useCommunityAnalyses } from '@/hooks/useCommunity'
+import { useCommunityAnalyses, useToggleLike } from '@/hooks/useCommunity'
+import { useCurrentUser } from '@/hooks/useAuth'
 import { useServerHealth } from '@/hooks/useServerHealth'
+import { cn } from '@/lib/utils'
+
+type SortMode = 'recent' | 'popular'
+
+const SORT_OPTIONS: { value: SortMode; label: string }[] = [
+  { value: 'recent', label: '최신순' },
+  { value: 'popular', label: '인기순' },
+]
 
 /**
- * /community — 커뮤니티 공개 목록(TO-DO 12번 후속, 2026-09-10).
+ * /community — 커뮤니티 공개 목록(TO-DO 12번 후속, 2026-09-10) + 좋아요/
+ * 인기순 정렬(TO-DO 41 후속).
  *
  * "커뮤니티는 어디있어?"라는 질문에서 시작 — 처음엔 저장 목록에 공유
  * 페이지로 가는 링크만 추가했지만, 이어서 "커뮤니티 창을 새로 만드는 게
@@ -19,10 +30,30 @@ import { useServerHealth } from '@/hooks/useServerHealth'
  * 표시명과 댓글 수를 카드에 보여줘 "누가 무엇을 공유했고 얼마나
  * 논의됐는지"가 한눈에 보이게 한다 — 저장 목록은 반대로 이 정보가
  * 필요 없다(전부 내 것이므로).
+ *
+ * 좋아요는 "더 추가할 기능들은 없을지 찾아달라"는 요청에서 "댓글은 있는데
+ * 그 흔한 추천/좋아요가 없어서 목록이 최신순 말고는 정렬 기준이 없다"는
+ * 공백으로 골라 사용자가 확정했다. 목록 조회는 비로그인도 가능하지만
+ * 좋아요를 누르는 건 댓글 작성과 같은 이유로 로그인이 필요하다 — 누가
+ * 눌렀는지 알아야 1인 1회 제한과 하트 채움 표시가 가능하다.
  */
 export function CommunityPage() {
   const { isServerUp, isChecking } = useServerHealth()
-  const { data, isLoading, isError } = useCommunityAnalyses()
+  const { isLoggedIn } = useCurrentUser()
+  const navigate = useNavigate()
+  const [sort, setSort] = useState<SortMode>('recent')
+  const { data, isLoading, isError } = useCommunityAnalyses(sort)
+  const toggleLike = useToggleLike()
+
+  const handleLikeClick = (e: React.MouseEvent, analysisId: number) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!isLoggedIn) {
+      navigate('/login')
+      return
+    }
+    toggleLike.mutate(analysisId)
+  }
 
   return (
     <div className="p-6">
@@ -30,6 +61,24 @@ export function CommunityPage() {
       <p className="mb-4 text-sm text-muted-foreground">
         다른 사람이 공유한 분석을 둘러보고 댓글을 남겨보세요. 로그인 없이도 볼 수 있습니다.
       </p>
+
+      <div className="mb-4 flex gap-1.5">
+        {SORT_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => setSort(opt.value)}
+            className={cn(
+              'whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+              sort === opt.value
+                ? 'bg-accent text-accent-foreground'
+                : 'bg-secondary text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
 
       {isChecking ? (
         <p className="text-muted-foreground">서버 확인 중…</p>
@@ -78,9 +127,24 @@ export function CommunityPage() {
                 )}
                 <div className="mt-auto flex items-center justify-between pt-1 text-xs text-muted-foreground">
                   <span className="truncate">{a.ownerUsername}</span>
-                  <span className="flex shrink-0 items-center gap-1">
-                    <MessageCircle className="h-3 w-3" />
-                    {a.commentCount}
+                  <span className="flex shrink-0 items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={(e) => handleLikeClick(e, a.id)}
+                      disabled={toggleLike.isPending}
+                      className={cn(
+                        'flex items-center gap-1 transition-colors hover:text-foreground focus-visible:outline-none',
+                        a.likedByMe && 'text-rose-400 hover:text-rose-400',
+                      )}
+                      aria-label={a.likedByMe ? '좋아요 취소' : '좋아요'}
+                    >
+                      <Heart className={cn('h-3 w-3', a.likedByMe && 'fill-current')} />
+                      {a.likeCount}
+                    </button>
+                    <span className="flex items-center gap-1">
+                      <MessageCircle className="h-3 w-3" />
+                      {a.commentCount}
+                    </span>
                   </span>
                 </div>
               </div>

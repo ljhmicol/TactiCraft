@@ -129,6 +129,10 @@ export interface CommunityAnalysis {
   thumbnail?: string
   ownerUsername: string
   commentCount: number
+  /** 좋아요(TO-DO 41 후속) */
+  likeCount: number
+  /** 비로그인 조회 시 항상 false */
+  likedByMe: boolean
 }
 
 // 시각화 계산용 타입

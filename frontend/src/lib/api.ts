@@ -118,9 +118,16 @@ export function setAnalysisPublic(id: number, isPublic: boolean): Promise<Analys
 }
 
 /** 커뮤니티 목록(TO-DO 12번 후속) — 공개(isPublic=true)로 설정된 분석만.
- * 댓글 읽기와 같은 이유로 로그인 여부와 무관하게 공개다. */
-export function fetchCommunityAnalyses(): Promise<CommunityAnalysis[]> {
-  return apiFetch('/community/analyses')
+ * 댓글 읽기와 같은 이유로 로그인 여부와 무관하게 공개다. sort(TO-DO 41
+ * 후속) — 'recent'(기본, 최신순) | 'popular'(좋아요 많은 순). */
+export function fetchCommunityAnalyses(sort: 'recent' | 'popular' = 'recent'): Promise<CommunityAnalysis[]> {
+  return apiFetch(`/community/analyses?sort=${sort}`)
+}
+
+/** 좋아요 토글(TO-DO 41 후속) — 로그인 필수. 누른 뒤 상태와 최신 총 개수를
+ * 같이 받아서 프론트가 별도 재조회 없이 버튼·카운트를 즉시 반영한다. */
+export function toggleLike(analysisId: number): Promise<{ liked: boolean; likeCount: number }> {
+  return apiFetch(`/community/analyses/${analysisId}/like`, { method: 'POST' })
 }
 
 export interface CurrentUser {

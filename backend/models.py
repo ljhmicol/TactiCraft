@@ -261,3 +261,23 @@ class Comment(Base):
 
     analysis = relationship("Analysis")
     user = relationship("User")
+
+
+class Like(Base):
+    """커뮤니티 좋아요(TO-DO 41 후속, "커뮤니티 좋아요/인기순 정렬").
+    Comment와 같은 이유로 새 테이블이라 create_all이 자동 생성한다.
+    (analysis_id, user_id) 유니크 제약으로 1인 1회만 — 토글 방식(다시
+    누르면 이 행을 지운다)이라 상태를 bool 컬럼이 아니라 행의 존재
+    여부로 표현한다."""
+
+    __tablename__ = "likes"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    analysis_id = Column(Integer, ForeignKey("analyses.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    created_at = Column(String, nullable=False)
+
+    analysis = relationship("Analysis")
+    user = relationship("User")
+
+    __table_args__ = (UniqueConstraint("analysis_id", "user_id", name="uq_likes_analysis_user"),)

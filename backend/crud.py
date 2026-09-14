@@ -318,12 +318,19 @@ def set_analysis_public(db: Session, analysis_id: int, is_public: bool) -> model
     return row
 
 
-def list_public_analyses(db: Session) -> List[dict]:
-    """공개(is_public=True) 분석을 최신순으로 — 작성자 표시명·댓글 수를
-    같이 계산해 카드에 바로 쓸 형태로 돌려준다. N+1을 피하려고 댓글 수는
-    분석 id 목록으로 한 번에 GROUP BY 집계한 뒤 파이썬에서 합친다(분석 수가
-    이 앱 규모에서 수백~수천 단위를 넘지 않을 것으로 보여, 별도 서브쿼리
-    조인보다 이 편이 읽기 쉽다).
+def list_public_analyses(
+    db: Session, current_user_id: Optional[int] = None, sort: str = "recent"
+) -> List[dict]:
+    """공개(is_public=True) 분석을 최신순으로 — 작성자 표시명·댓글 수·좋아요
+    수를 같이 계산해 카드에 바로 쓸 형태로 돌려준다. N+1을 피하려고 댓글
+    수·좋아요 수는 분석 id 목록으로 한 번에 GROUP BY 집계한 뒤 파이썬에서
+    합친다(분석 수가 이 앱 규모에서 수백~수천 단위를 넘지 않을 것으로 보여,
+    별도 서브쿼리 조인보다 이 편이 읽기 쉽다).
+
+    sort="popular"(TO-DO 41 후속)는 좋아요 수가 SQL 컬럼이 아니라 이렇게
+    파이썬에서 집계한 값이라, DB의 order_by 대신 리스트를 만든 뒤 다시
+    정렬한다 — 원래 최신순으로 가져온 목록이라 Python list.sort는 안정
+    정렬이므로 좋아요 수가 같으면 최신순이 그대로 2차 정렬 기준이 된다.
     """
     rows = (
         db.query(models.Analysis, models.User.username)
@@ -334,6 +341,8 @@ def list_public_analyses(db: Session) -> List[dict]:
     )
     analysis_ids = [row.id for row, _ in rows]
     counts: dict[int, int] = {}
+    like_counts: dict[int, int] = {}
+    liked_ids: set[int] = set()
     if analysis_ids:
         count_rows = (
             db.query(models.Comment.analysis_id, func.count(models.Comment.id))
@@ -343,7 +352,26 @@ def list_public_analyses(db: Session) -> List[dict]:
         )
         counts = dict(count_rows)
 
-    return [
+        like_count_rows = (
+            db.query(models.Like.analysis_id, func.count(models.Like.id))
+            .filter(models.Like.analysis_id.in_(analysis_ids))
+            .group_by(models.Like.analysis_id)
+            .all()
+        )
+        like_counts = dict(like_count_rows)
+
+        if current_user_id is not None:
+            liked_rows = (
+                db.query(models.Like.analysis_id)
+                .filter(
+                    models.Like.analysis_id.in_(analysis_ids),
+                    models.Like.user_id == current_user_id,
+                )
+                .all()
+            )
+            liked_ids = {row[0] for row in liked_rows}
+
+    items = [
         {
             "id": row.id,
             "match_name": row.match_name,
@@ -356,6 +384,37 @@ def list_public_analyses(db: Session) -> List[dict]:
             "thumbnail": row.thumbnail,
             "owner_username": username or "",
             "comment_count": counts.get(row.id, 0),
+            "like_count": like_counts.get(row.id, 0),
+            "liked_by_me": row.id in liked_ids,
         }
         for row, username in rows
     ]
+    if sort == "popular":
+        items.sort(key=lambda item: item["like_count"], reverse=True)
+    return items
+
+
+def toggle_like(db: Session, analysis_id: int, user: "models.User") -> tuple[bool, int]:
+    """좋아요 토글(TO-DO 41 후속) — 이미 누른 상태면 행을 지우고(취소),
+    아니면 새로 만든다(누름). 1인 1회는 Like 모델의 UniqueConstraint가
+    보장한다. 반환값(liked, like_count)은 프론트가 버튼·카운트를 API 응답
+    하나로 즉시 갱신할 수 있게 최신 총 개수까지 같이 준다."""
+    existing = (
+        db.query(models.Like)
+        .filter(models.Like.analysis_id == analysis_id, models.Like.user_id == user.id)
+        .first()
+    )
+    if existing:
+        db.delete(existing)
+        db.commit()
+        liked = False
+    else:
+        db.add(models.Like(analysis_id=analysis_id, user_id=user.id, created_at=_now()))
+        db.commit()
+        liked = True
+    count = (
+        db.query(func.count(models.Like.id))
+        .filter(models.Like.analysis_id == analysis_id)
+        .scalar()
+    )
+    return liked, count
