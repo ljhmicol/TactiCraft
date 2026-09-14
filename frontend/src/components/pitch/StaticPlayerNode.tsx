@@ -97,7 +97,7 @@ export function StaticPlayerNode({
         animate={{ x: p.x, y: p.y }}
         transition={TRANSITION}
         fill={team.text}
-        fontSize={2.4}
+        fontSize={2}
         textAnchor="middle"
         dominantBaseline="central"
         style={{ userSelect: 'none', fontFamily: PITCH_TEXT_FONT_FAMILY }}
@@ -108,7 +108,7 @@ export function StaticPlayerNode({
         initial={{ x: p.x, y: p.y + RADIUS.ry + 3 + labelYOffset }}
         animate={{ x: p.x, y: p.y + RADIUS.ry + 3 + labelYOffset }}
         transition={TRANSITION}
-        fontSize={2}
+        fontSize={1.7}
         fontWeight={700}
         textAnchor="middle"
         style={{ userSelect: 'none', paintOrder: 'stroke', fontFamily: PITCH_TEXT_FONT_FAMILY }}
