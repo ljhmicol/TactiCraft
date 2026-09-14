@@ -16,7 +16,7 @@ interface StaticPlayerNodeProps {
   position: Point
   formation: string
   index: number
-  /** A=홈(파랑), B=원정(마젠타) — lib/theme.ts VERSUS_TEAM_COLORS */
+  /** A=홈(파랑), B=원정(빨강) — lib/theme.ts VERSUS_TEAM_COLORS */
   variant: 'A' | 'B'
   /** landscape는 전술 대결 뷰(TO-DO 21) 전용. position은 항상 원본(세로) 좌표계로 받는다. */
   orientation?: 'portrait' | 'landscape'
@@ -89,8 +89,8 @@ export function StaticPlayerNode({
         ry={RADIUS.ry}
         fill={team.fill}
         stroke={variant === 'A' ? '#0F172A' : '#F8FAFC'}
-        strokeOpacity={variant === 'A' ? 0.4 : 0.8}
-        strokeWidth={variant === 'A' ? 0.3 : 0.5}
+        strokeOpacity={variant === 'A' ? 0.4 : 0.65}
+        strokeWidth={0.3}
       />
       <motion.text
         initial={{ x: p.x, y: p.y }}
