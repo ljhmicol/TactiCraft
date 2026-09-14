@@ -69,7 +69,7 @@ export function MatchupView({
       )}
       <div className="min-h-0 flex-1">
         <Pitch orientation="landscape">
-          {showChannelGrid && <ChannelGrid halfSpaces orientation="landscape" />}
+          {showChannelGrid && <ChannelGrid halfSpaces orientation="landscape" sideLabels />}
           {showPressingLine && (
             <PressingLine
               positions={defendingPositions}

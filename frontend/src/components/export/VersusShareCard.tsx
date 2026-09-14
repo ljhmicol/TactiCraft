@@ -158,7 +158,7 @@ export const VersusShareCard = forwardRef<HTMLDivElement, VersusShareCardProps>(
         <div style={{ flex: 1, minHeight: ratio === '1:1' ? 420 : 540, display: 'flex', justifyContent: 'center' }}>
           <div style={{ height: '100%' }}>
             <Pitch orientation="landscape">
-              {showChannelGrid && <ChannelGrid halfSpaces orientation="landscape" />}
+              {showChannelGrid && <ChannelGrid halfSpaces orientation="landscape" sideLabels />}
               {showPressingLine && (
                 <PressingLine
                   positions={defendingPositions}
