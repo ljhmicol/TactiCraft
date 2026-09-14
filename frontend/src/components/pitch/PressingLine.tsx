@@ -2,7 +2,8 @@ import { motion, type PanInfo } from 'framer-motion'
 
 import { autoPressingLine, pressingLineLevel } from '@/lib/compactness'
 import { clampCoord, pagePointToPitch } from '@/lib/coords'
-import { LAYER_COLORS } from '@/lib/theme'
+import { LANDSCAPE_TEXT_X_SCALE } from '@/lib/pitchMarkings'
+import { LAYER_COLORS, PITCH_TEXT_FONT_FAMILY } from '@/lib/theme'
 import type { PlayerPosition } from '@/types/analysis'
 
 import { usePitchSvg } from './PitchContext'
@@ -77,6 +78,8 @@ export function PressingLine({
         ? { x: landscapeX - 1.5, y: 3, anchor: 'end' as const }
         : { x: landscapeX, y: 3, anchor: 'middle' as const }
     : { x: 98, y: y - 1.2, anchor: 'end' as const }
+  // 글자 가로 비율 보정(TO-DO 39) — StaticPlayerNode와 같은 이유·같은 방식.
+  const textScaleX = landscape ? LANDSCAPE_TEXT_X_SCALE : 1
 
   const handlePan = (_: PointerEvent | MouseEvent | TouchEvent, info: PanInfo) => {
     if (!onDragY || !svgRef.current) return
@@ -101,9 +104,18 @@ export function PressingLine({
           onPanEnd={onDragEnd}
         />
       )}
-      <text x={label.x} y={label.y} fill={LAYER_COLORS.pressingLine.color} fontSize={2} textAnchor={label.anchor}>
-        압박 라인 {pressingLineLevel(labelY ?? y)}
-      </text>
+      <g transform={`scale(${textScaleX} 1)`}>
+        <text
+          x={label.x / textScaleX}
+          y={label.y}
+          fill={LAYER_COLORS.pressingLine.color}
+          fontSize={2}
+          textAnchor={label.anchor}
+          style={{ fontFamily: PITCH_TEXT_FONT_FAMILY }}
+        >
+          압박 라인 {pressingLineLevel(labelY ?? y)}
+        </text>
+      </g>
     </g>
   )
 }

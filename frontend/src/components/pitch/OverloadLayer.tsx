@@ -1,6 +1,6 @@
 import { transposePoint, transposeRect } from '@/lib/coords'
 import { computeOverload } from '@/lib/overload'
-import { LAYER_COLORS } from '@/lib/theme'
+import { LAYER_COLORS, PITCH_TEXT_FONT_FAMILY } from '@/lib/theme'
 import { CHANNEL_BOUNDS, THIRD_BOUNDS } from '@/lib/zones'
 import type { PhaseData } from '@/types/analysis'
 
@@ -53,6 +53,7 @@ export function OverloadLayer({ phase, orientation = 'portrait' }: OverloadLayer
                 fontWeight="bold"
                 textAnchor="middle"
                 dominantBaseline="central"
+                style={{ fontFamily: PITCH_TEXT_FONT_FAMILY }}
               >
                 +{z.diff}
               </text>

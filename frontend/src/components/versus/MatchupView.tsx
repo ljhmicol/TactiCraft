@@ -10,6 +10,7 @@ import { PressingLine } from '@/components/pitch/PressingLine'
 import { mirrorPoint, resolveDefendingPressingLineLevel, resolveDefendingPressingLineY, transposePoint } from '@/lib/coords'
 import { resolveLabelOverlap, type LabelBox } from '@/lib/labelPlacement'
 import { computeOverload } from '@/lib/overload'
+import { LANDSCAPE_TEXT_X_SCALE } from '@/lib/pitchMarkings'
 import { positionInfoAt } from '@/lib/positions'
 import { computeMatchupAdvantage } from '@/lib/versusAdvantage'
 import type { Analysis, Annotation, PhaseData, PhaseType, Player, PlayerPosition, Point } from '@/types/analysis'
@@ -177,7 +178,11 @@ export function MatchupView({
     x: marker.landscapePoint.x,
     defaultY: marker.landscapePoint.y + LANDSCAPE_RADIUS.ry + 3,
     // +2는 이름 앞에 붙는 포지션 코드(GK/DF/MF/FW, 항상 2글자, TO-DO 36) 몫이다.
-    width: Math.max(6, (marker.player.name.length + 2) * 1.6),
+    // 1.6은 글자당 대략 추정한 너비(구 렌더링 기준)였는데, TO-DO 39에서 landscape
+    // 글자가 LANDSCAPE_TEXT_X_SCALE(≈0.648)만큼 가로로 좁아지도록 보정해서
+    // 실제 렌더링 너비도 그만큼 줄었다 — 겹침 판정이 실제보다 너무 넉넉하게
+    // "겹친다"고 오판하지 않도록 같은 비율로 낮춘다.
+    width: Math.max(6, (marker.player.name.length + 2) * 1.6 * LANDSCAPE_TEXT_X_SCALE),
     height: 2.6,
   }))
   const labelOffsets = resolveLabelOverlap(labelBoxes, LABEL_STEP)

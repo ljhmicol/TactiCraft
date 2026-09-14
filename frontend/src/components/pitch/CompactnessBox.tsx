@@ -1,5 +1,5 @@
 import { computeCompactness } from '@/lib/compactness'
-import { LAYER_COLORS } from '@/lib/theme'
+import { LAYER_COLORS, PITCH_TEXT_FONT_FAMILY } from '@/lib/theme'
 import type { PlayerPosition } from '@/types/analysis'
 
 /** GK 제외 자팀 bounding box + m 환산 라벨 (2단계 §9, §12.3). */
@@ -26,6 +26,7 @@ export function CompactnessBox({ positions }: { positions: PlayerPosition[] }) {
         fill={LAYER_COLORS.compactness.color}
         fontSize={2}
         textAnchor="middle"
+        style={{ fontFamily: PITCH_TEXT_FONT_FAMILY }}
       >
         세로 {verticalM}m × 가로 {horizontalM}m
       </text>

@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 
 import { transposePoint } from '@/lib/coords'
-import { circularRadius, swapForLandscape } from '@/lib/pitchMarkings'
+import { circularRadius, LANDSCAPE_TEXT_X_SCALE, swapForLandscape } from '@/lib/pitchMarkings'
 import { positionInfoAt } from '@/lib/positions'
 import { PITCH_TEXT_FONT_FAMILY, POSITION_LINE_COLORS, VERSUS_TEAM_COLORS } from '@/lib/theme'
 import { PHASE_TRANSITION_MS } from '@/store/analysisStore'
@@ -67,6 +67,12 @@ export function StaticPlayerNode({
   const RADIUS = landscape ? LANDSCAPE_RADIUS : PORTRAIT_RADIUS
   const GK_RING_RADIUS = landscape ? GK_RING_RADIUS_LANDSCAPE : GK_RING_RADIUS_PORTRAIT
   const p = landscape ? transposePoint(position) : position
+  // 글자 가로 비율 보정(TO-DO 39) — <text>는 rx/ry 같은 축별 보정이 없어서
+  // 대신 앵커를 감싼 <g>에 scale(textScaleX, 1)을 걸고, 그만큼 넓어지거나
+  // 좁아질 x를 미리 나눠서(textX) 최종 화면 위치는 그대로 유지한다.
+  // portrait에서는 textScaleX가 1이라 사실상 무보정(lib/pitchMarkings.ts 참조).
+  const textScaleX = landscape ? LANDSCAPE_TEXT_X_SCALE : 1
+  const textX = p.x / textScaleX
 
   return (
     <g>
@@ -92,33 +98,37 @@ export function StaticPlayerNode({
         strokeOpacity={0.4}
         strokeWidth={0.3}
       />
-      <motion.text
-        initial={{ x: p.x, y: p.y }}
-        animate={{ x: p.x, y: p.y }}
-        transition={TRANSITION}
-        fill={team.text}
-        fontSize={2}
-        textAnchor="middle"
-        dominantBaseline="central"
-        style={{ userSelect: 'none', fontFamily: PITCH_TEXT_FONT_FAMILY }}
-      >
-        {player.number}
-      </motion.text>
-      <motion.text
-        initial={{ x: p.x, y: p.y + RADIUS.ry + 3 + labelYOffset }}
-        animate={{ x: p.x, y: p.y + RADIUS.ry + 3 + labelYOffset }}
-        transition={TRANSITION}
-        fontSize={1.7}
-        fontWeight={700}
-        textAnchor="middle"
-        style={{ userSelect: 'none', paintOrder: 'stroke', fontFamily: PITCH_TEXT_FONT_FAMILY }}
-        stroke="#0F172A"
-        strokeWidth={0.35}
-        strokeOpacity={0.55}
-      >
-        {info && <tspan fill={POSITION_LINE_COLORS[info.line].fill}>{info.line}</tspan>}
-        <tspan fill="#F8FAFC">{player.name}</tspan>
-      </motion.text>
+      <g transform={`scale(${textScaleX} 1)`}>
+        <motion.text
+          initial={{ x: textX, y: p.y }}
+          animate={{ x: textX, y: p.y }}
+          transition={TRANSITION}
+          fill={team.text}
+          fontSize={2}
+          textAnchor="middle"
+          dominantBaseline="central"
+          style={{ userSelect: 'none', fontFamily: PITCH_TEXT_FONT_FAMILY }}
+        >
+          {player.number}
+        </motion.text>
+      </g>
+      <g transform={`scale(${textScaleX} 1)`}>
+        <motion.text
+          initial={{ x: textX, y: p.y + RADIUS.ry + 3 + labelYOffset }}
+          animate={{ x: textX, y: p.y + RADIUS.ry + 3 + labelYOffset }}
+          transition={TRANSITION}
+          fontSize={1.7}
+          fontWeight={700}
+          textAnchor="middle"
+          style={{ userSelect: 'none', paintOrder: 'stroke', fontFamily: PITCH_TEXT_FONT_FAMILY }}
+          stroke="#0F172A"
+          strokeWidth={0.35}
+          strokeOpacity={0.55}
+        >
+          {info && <tspan fill={POSITION_LINE_COLORS[info.line].fill}>{info.line}</tspan>}
+          <tspan fill="#F8FAFC">{player.name}</tspan>
+        </motion.text>
+      </g>
     </g>
   )
 }

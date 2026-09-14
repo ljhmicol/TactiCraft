@@ -1,5 +1,6 @@
 import { transposePoint, transposeRect } from '@/lib/coords'
-import { VERSUS_TEAM_COLORS } from '@/lib/theme'
+import { LANDSCAPE_TEXT_X_SCALE } from '@/lib/pitchMarkings'
+import { PITCH_TEXT_FONT_FAMILY, VERSUS_TEAM_COLORS } from '@/lib/theme'
 import { CHANNEL_BOUNDS, THIRD_BOUNDS } from '@/lib/zones'
 import type { ZoneOverload } from '@/types/analysis'
 
@@ -19,6 +20,8 @@ interface MatchupOverloadLayerProps {
  */
 export function MatchupOverloadLayer({ zones, orientation = 'portrait' }: MatchupOverloadLayerProps) {
   const landscape = orientation === 'landscape'
+  // 글자 가로 비율 보정(TO-DO 39) — StaticPlayerNode와 같은 이유·같은 방식.
+  const textScaleX = landscape ? LANDSCAPE_TEXT_X_SCALE : 1
 
   return (
     <g>
@@ -46,21 +49,23 @@ export function MatchupOverloadLayer({ zones, orientation = 'portrait' }: Matchu
                 strokeOpacity={0.9}
                 strokeWidth={0.5}
               />
-              <text
-                x={label.x}
-                y={label.y}
-                fill="#F8FAFC"
-                fontSize={2.4}
-                fontWeight="bold"
-                textAnchor="middle"
-                dominantBaseline="central"
-                style={{ paintOrder: 'stroke' }}
-                stroke="#0F172A"
-                strokeWidth={0.4}
-                strokeOpacity={0.6}
-              >
-                {z.own}:{z.opp}
-              </text>
+              <g transform={`scale(${textScaleX} 1)`}>
+                <text
+                  x={label.x / textScaleX}
+                  y={label.y}
+                  fill="#F8FAFC"
+                  fontSize={2.4}
+                  fontWeight="bold"
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  style={{ paintOrder: 'stroke', fontFamily: PITCH_TEXT_FONT_FAMILY }}
+                  stroke="#0F172A"
+                  strokeWidth={0.4}
+                  strokeOpacity={0.6}
+                >
+                  {z.own}:{z.opp}
+                </text>
+              </g>
             </g>
           )
         })}

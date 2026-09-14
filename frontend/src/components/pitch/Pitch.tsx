@@ -65,8 +65,19 @@ export function Pitch({ children, orientation = 'portrait' }: PitchProps) {
 
   return (
     <div
+      // landscape는 w-full을 뺀다(TO-DO 39) — w-full과 h-full을 동시에 주면
+      // 두 축 다 "정해진 값"이 돼서 aspect-[105/68]가 개입할 자리가 없어져
+      // 무시된다(둘 다 명시되면 aspect-ratio는 아무 효과가 없다). 그 결과
+      // 대결 뷰(/versus)에 패널(오버로드 배지·개선방안 등)이 늘어날 때마다
+      // flex-1 높이가 줄어드는 만큼 피치가 옆으로 뭉개졌다 — 선수 마커
+      // (circularRadius로 원이어야 할 타원)와 글자가 가로로 퍼져 보인
+      // 실제 원인이 여기였다. w-full을 빼면 높이(h-full)만 정해진 값이라
+      // aspect-ratio가 그 높이에 맞는 너비를 계산해서 채우고, max-w-full은
+      // (화면이 아주 넓을 때를 대비한) 상한선으로만 남는다. portrait는
+      // MVP 때부터 지금 모습 그대로 사용자가 계속 확인해 온 기준선이라
+      // 이번엔 건드리지 않는다.
       className={
-        landscape ? 'mx-auto aspect-[105/68] h-full max-h-full w-full max-w-full' : 'mx-auto aspect-[68/105] h-full max-h-full w-full max-w-full'
+        landscape ? 'mx-auto aspect-[105/68] h-full max-h-full max-w-full' : 'mx-auto aspect-[68/105] h-full max-h-full w-full max-w-full'
       }
     >
       <PitchSvgProvider value={svgRef}>

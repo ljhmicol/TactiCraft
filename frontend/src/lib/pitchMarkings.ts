@@ -41,3 +41,17 @@ export function circularRadius(rUnits: number) {
 export function swapForLandscape<T extends { rx: number; ry: number }>(r: T): T {
   return { ...r, rx: r.ry, ry: r.rx }
 }
+
+/**
+ * 글자 가로 비율 보정(TO-DO 39, "선수이름들이 너무 가로로 펼쳐진 느낌").
+ * `<text>`는 원(circularRadius)과 달리 rx/ry로 따로 보정할 수 없어서, 그
+ * 대신 글자 앵커점에 `scale(LANDSCAPE_TEXT_X_SCALE, 1)`을 걸어 가로 방향만
+ * 되돌린다. 세로 대결 뷰(landscape, x축이 105m 긴 쪽을 담당)에서는 보정 없이
+ * 두면 글자가 약 1.54배(105/68) 옆으로 퍼져 보인다 — 실측(getBoundingClientRect
+ * 종횡비)으로도 같은 문자열이 portrait 대비 landscape에서 약 3배 더 넓적하게
+ * 나오는 걸 확인했다. portrait(에디터·공유 카드·GIF)는 MVP 때부터 지금
+ * 모습 그대로 사용자가 계속 확인해 온 기준선이라 이번엔 손대지 않는다 —
+ * 그래서 이 상수는 landscape 전용이고 portrait에서는 보정 계수 1(무보정)을
+ * 쓴다(TO-DO 39 각 호출부 참조).
+ */
+export const LANDSCAPE_TEXT_X_SCALE = PITCH_WIDTH_M / PITCH_LENGTH_M

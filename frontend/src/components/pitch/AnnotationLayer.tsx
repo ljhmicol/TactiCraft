@@ -11,7 +11,7 @@ import {
   curvedArrowGeometry,
   travelTimes,
 } from '@/lib/annotations'
-import { PLAYER_COLORS } from '@/lib/theme'
+import { PITCH_TEXT_FONT_FAMILY, PLAYER_COLORS } from '@/lib/theme'
 import { circularRadius } from '@/lib/pitchMarkings'
 import { PHASE_TRANSITION_MS } from '@/store/analysisStore'
 import type { Annotation } from '@/types/analysis'
@@ -268,7 +268,7 @@ function DeleteBadge({ annotation, onRemove }: { annotation: Annotation; onRemov
         textAnchor="middle"
         dominantBaseline="central"
         fill="#0F172A"
-        style={{ userSelect: 'none' }}
+        style={{ userSelect: 'none', fontFamily: PITCH_TEXT_FONT_FAMILY }}
       >
         ✕
       </text>
