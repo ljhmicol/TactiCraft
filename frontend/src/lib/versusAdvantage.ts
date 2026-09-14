@@ -51,3 +51,27 @@ export function computeMatchupAdvantage(zones: ZoneOverload[]): MatchupAdvantage
     bTopZone: bZones[0] ?? null,
   }
 }
+
+/** "왼쪽 하프스페이스 · 중원(2:1)" — own/opp는 항상 A 기준(own=A, opp=B)이다.
+ * B 우세 구역을 설명할 때도 순서를 안 뒤집는다 — AdvantageBadge가 처음부터
+ * 이 순서로 써 왔고(2026-09-07~), 화면에 이미 이 표기로 나가고 있어서
+ * 새 컴포넌트만 다르게 쓰면 같은 구역이 문구마다 다르게 읽힌다. */
+export function zoneLabel(z: ZoneOverload, third: Record<Third, string>): string {
+  return `${CHANNEL_KOREAN[z.channel]} · ${third[z.third]}(${z.own}:${z.opp})`
+}
+
+/**
+ * 전술 개선방안(TO-DO 38 후속, "각 팀의 전술 개선방안"). 확률·승률과 달리
+ * 이건 지금 그려진 좌표를 그대로 센 사실이라 "가짜 예측" 금지 원칙(파일
+ * 상단 docstring)에 안 걸린다 — 시뮬레이션이 아니라 "이 구역은 인원이
+ * 적다"는 관찰이다.
+ *
+ * A팀의 약점 구역은 B팀이 가장 크게 앞선 구역과 같다(제로섬이라 diff
+ * 부호만 다를 뿐 같은 구역) — 그래서 호출부는 A팀 제안에 `bTopZone`을,
+ * B팀 제안에 `aTopZone`을 넘긴다(반대로 넘기는 게 아니라 "상대가 가장
+ * 앞선 구역 = 내가 가장 뒤진 구역"이라는 뜻).
+ */
+export function suggestImprovement(weakestZone: ZoneOverload | null, third: Record<Third, string>): string {
+  if (!weakestZone) return '뚜렷한 열세 구역이 없어요 — 지금 배치를 유지해도 좋아 보입니다.'
+  return `${zoneLabel(weakestZone, third)}에서 수적 열세 — 이 구역에 인원을 보강하는 재배치를 고려해보세요.`
+}

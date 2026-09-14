@@ -1,5 +1,7 @@
 import { AdvantageBadge } from '@/components/versus/AdvantageBadge'
+import { KeyZoneCallout } from '@/components/versus/KeyZoneCallout'
 import { MatchupOverloadLayer } from '@/components/versus/MatchupOverloadLayer'
+import { TacticalSuggestions } from '@/components/versus/TacticalSuggestions'
 import { AnnotationLayer } from '@/components/pitch/AnnotationLayer'
 import { ChannelGrid } from '@/components/pitch/ChannelGrid'
 import { LANDSCAPE_RADIUS, StaticPlayerNode } from '@/components/pitch/StaticPlayerNode'
@@ -9,6 +11,7 @@ import { mirrorPoint, resolveDefendingPressingLineLevel, resolveDefendingPressin
 import { resolveLabelOverlap, type LabelBox } from '@/lib/labelPlacement'
 import { computeOverload } from '@/lib/overload'
 import { positionInfoAt } from '@/lib/positions'
+import { computeMatchupAdvantage } from '@/lib/versusAdvantage'
 import type { Analysis, Annotation, PhaseData, PhaseType, Player, PlayerPosition, Point } from '@/types/analysis'
 
 /**
@@ -129,6 +132,11 @@ export function MatchupView({
   const labelA = analysisA.match.homeTeam
   const labelB = analysisB.match.homeTeam
   const zones = computeOverload(syntheticPhase)
+  // 키포인트 구역·전술 개선방안(TO-DO 38 후속)이 AdvantageBadge와 같은 zones에서
+  // 같은 계산을 또 한 번 돌린다 — 15개짜리 배열이라 비용은 무시할 만하고,
+  // AdvantageBadge 내부 계산과 갈라지는 걸 막으려고 별도 prop으로 넘기기보다
+  // 여기서 한 번 더 계산해 두 컴포넌트에 그대로 넘긴다.
+  const matchupAdvantage = computeMatchupAdvantage(zones)
 
   // 마커는 겹치면 그냥 겹치는 채로 둔다(2026-09-09 사용자 결정 — 스파이더파이어
   // 대신 예전처럼). 이름표만 겹치지 않게 위아래로 나눈다(TO-DO 28, 1번).
@@ -176,7 +184,12 @@ export function MatchupView({
 
   return (
     <div className="flex h-full flex-col gap-3">
-      {showOverload && <AdvantageBadge zones={zones} labelA={labelA} labelB={labelB} />}
+      {showOverload && (
+        <>
+          <AdvantageBadge zones={zones} labelA={labelA} labelB={labelB} />
+          <KeyZoneCallout advantage={matchupAdvantage} labelA={labelA} labelB={labelB} />
+        </>
+      )}
       <div className="min-h-0 flex-1">
         <Pitch orientation="landscape">
           {showChannelGrid && <ChannelGrid halfSpaces orientation="landscape" />}
@@ -209,6 +222,7 @@ export function MatchupView({
           ))}
         </Pitch>
       </div>
+      {showOverload && <TacticalSuggestions advantage={matchupAdvantage} labelA={labelA} labelB={labelB} />}
     </div>
   )
 }

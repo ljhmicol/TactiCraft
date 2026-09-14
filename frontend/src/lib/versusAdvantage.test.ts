@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { computeMatchupAdvantage } from '@/lib/versusAdvantage'
+import { computeMatchupAdvantage, suggestImprovement, THIRD_KOREAN, zoneLabel } from '@/lib/versusAdvantage'
 import type { ZoneOverload } from '@/types/analysis'
 
 function zone(diff: number, channel: ZoneOverload['channel'] = 'center', third: ZoneOverload['third'] = 'middle'): ZoneOverload {
   return { channel, third, own: Math.max(diff, 0), opp: Math.max(-diff, 0), diff, level: 'none' }
 }
+
+const third = THIRD_KOREAN('A팀', 'B팀')
 
 describe('computeMatchupAdvantage', () => {
   it('splits positive diff zones into aZones, negative into bZones, zero as neutral', () => {
@@ -47,5 +49,27 @@ describe('computeMatchupAdvantage', () => {
       aTopZone: null,
       bTopZone: null,
     })
+  })
+})
+
+describe('zoneLabel', () => {
+  it('always renders own:opp in A-first order regardless of which team the zone favors', () => {
+    const aFavored = zone(2, 'leftWing', 'middle')
+    const bFavored = zone(-2, 'rightWing', 'defensive')
+    expect(zoneLabel(aFavored, third)).toBe('왼쪽 측면 · 중원(2:0)')
+    expect(zoneLabel(bFavored, third)).toBe('오른쪽 측면 · A팀 골문 근처(0:2)')
+  })
+})
+
+describe('suggestImprovement', () => {
+  it('cites the concrete zone and score when a weakest zone exists', () => {
+    const weak = zone(-3, 'leftHalf', 'defensive')
+    expect(suggestImprovement(weak, third)).toBe(
+      '왼쪽 하프스페이스 · A팀 골문 근처(0:3)에서 수적 열세 — 이 구역에 인원을 보강하는 재배치를 고려해보세요.',
+    )
+  })
+
+  it('falls back to a neutral message when there is no weakest zone', () => {
+    expect(suggestImprovement(null, third)).toBe('뚜렷한 열세 구역이 없어요 — 지금 배치를 유지해도 좋아 보입니다.')
   })
 })

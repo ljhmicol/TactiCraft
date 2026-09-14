@@ -1,5 +1,5 @@
 import { VERSUS_TEAM_COLORS } from '@/lib/theme'
-import { CHANNEL_KOREAN, computeMatchupAdvantage, THIRD_KOREAN } from '@/lib/versusAdvantage'
+import { computeMatchupAdvantage, THIRD_KOREAN, zoneLabel } from '@/lib/versusAdvantage'
 import type { ZoneOverload } from '@/types/analysis'
 
 interface AdvantageBadgeProps {
@@ -7,11 +7,6 @@ interface AdvantageBadgeProps {
   labelA: string
   labelB: string
 }
-
-const zoneLabel = (
-  z: ZoneOverload,
-  third: Record<ZoneOverload['third'], string>,
-) => `${CHANNEL_KOREAN[z.channel]} · ${third[z.third]}(${z.own}:${z.opp})`
 
 // 우세 구역이 많으면(최대 15구역 중 절반 가까이) 줄글이 너무 길어져 읽히지
 // 않는다는 피드백(2026-09-09) — |diff| 내림차순으로 이미 정렬된 목록에서
