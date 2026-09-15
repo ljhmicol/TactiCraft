@@ -1,3 +1,5 @@
+import { useMemo } from 'react'
+
 import { AdvantageBadge } from '@/components/versus/AdvantageBadge'
 import { KeyZoneCallout } from '@/components/versus/KeyZoneCallout'
 import { MatchupOverloadLayer } from '@/components/versus/MatchupOverloadLayer'
@@ -38,6 +40,12 @@ export function MatchupView({
   showPressingLine,
   showAnnotations,
 }: MatchupViewProps) {
+  // computeMatchupData/buildMatchupMarkers를 useMemo로 감싼다(TO-DO 48) —
+  // 감싸지 않으면 "5채널"·"오버로드" 같은 무관한 토글을 눌러 MatchupView가
+  // 재렌더링될 때마다 markers·runPoints가 새 배열 참조로 다시 만들어져서,
+  // StaticPlayerNode의 run 반복 루프가 그때마다 리셋돼 "계속 움직인다"는
+  // 요청과 반대로 자꾸 끊겨 보인다. analysisA/analysisB/attacker가 실제로
+  // 안 바뀌면 같은 참조를 유지해 애니메이션이 끊기지 않게 한다.
   const {
     phaseA,
     phaseB,
@@ -51,12 +59,15 @@ export function MatchupView({
     defendingPositions,
     defendingPressingLineY,
     defendingPressingLineLevel,
-  } = computeMatchupData(analysisA, analysisB, attacker)
+  } = useMemo(() => computeMatchupData(analysisA, analysisB, attacker), [analysisA, analysisB, attacker])
 
   // 마커는 겹치면 그냥 겹치는 채로 둔다(2026-09-09 사용자 결정 — 스파이더파이어
   // 대신 예전처럼). 이름표만 겹치지 않게 위아래로 나눈다(TO-DO 28, 1번).
-  const markers = buildMatchupMarkers(analysisA, analysisB, dataA, positionsB)
-  const labelOffsets = computeMatchupLabelOffsets(markers)
+  const markers = useMemo(
+    () => buildMatchupMarkers(analysisA, analysisB, dataA, dataB, positionsB),
+    [analysisA, analysisB, dataA, dataB, positionsB],
+  )
+  const labelOffsets = useMemo(() => computeMatchupLabelOffsets(markers), [markers])
 
   return (
     <div className="flex h-full flex-col gap-3">
@@ -103,6 +114,7 @@ export function MatchupView({
               variant={marker.variant}
               orientation="landscape"
               labelYOffset={labelOffsets.get(marker.key) ?? 0}
+              runPoints={showAnnotations ? marker.runPoints : null}
             />
           ))}
         </Pitch>

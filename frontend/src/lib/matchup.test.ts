@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 
 import { describe, expect, it } from 'vitest'
 
-import { computeIsolationMatchups, computeMatchupData, playersInZone } from '@/lib/matchup'
+import { buildMatchupMarkers, computeIsolationMatchups, computeMatchupData, playersInZone } from '@/lib/matchup'
 import { analysisSchema } from '@/lib/schema'
 import type { Analysis } from '@/types/analysis'
 
@@ -115,5 +115,35 @@ describe('computeIsolationMatchups', () => {
     for (let i = 1; i < isolations.length; i++) {
       expect(isolations[i - 1].weight).toBeGreaterThanOrEqual(isolations[i].weight)
     }
+  })
+})
+
+describe('buildMatchupMarkers runPoints (TO-DO 48, "선수들이 천천히 계속 움직이면 좋겠어")', () => {
+  it('attaches runPoints to a team-A player whose position matches a run arrow start', () => {
+    // ancelotti.json attack 국면의 "anc-atk-lw" run 화살표: from(8,20)→to(15,8).
+    // 비니시우스 주니오르(p9, LW)의 attack 위치가 정확히 (8,20)이다.
+    const result = computeMatchupData(ancelotti, suwon, 'A')
+    const markers = buildMatchupMarkers(ancelotti, suwon, result.dataA, result.dataB, result.positionsB)
+    const marker = markers.find((m) => m.player.name === '비니시우스 주니오르')
+    expect(marker?.runPoints?.[0]).toEqual({ x: 8, y: 20 })
+    expect(marker?.runPoints?.at(-1)).toEqual({ x: 15, y: 8 })
+  })
+
+  it('mirrors a team-B run arrow into A-frame coordinates before matching', () => {
+    // lee_jeonghyo_suwon.json defense 국면엔 run 화살표가 3개 있다
+    // (sw-def-st1/st2/rm) — 일류첸코(ST, defense 40,44)의 화살표(→36,34)를
+    // 미러링하면 시작점(60,56)→끝점(64,66)이 돼야 한다.
+    const result = computeMatchupData(ancelotti, suwon, 'A')
+    const markers = buildMatchupMarkers(ancelotti, suwon, result.dataA, result.dataB, result.positionsB)
+    const marker = markers.find((m) => m.player.name === '일류첸코')
+    expect(marker?.runPoints?.[0]).toEqual({ x: 60, y: 56 })
+    expect(marker?.runPoints?.at(-1)).toEqual({ x: 64, y: 66 })
+  })
+
+  it('leaves runPoints null for a player with no matching run arrow (e.g. the goalkeeper)', () => {
+    const result = computeMatchupData(ancelotti, suwon, 'A')
+    const markers = buildMatchupMarkers(ancelotti, suwon, result.dataA, result.dataB, result.positionsB)
+    const gk = markers.find((m) => m.player.name === '알리송')
+    expect(gk?.runPoints).toBeNull()
   })
 })

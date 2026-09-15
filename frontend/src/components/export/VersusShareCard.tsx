@@ -63,7 +63,7 @@ export const VersusShareCard = forwardRef<HTMLDivElement, VersusShareCardProps>(
     defendingPressingLineY,
     defendingPressingLineLevel,
   } = computeMatchupData(analysisA, analysisB, attacker)
-  const markers = buildMatchupMarkers(analysisA, analysisB, dataA, positionsB)
+  const markers = buildMatchupMarkers(analysisA, analysisB, dataA, dataB, positionsB)
   const labelOffsets = computeMatchupLabelOffsets(markers)
 
   const cardHeight = ratio === '1:1' ? 1080 : 1350
@@ -174,6 +174,12 @@ export const VersusShareCard = forwardRef<HTMLDivElement, VersusShareCardProps>(
                   <AnnotationLayer annotations={transformAnnotationsForMatchup(dataB.annotations, true, true)} />
                 </g>
               )}
+              {/* animated={false}(TO-DO 48) — 선수 run 반복 이동은 라이브 화면
+                  전용이다. 고정 프레임 한 장인 이 카드에서 궤적 중간 어딘가를
+                  찍으면 마커·글자가 자기 이름표 자리에서 떨어져 보여 렌더링
+                  버그처럼 읽힐 위험이 있다(패스 공은 "경로 위 어딘가"가
+                  자연스럽지만 선수 마커는 다르다) — TacticalSuggestions를
+                  카드에서 뺀 것과 같은 "카드는 고정 요약" 원칙. */}
               {markers.map((marker) => (
                 <StaticPlayerNode
                   key={marker.key}
@@ -184,6 +190,7 @@ export const VersusShareCard = forwardRef<HTMLDivElement, VersusShareCardProps>(
                   variant={marker.variant}
                   orientation="landscape"
                   labelYOffset={labelOffsets.get(marker.key) ?? 0}
+                  animated={false}
                 />
               ))}
             </Pitch>

@@ -1,4 +1,5 @@
 import { LANDSCAPE_RADIUS } from '@/components/pitch/StaticPlayerNode'
+import { ANNOTATION_LINK_EPS, annotationSamplePoints } from '@/lib/annotations'
 import { mirrorPoint, resolveDefendingPressingLineLevel, resolveDefendingPressingLineY, transposePoint } from '@/lib/coords'
 import { resolveLabelOverlap, type LabelBox } from '@/lib/labelPlacement'
 import { computeOverload, within } from '@/lib/overload'
@@ -221,19 +222,46 @@ export interface MatchupMarker {
   originalPosition: Point
   /** landscape 변환까지 끝난 위치 — 라벨 배치 계산 기준(마커 자체는 겹쳐도 그대로 둔다, 2026-09-09 사용자 결정) */
   landscapePoint: Point
+  /** 이 선수의 현재 위치에서 시작하는 run 화살표가 있으면 반복 이동 경로
+   * (원본 좌표계, 첫 점 = originalPosition), 없으면 null — TO-DO 48. */
+  runPoints: Point[] | null
+}
+
+/**
+ * "run" 화살표의 from이 이 선수의 현재 위치와 가까우면(ANNOTATION_LINK_EPS)
+ * 매칭한다 — 에디터 PlayerNode(components/pitch/PlayerNode.tsx)의 같은
+ * 판정을 전술 대결 뷰(TO-DO 48, "선수들이 천천히 계속 움직이면 좋겠어")에
+ * 재사용한 것뿐이다. 화살표는 선수에 부착되지 않는 자유 좌표라 ID로
+ * 연결할 수 없다(4단계 §5.1) — 좌표 근접으로만 판정한다.
+ */
+function findRunPoints(position: Point, runAnnotations: Annotation[]): Point[] | null {
+  const arrow = runAnnotations.find((a) => Math.hypot(a.from.x - position.x, a.from.y - position.y) <= ANNOTATION_LINK_EPS)
+  if (!arrow) return null
+  // 첫 점을 정확히 position으로 고정 — 손으로 그린 화살표의 from이 position과
+  // 완벽히 일치하지 않을 수 있는데, 그대로 쓰면 루프가 장전되는 순간 몇
+  // 유닛 순간이동하는 것처럼 보인다(PlayerNode와 같은 이유).
+  const [, ...rest] = annotationSamplePoints(arrow)
+  return [{ x: position.x, y: position.y }, ...rest]
 }
 
 /**
  * 마커는 겹치면 그냥 겹치는 채로 둔다(2026-09-09 사용자 결정 — 스파이더파이어
  * 대신 예전처럼). MatchupView·VersusShareCard(TO-DO 41) 둘 다 같은 구성이
  * 필요해서 분리했다 — positionsB는 computeMatchupData의 결과를 그대로 받는다.
+ * dataB는 B팀 run 화살표(annotations)만 쓴다 — positionsB와 같은 순서로
+ * 미러링(landscape=false, positionsB 자체가 아직 landscape 변환 전이라)해서
+ * 좌표 판정 기준을 맞춘다.
  */
 export function buildMatchupMarkers(
   analysisA: Analysis,
   analysisB: Analysis,
   dataA: PhaseData,
+  dataB: PhaseData,
   positionsB: PlayerPosition[],
 ): MatchupMarker[] {
+  const runAnnotationsA = dataA.annotations.filter((a) => a.type === 'run')
+  const runAnnotationsB = transformAnnotationsForMatchup(dataB.annotations, true, false).filter((a) => a.type === 'run')
+
   const markersA: MatchupMarker[] = analysisA.players.flatMap((player, index) => {
     const pos = dataA.positions.find((p) => p.playerId === player.id)
     if (!pos) return []
@@ -246,6 +274,7 @@ export function buildMatchupMarkers(
         variant: 'A' as const,
         originalPosition: pos,
         landscapePoint: transposePoint(pos),
+        runPoints: findRunPoints(pos, runAnnotationsA),
       },
     ]
   })
@@ -261,6 +290,7 @@ export function buildMatchupMarkers(
         variant: 'B' as const,
         originalPosition: pos,
         landscapePoint: transposePoint(pos),
+        runPoints: findRunPoints(pos, runAnnotationsB),
       },
     ]
   })
