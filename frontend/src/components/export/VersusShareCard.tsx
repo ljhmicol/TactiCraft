@@ -6,7 +6,13 @@ import { ChannelGrid } from '@/components/pitch/ChannelGrid'
 import { Pitch } from '@/components/pitch/Pitch'
 import { PressingLine } from '@/components/pitch/PressingLine'
 import { StaticPlayerNode } from '@/components/pitch/StaticPlayerNode'
-import { buildMatchupMarkers, computeMatchupData, computeMatchupLabelOffsets, transformAnnotationsForMatchup } from '@/lib/matchup'
+import {
+  buildMatchupMarkers,
+  computeMatchupData,
+  computeMatchupLabelOffsets,
+  transformAnnotationsForMatchup,
+  VERSUS_BALL_DURATION_SCALE,
+} from '@/lib/matchup'
 import { SHARE_CARD_COLORS, VERSUS_TEAM_COLORS } from '@/lib/theme'
 import { computeSideAdvantage, SIDE_KOREAN, THIRD_KOREAN, zoneLabel, type PitchSide } from '@/lib/versusAdvantage'
 import type { Analysis } from '@/types/analysis'
@@ -170,8 +176,16 @@ export const VersusShareCard = forwardRef<HTMLDivElement, VersusShareCardProps>(
               {showOverload && <MatchupOverloadLayer zones={zones} orientation="landscape" />}
               {showAnnotations && (
                 <g opacity={0.55}>
-                  <AnnotationLayer annotations={transformAnnotationsForMatchup(dataA.annotations, false, true)} />
-                  <AnnotationLayer annotations={transformAnnotationsForMatchup(dataB.annotations, true, true)} />
+                  <AnnotationLayer
+                    annotations={transformAnnotationsForMatchup(dataA.annotations, false, true)}
+                    orientation="landscape"
+                    ballDurationScale={VERSUS_BALL_DURATION_SCALE}
+                  />
+                  <AnnotationLayer
+                    annotations={transformAnnotationsForMatchup(dataB.annotations, true, true)}
+                    orientation="landscape"
+                    ballDurationScale={VERSUS_BALL_DURATION_SCALE}
+                  />
                 </g>
               )}
               {/* animated={false}(TO-DO 48) — 선수 run 반복 이동은 라이브 화면

@@ -12,7 +12,7 @@ import {
   travelTimes,
 } from '@/lib/annotations'
 import { PITCH_TEXT_FONT_FAMILY, PLAYER_COLORS } from '@/lib/theme'
-import { circularRadius } from '@/lib/pitchMarkings'
+import { circularRadius, swapForLandscape } from '@/lib/pitchMarkings'
 import { PHASE_TRANSITION_MS } from '@/store/analysisStore'
 import type { Annotation } from '@/types/analysis'
 
@@ -52,11 +52,23 @@ interface AnnotationLayerProps {
    * 그대로 두고 MatchupView 호출부에서만 켠다.
    */
   loop?: boolean
+  /** landscape는 전술 대결 뷰(TO-DO 21) 전용 — 패스 공이 화면에서 완전한
+   * 원으로 보이려면 이 축별 보정이 필요하다(circularRadius가 portrait
+   * 기준이라, 그대로 쓰면 landscape에서 타원으로 찌그러져 보인다 — 2026-09-15
+   * "공을 완전한 원형으로 수정해줘" 리포트). 기본 portrait. */
+  orientation?: 'portrait' | 'landscape'
+  /** 기본 1(에디터 속도 그대로). 전술 대결 뷰 전용으로 패스 공 속도를
+   * 늦출 때만 1보다 큰 값을 넘긴다(TO-DO 49, "패스 속도 좀 줄이고") —
+   * BALL_SEGMENT_DURATION 자체를 바꾸면 에디터 패스 속도도 같이 느려져서
+   * (2026-09-08에 두 차례 사용자 피드백으로 맞춰 둔 값), 곱셈 배율로만
+   * 전술 대결 뷰에서 따로 조정한다. */
+  ballDurationScale?: number
 }
 
 const BADGE_RADIUS = circularRadius(1.7)
 const DELETE_OFFSET = 2.2 // 선분 중점에서 화살표 진행 방향의 수직으로 치울 거리
-const BALL_RADIUS = circularRadius(1.1)
+const BALL_RADIUS_PORTRAIT = circularRadius(1.1)
+const BALL_RADIUS_LANDSCAPE = swapForLandscape(BALL_RADIUS_PORTRAIT)
 // PlayerNode의 run 반복 루프(RUN_LOOP_DELAY)와 같은 값 — 도착점에서 잠깐
 // 머문 뒤에 처음부터 다시 흐른다. 부드럽게 역재생(왕복)하지 않는 이유도
 // 같다: 패스는 방향성이 있어서 거꾸로 흐르면 어색하다.
@@ -79,7 +91,14 @@ const BALL_LOOP_DELAY = 0.5
  * 시작점 근처에서 시작하는 run 화살표를 찾아 스스로 그 방향으로 왕복한다.
  * 화살표는 여기서 모양·클릭 판정만 그린다.
  */
-export function AnnotationLayer({ annotations, interactive, animated = true, loop = false }: AnnotationLayerProps) {
+export function AnnotationLayer({
+  annotations,
+  interactive,
+  animated = true,
+  loop = false,
+  orientation = 'portrait',
+  ballDurationScale = 1,
+}: AnnotationLayerProps) {
   const passChains = useMemo(
     () => (animated ? buildPassChains(annotations.filter((a) => a.type === 'pass')) : []),
     [annotations, animated],
@@ -147,7 +166,13 @@ export function AnnotationLayer({ annotations, interactive, animated = true, loo
         );
       })}
       {passChains.map((chain) => (
-        <PassChainBall key={chain.map((a) => a.id).join('-')} chain={chain} loop={loop} />
+        <PassChainBall
+          key={chain.map((a) => a.id).join('-')}
+          chain={chain}
+          loop={loop}
+          orientation={orientation}
+          durationScale={ballDurationScale}
+        />
       ))}
     </g>
   )
@@ -181,7 +206,18 @@ export function AnnotationLayer({ annotations, interactive, animated = true, loo
  * PHASE_TRANSITION_MS만큼 정지해 있다가(시작점에 가만히) 그 뒤에 출발한다 —
  * 받을 선수가 자리를 잡은 뒤에 패스가 오는 순서가 된다.
  */
-function PassChainBall({ chain, loop }: { chain: Annotation[]; loop: boolean }) {
+function PassChainBall({
+  chain,
+  loop,
+  orientation,
+  durationScale,
+}: {
+  chain: Annotation[]
+  loop: boolean
+  orientation: 'portrait' | 'landscape'
+  durationScale: number
+}) {
+  const ballRadius = orientation === 'landscape' ? BALL_RADIUS_LANDSCAPE : BALL_RADIUS_PORTRAIT
   const points = chainSamplePoints(chain)
   // 드리블(carry)로 시작하는 체인은 기다리지 않는다 — 공을 몰고 가는 선수
   // 자신이 같은 순간 같은 방향으로 모프하므로, 대기를 두면 선수가 먼저
@@ -206,8 +242,8 @@ function PassChainBall({ chain, loop }: { chain: Annotation[]; loop: boolean }) 
 
   return (
     <motion.ellipse
-      rx={BALL_RADIUS.rx}
-      ry={BALL_RADIUS.ry}
+      rx={ballRadius.rx}
+      ry={ballRadius.ry}
       fill="#F8FAFC"
       stroke="#0F172A"
       strokeWidth={0.25}
@@ -218,7 +254,7 @@ function PassChainBall({ chain, loop }: { chain: Annotation[]; loop: boolean }) 
       transition={
         armed
           ? {
-              duration: chainBallDuration(chain),
+              duration: chainBallDuration(chain, durationScale),
               times: travelTimes(points),
               ease: segments > 1 ? 'linear' : 'easeInOut',
               // loop=false(기본)면 딱 한 번만 재생하고 도착점에 멈춘다 — 위

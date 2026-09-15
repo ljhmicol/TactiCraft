@@ -10,7 +10,13 @@ import { ChannelGrid } from '@/components/pitch/ChannelGrid'
 import { StaticPlayerNode } from '@/components/pitch/StaticPlayerNode'
 import { Pitch } from '@/components/pitch/Pitch'
 import { PressingLine } from '@/components/pitch/PressingLine'
-import { buildMatchupMarkers, computeMatchupData, computeMatchupLabelOffsets, transformAnnotationsForMatchup } from '@/lib/matchup'
+import {
+  buildMatchupMarkers,
+  computeMatchupData,
+  computeMatchupLabelOffsets,
+  transformAnnotationsForMatchup,
+  VERSUS_BALL_DURATION_SCALE,
+} from '@/lib/matchup'
 import type { Analysis } from '@/types/analysis'
 
 interface MatchupViewProps {
@@ -100,8 +106,18 @@ export function MatchupView({
           {showOverload && <MatchupOverloadLayer zones={zones} orientation="landscape" />}
           {showAnnotations && (
             <g opacity={0.55}>
-              <AnnotationLayer annotations={transformAnnotationsForMatchup(dataA.annotations, false, true)} loop />
-              <AnnotationLayer annotations={transformAnnotationsForMatchup(dataB.annotations, true, true)} loop />
+              <AnnotationLayer
+                annotations={transformAnnotationsForMatchup(dataA.annotations, false, true)}
+                loop
+                orientation="landscape"
+                ballDurationScale={VERSUS_BALL_DURATION_SCALE}
+              />
+              <AnnotationLayer
+                annotations={transformAnnotationsForMatchup(dataB.annotations, true, true)}
+                loop
+                orientation="landscape"
+                ballDurationScale={VERSUS_BALL_DURATION_SCALE}
+              />
             </g>
           )}
           {markers.map((marker) => (

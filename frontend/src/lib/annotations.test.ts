@@ -160,6 +160,21 @@ describe('chainBallDuration', () => {
     expect(chainSamplePoints([curved]).length).toBeGreaterThan(2)
     expect(chainBallDuration([curved])).toBeCloseTo(BALL_SEGMENT_DURATION)
   })
+
+  it('scale 기본값 1은 에디터 속도를 그대로 유지한다(TO-DO 49)', () => {
+    const a = pass('a', { x: 30, y: 85 }, { x: 45, y: 55 })
+    expect(chainBallDuration([a])).toBeCloseTo(chainBallDuration([a], 1))
+  })
+
+  it('scale > 1은 일반 패스 구간에는 곱해지지만, 드리블(carry) 구간은 무시한다', () => {
+    // carry는 선수의 국면 전환 모프(PHASE_TRANSITION_MS)와 반드시 같아야
+    // 하므로(위 "carry(드리블) 플래그" describe 참조), 전술 대결 뷰의
+    // 패스 속도 배율(VERSUS_BALL_DURATION_SCALE)을 곱하면 그 등식이 깨진다.
+    const a = pass('a', { x: 30, y: 85 }, { x: 45, y: 55 })
+    const c1 = { ...pass('c1', { x: 96, y: 16 }, { x: 88, y: 10 }), carry: true }
+    expect(chainBallDuration([a], 1.8)).toBeCloseTo(BALL_SEGMENT_DURATION * 1.8)
+    expect(chainBallDuration([c1], 1.8)).toBeCloseTo(CARRY_BALL_DURATION)
+  })
 })
 
 describe('carry(드리블) 플래그', () => {

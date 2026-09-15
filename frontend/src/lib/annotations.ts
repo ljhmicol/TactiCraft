@@ -190,12 +190,23 @@ export const CARRY_BALL_DURATION = 0.6
  * 간격 1.8초 안에 골대까지 못 가고 잘리던 원인). 직선만 있는 체인에서는
  * 점 개수 - 1 == 화살표 개수라 기존 동작과 완전히 같다.
  */
-export function chainBallDuration(chain: { curved?: boolean; carry?: boolean }[]): number {
+/**
+ * scale 기본 1(에디터 그대로). 전술 대결 뷰(AnnotationLayer의
+ * ballDurationScale)만 1보다 큰 값을 넘겨 패스 속도를 늦춘다(TO-DO 49,
+ * "패스 속도 좀 줄이고") — BALL_SEGMENT_DURATION 자체를 바꾸면 에디터
+ * 속도도 같이 바뀌어서(2026-09-08에 두 차례 사용자 피드백으로 맞춰 둔
+ * 값), 곱셈 배율로만 컨텍스트별로 따로 조정한다. 드리블(carry) 구간은
+ * scale과 무관하게 항상 CARRY_BALL_DURATION 그대로 — 이 값은 선수의 국면
+ * 전환 모프(PHASE_TRANSITION_MS)와 반드시 같아야 하고(이 파일 상단
+ * 주석·annotations.test.ts가 그 등식을 지킨다), scale을 곱하면 그 등식이
+ * 깨져 공과 선수가 어긋나 보인다.
+ */
+export function chainBallDuration(chain: { curved?: boolean; carry?: boolean }[], scale = 1): number {
   // 전 구간이 드리블이면 공은 선수와 "같이" 가야 하므로 모프와 같은 시간에 끝낸다
   // — 화살표 개수로 세면(메시의 캐리 두 구간 = 1.1초) 공이 선수보다 느려진다
   // (2026-09-10 사용자 리포트 "지금 공이 좀 더 느리다").
   if (chain.length > 0 && chain.every((a) => a.carry === true)) return CARRY_BALL_DURATION
-  return BALL_SEGMENT_DURATION * Math.max(chain.length, 1)
+  return BALL_SEGMENT_DURATION * Math.max(chain.length, 1) * scale
 }
 
 /** 이 거리(피치 좌표 단위) 이내면 "같은 지점"으로 본다 — 패스 체인 연결

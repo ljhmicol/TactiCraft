@@ -17,6 +17,13 @@ import type { Analysis, Annotation, Channel, PhaseData, PhaseType, Player, Playe
  * 내보내기 카드(VersusShareCard)가 각자 다시 구현하면 똑같은 버그가 한쪽에만
  * 재발할 위험이 있다 — 그래서 순수 함수 하나로 묶어 양쪽이 공유한다.
  */
+/** 전술 대결 뷰 전용 패스 공 속도 배율(TO-DO 49, "패스 속도 좀 줄이고") —
+ * `AnnotationLayer`의 `ballDurationScale`에 그대로 넘긴다. 에디터 속도
+ * (BALL_SEGMENT_DURATION=0.55초/구간)는 2026-09-08에 두 차례 사용자
+ * 피드백으로 맞춰 둔 값이라 건드리지 않고, 대결 뷰(MatchupView·
+ * VersusShareCard)만 이 배율로 ~1초/구간까지 늦춘다. */
+export const VERSUS_BALL_DURATION_SCALE = 1.8
+
 export interface MatchupData {
   phaseA: PhaseType
   phaseB: PhaseType
