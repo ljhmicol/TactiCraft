@@ -108,7 +108,18 @@ export function MatchupView({
         </Pitch>
       </div>
       {showOverload && (
-        <TacticalSuggestions advantage={matchupAdvantage} labelA={labelA} labelB={labelB} phaseA={phaseA} phaseB={phaseB} />
+        <TacticalSuggestions
+          advantage={matchupAdvantage}
+          labelA={labelA}
+          labelB={labelB}
+          phaseA={phaseA}
+          phaseB={phaseB}
+          zones={zones}
+          analysisA={analysisA}
+          analysisB={analysisB}
+          dataA={dataA}
+          positionsB={positionsB}
+        />
       )}
     </div>
   )

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 
 import { describe, expect, it } from 'vitest'
 
-import { computeMatchupData, playersInZone } from '@/lib/matchup'
+import { computeIsolationMatchups, computeMatchupData, playersInZone } from '@/lib/matchup'
 import { analysisSchema } from '@/lib/schema'
 import type { Analysis } from '@/types/analysis'
 
@@ -24,6 +24,8 @@ function loadFixture(name: string): Analysis {
 // "아스널: 왼쪽 측면 · 중원(0:1)")을 회귀 테스트로 고정해 둔다.
 const guardiola = loadFixture('guardiola.json')
 const arteta = loadFixture('arteta.json')
+const ancelotti = loadFixture('ancelotti.json')
+const suwon = loadFixture('lee_jeonghyo_suwon.json')
 
 describe('computeMatchupData', () => {
   it('labels come from each analysis match.homeTeam', () => {
@@ -70,5 +72,48 @@ describe('playersInZone', () => {
     // 들어간다 — 그 구역을 직접 조회해도 목록에 GK가 나오면 안 된다.
     const players = playersInZone(result.dataA.positions, guardiola.players, guardiola.formation, 'center', 'defensive')
     expect(players.every((p) => p.line !== 'GK')).toBe(true)
+  })
+})
+
+describe('computeIsolationMatchups', () => {
+  it('finds the two winger isolations in the Ancelotti(A) vs 이정효 수원삼성(B) case (TO-DO 47)', () => {
+    // TO-DO 45 대화에서 손으로 대조해 둔 좌표 그대로다: 브라질 비니시우스
+    // 주니오르(LW, attack 8,20)와 수원 정동윤(RB, defense 84,78 →
+    // 미러링 16,22)가 왼쪽 측면·attacking 서드에서 1:1, 브라질 하양(RW,
+    // attack 90,18)과 수원 김민우(LB, defense 16,78 → 미러링 84,22)가
+    // 오른쪽 측면·attacking 서드에서 1:1 — 둘 다 diff=0이라
+    // MatchupOverloadLayer도 위협 가중 점수(TO-DO 45)도 안 보여주는,
+    // 이 기능이 아니면 화면 어디에도 안 나타나는 구역이다.
+    const result = computeMatchupData(ancelotti, suwon, 'A')
+    const isolations = computeIsolationMatchups(result.zones, result.dataA, ancelotti, result.positionsB, suwon)
+
+    const leftWingAttacking = isolations.find((iso) => iso.zone.channel === 'leftWing' && iso.zone.third === 'attacking')
+    expect(leftWingAttacking?.aPlayer.player.name).toBe('비니시우스 주니오르')
+    expect(leftWingAttacking?.bPlayer.player.name).toBe('정동윤')
+
+    const rightWingAttacking = isolations.find((iso) => iso.zone.channel === 'rightWing' && iso.zone.third === 'attacking')
+    expect(rightWingAttacking?.aPlayer.player.name).toBe('하양')
+    expect(rightWingAttacking?.bPlayer.player.name).toBe('김민우')
+  })
+
+  it('filters out low-danger 1v1s below the threat-weight floor (e.g. own-half duels)', () => {
+    // 가짜 15구역으로 defensive third 1v1(가중치 0.18~0.42, 전부 0.6 미만)을
+    // 만들면 결과에서 빠져야 한다 — "자기 진영 구석 1v1"까지 다 보여주면
+    // "실용성"이 없다는 advisor 지적을 그대로 회귀 가드로 남긴다.
+    const zones = [
+      { channel: 'leftWing' as const, third: 'defensive' as const, own: 1, opp: 1, diff: 0, level: 'none' as const },
+      { channel: 'center' as const, third: 'defensive' as const, own: 1, opp: 1, diff: 0, level: 'none' as const },
+    ]
+    const result = computeMatchupData(ancelotti, suwon, 'A')
+    const isolations = computeIsolationMatchups(zones, result.dataA, ancelotti, result.positionsB, suwon)
+    expect(isolations).toEqual([])
+  })
+
+  it('sorts by threat weight descending so the most dangerous isolation comes first', () => {
+    const result = computeMatchupData(ancelotti, suwon, 'A')
+    const isolations = computeIsolationMatchups(result.zones, result.dataA, ancelotti, result.positionsB, suwon)
+    for (let i = 1; i < isolations.length; i++) {
+      expect(isolations[i - 1].weight).toBeGreaterThanOrEqual(isolations[i].weight)
+    }
   })
 })

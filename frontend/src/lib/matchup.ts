@@ -5,7 +5,7 @@ import { computeOverload, within } from '@/lib/overload'
 import { LANDSCAPE_TEXT_X_SCALE } from '@/lib/pitchMarkings'
 import { positionInfoAt, type PositionLine } from '@/lib/positions'
 import { computeMatchupAdvantage, type MatchupAdvantage } from '@/lib/versusAdvantage'
-import { CHANNEL_BOUNDS, THIRD_BOUNDS } from '@/lib/zones'
+import { CHANNEL_BOUNDS, THIRD_BOUNDS, zoneThreatWeight } from '@/lib/zones'
 import type { Analysis, Annotation, Channel, PhaseData, PhaseType, Player, PlayerPosition, Point, Third, ZoneOverload } from '@/types/analysis'
 
 /**
@@ -78,6 +78,55 @@ export function playersInZone(
     const info = index >= 0 ? positionInfoAt(formation, index) : null
     return player && info ? [{ player, line: info.line }] : []
   })
+}
+
+export interface IsolationMatchup {
+  zone: ZoneOverload
+  aPlayer: ZonePlayer
+  bPlayer: ZonePlayer
+  weight: number
+}
+
+/** `zoneThreatWeight`가 middle-third wide 채널에 매기는 값(TO-DO 45) — 이보다
+ * 낮은 구역(자기 진영 전체, defensive third)의 1v1은 위험한 고립이 아니라
+ * 그냥 서로 근처에 서 있는 것뿐이라 걸러낸다. */
+const ISOLATION_MIN_WEIGHT = 0.6
+
+/**
+ * 고립 매치업 탐지(TO-DO 47, "우선순위대로 진행" 백로그 2번) — "과부하로
+ * 상대를 고립시킨다"(overload-to-isolate)는 실제 코칭 용어에서 착안했다.
+ * own===1 && opp===1인 15구역을 찾아 그 구역에 실제로 서 있는 두 선수를
+ * `playersInZone`으로 짚어준다 — own/opp 숫자는 이미 `computeOverload`가
+ * 내는 사실이고, `playersInZone`도 TO-DO 46에서 만든 함수라 새 판정 기준이
+ * 아니라 기존 두 조각을 조합한 것뿐이다.
+ *
+ * 이 기능의 가치는 정확히 **동률(diff=0) 구역**에 있다는 게 다른 패널과
+ * 다른 점이다 — `MatchupOverloadLayer`(diff!==0만 그림)도, 위협 가중 점수
+ * (diff=0 구역은 애초에 기여가 0)도 1v1 구역을 구조적으로 안 보여준다.
+ * 그래서 KeyZoneCallout·위협 가중 점수와 겹치는 정보가 아니다.
+ *
+ * `ISOLATION_MIN_WEIGHT`로 위험한 구역만 거른다 — 자기 진영 구석에서 흔히
+ * 생기는 1v1(예: 수비수 대 수비수)까지 다 보여주면 "실용성"이 없다.
+ * `zoneThreatWeight` 내림차순으로 정렬해서 가장 위험한 고립부터 보여준다.
+ */
+export function computeIsolationMatchups(
+  zones: ZoneOverload[],
+  dataA: PhaseData,
+  analysisA: Analysis,
+  positionsB: PlayerPosition[],
+  analysisB: Analysis,
+): IsolationMatchup[] {
+  const results: IsolationMatchup[] = []
+  for (const zone of zones) {
+    if (zone.own !== 1 || zone.opp !== 1) continue
+    const weight = zoneThreatWeight(zone.channel, zone.third)
+    if (weight < ISOLATION_MIN_WEIGHT) continue
+    const aPlayers = playersInZone(dataA.positions, analysisA.players, analysisA.formation, zone.channel, zone.third)
+    const bPlayers = playersInZone(positionsB, analysisB.players, analysisB.formation, zone.channel, zone.third)
+    if (aPlayers.length !== 1 || bPlayers.length !== 1) continue
+    results.push({ zone, aPlayer: aPlayers[0], bPlayer: bPlayers[0], weight })
+  }
+  return results.sort((a, b) => b.weight - a.weight)
 }
 
 /**

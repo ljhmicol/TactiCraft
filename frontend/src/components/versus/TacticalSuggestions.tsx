@@ -1,6 +1,7 @@
+import { computeIsolationMatchups } from '@/lib/matchup'
 import { VERSUS_TEAM_COLORS } from '@/lib/theme'
-import { suggestImprovement, THIRD_KOREAN, type MatchupAdvantage } from '@/lib/versusAdvantage'
-import type { PhaseType } from '@/types/analysis'
+import { CHANNEL_KOREAN, suggestImprovement, THIRD_KOREAN, type MatchupAdvantage } from '@/lib/versusAdvantage'
+import type { Analysis, PhaseData, PhaseType, PlayerPosition, ZoneOverload } from '@/types/analysis'
 
 interface TacticalSuggestionsProps {
   advantage: MatchupAdvantage
@@ -11,7 +12,16 @@ interface TacticalSuggestionsProps {
    * "이 제안이 공격할 때 얘기인지 수비할 때 얘기인지"는 국면에 따라 달라진다. */
   phaseA: PhaseType
   phaseB: PhaseType
+  zones: ZoneOverload[]
+  analysisA: Analysis
+  analysisB: Analysis
+  dataA: PhaseData
+  positionsB: PlayerPosition[]
 }
+
+// 여러 곳에서 1v1이 동시에 생길 수 있다 — 가장 위험한 것 2개만 보여준다
+// (advisor 조언: 5개씩 나열하면 "실용성" 판단만 흐려진다).
+const MAX_ISOLATIONS_SHOWN = 2
 
 const PHASE_SUFFIX: Partial<Record<PhaseType, string>> = { attack: '공격 시', defense: '수비 시' }
 
@@ -30,8 +40,20 @@ const PHASE_SUFFIX: Partial<Record<PhaseType, string>> = { attack: '공격 시',
  * 누가 공격인지 토글하는데, 그 상태를 안 보여주면 "이 제안이 지금 이
  * 팀이 공격 중이라 하는 말인지 수비 중이라 하는 말인지" 알 수 없다.
  */
-export function TacticalSuggestions({ advantage, labelA, labelB, phaseA, phaseB }: TacticalSuggestionsProps) {
+export function TacticalSuggestions({
+  advantage,
+  labelA,
+  labelB,
+  phaseA,
+  phaseB,
+  zones,
+  analysisA,
+  analysisB,
+  dataA,
+  positionsB,
+}: TacticalSuggestionsProps) {
   const third = THIRD_KOREAN(labelA, labelB)
+  const isolations = computeIsolationMatchups(zones, dataA, analysisA, positionsB, analysisB).slice(0, MAX_ISOLATIONS_SHOWN)
 
   return (
     <div className="space-y-2 rounded-lg border border-border p-3">
@@ -46,6 +68,24 @@ export function TacticalSuggestions({ advantage, labelA, labelB, phaseA, phaseB 
         <span className="text-xs text-muted-foreground">({PHASE_SUFFIX[phaseB]})</span>{' '}
         {suggestImprovement(advantage.aTopZone, third)}
       </p>
+      {isolations.length > 0 && (
+        <div className="space-y-1 border-t border-border pt-2">
+          <p className="text-xs font-semibold text-muted-foreground">고립 매치업 (1v1)</p>
+          {isolations.map(({ zone, aPlayer, bPlayer }) => (
+            <p key={`${zone.channel}-${zone.third}`} className="text-sm text-muted-foreground">
+              <span style={{ color: VERSUS_TEAM_COLORS.A.fill }}>
+                {aPlayer.line} {aPlayer.player.name}
+              </span>
+              {' vs '}
+              <span style={{ color: VERSUS_TEAM_COLORS.B.fill }}>
+                {bPlayer.line} {bPlayer.player.name}
+              </span>
+              {' — '}
+              {CHANNEL_KOREAN[zone.channel]} · {third[zone.third]}에서 1대1로 고립됩니다
+            </p>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
