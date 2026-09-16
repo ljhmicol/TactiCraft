@@ -1,6 +1,6 @@
 import { ChevronDown } from 'lucide-react'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 import { PitchFieldBackdrop } from '@/components/decor/PitchFieldBackdrop'
 import { BottomActionBar } from '@/components/editor/BottomActionBar'
@@ -68,7 +68,9 @@ const PHASE_LABELS: Record<PhaseType, string> = {
  * 높이는 늘어나지 않는다 — 헤더(summary)는 스크롤 대상 밖이라 항상 보인다.
  */
 export function EditorPage() {
+  const navigate = useNavigate()
   const analysis = useAnalysisStore((s) => s.analysis)
+  const isDirty = useAnalysisStore((s) => s.isDirty)
   const currentPhase = useAnalysisStore((s) => s.currentPhase)
   const previousPhase = useAnalysisStore((s) => s.previousPhase)
   const selectedChangingPointId = useAnalysisStore((s) => s.selectedChangingPointId)
@@ -267,6 +269,22 @@ export function EditorPage() {
               </Select>
               <Button variant="outline" size="sm" onClick={hasOpponent ? removeOpponents : addOpponents}>
                 {hasOpponent ? '상대팀 제거' : '상대팀 추가'}
+              </Button>
+              {/* "상대팀과 대결"(2026-09-16) — 여기 상대팀 추가는 같은 피치 위
+                  오버로드 계산용 상대 좌표일 뿐, 저장된 다른 분석과 겹쳐 보는
+                  /versus(전술 대결)와는 별개 기능이다. 지금 편집 중인 분석을
+                  전술 A로 곧장 채워서 바로 이동시켜준다 — B는 /versus에서
+                  직접 고르게 둔다(어떤 상대와 붙일지는 여기서 미리 알 수 없다).
+                  서버에 저장된 id가 있어야 /versus가 분석을 불러올 수 있어
+                  저장 전에는 비활성화한다(SaveButton과 같은 전제). */}
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!analysis.id}
+                title={!analysis.id ? '먼저 저장해야 전술 대결에서 선택할 수 있습니다' : isDirty ? '저장하지 않은 최근 변경은 전술 대결에 반영되지 않습니다' : undefined}
+                onClick={() => navigate(`/versus?a=${analysis.id}`)}
+              >
+                상대팀과 대결
               </Button>
             </div>
           </div>

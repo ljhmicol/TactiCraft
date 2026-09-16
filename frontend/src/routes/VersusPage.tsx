@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import { VersusShareCard } from '@/components/export/VersusShareCard'
 import { MatchupView } from '@/components/versus/MatchupView'
@@ -23,7 +24,12 @@ const TRANSITION_AUTO_PLAY_MS = 2500
 export function VersusPage() {
   const { isServerUp, isChecking } = useServerHealth()
   const { data: analyses, isLoading, isError } = useAnalyses()
-  const [idA, setIdA] = useState<string>('')
+  // 에디터의 "상대팀과 대결" 버튼(2026-09-16)이 `?a=<analysisId>`로 넘어오면
+  // 전술 A를 자동으로 채운다 — B는 여기서 직접 고르라고 비워둔다(어떤
+  // 상대와 붙일지는 에디터가 알 수 없다). 최초 진입 시 한 번만 읽는다 —
+  // 이후 URL이 바뀌어도(예: 뒤로가기) 사용자가 이미 고른 선택을 덮어쓰지 않는다.
+  const [searchParams] = useSearchParams()
+  const [idA, setIdA] = useState<string>(() => searchParams.get('a') ?? '')
   const [idB, setIdB] = useState<string>('')
   const [attacker, setAttacker] = useState<'A' | 'B'>('A')
   const [showChannelGrid, setShowChannelGrid] = useState(true)
