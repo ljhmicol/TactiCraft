@@ -11,7 +11,6 @@ import {
   buildMatchupMarkers,
   computeMatchupData,
   computeMatchupLabelOffsets,
-  computeTiltIndex,
   transformAnnotationsForMatchup,
   VERSUS_BALL_DURATION_SCALE,
 } from '@/lib/matchup'
@@ -96,7 +95,6 @@ export const VersusShareCard = forwardRef<HTMLDivElement, VersusShareCardProps>(
   const aPct = totalZones === 0 ? 0 : (aZones.length / totalZones) * 100
   const bPct = totalZones === 0 ? 0 : (bZones.length / totalZones) * 100
   const sideAdvantage = computeSideAdvantage(zones)
-  const tilt = computeTiltIndex(dataA.positions, analysisA, positionsB, analysisB)
 
   return (
     <div style={{ position: 'absolute', left: -9999, top: 0 }}>
@@ -171,49 +169,8 @@ export const VersusShareCard = forwardRef<HTMLDivElement, VersusShareCardProps>(
                 )
               })}
             </div>
-            {/* 무게중심/쏠림 지수(versus-stat-features-backlog 3번) — 화면의
-                TiltGauge.tsx와 같은 계산(computeTiltIndex)을 인라인 스타일로
-                다시 그린다(이 파일 전체와 같은 이유, 파일 상단 docstring 참조). */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <div style={{ color: SHARE_CARD_COLORS.subtitle, fontSize: 15 }}>무게중심(쏠림 지수)</div>
-              <div style={{ position: 'relative', height: 8, width: '100%', borderRadius: 999, background: 'rgba(148,163,184,0.2)' }}>
-                <div style={{ position: 'absolute', top: 0, bottom: 0, left: '50%', width: 1, background: 'rgba(148,163,184,0.4)' }} />
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: `${tilt.aAvgX}%`,
-                    width: 12,
-                    height: 12,
-                    borderRadius: 999,
-                    background: colorA,
-                    border: `2px solid ${SHARE_CARD_COLORS.background}`,
-                    transform: 'translate(-50%, -50%)',
-                  }}
-                />
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: `${tilt.bAvgX}%`,
-                    width: 12,
-                    height: 12,
-                    borderRadius: 999,
-                    background: colorB,
-                    border: `2px solid ${SHARE_CARD_COLORS.background}`,
-                    transform: 'translate(-50%, -50%)',
-                  }}
-                />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: SHARE_CARD_COLORS.subtitle }}>
-                <span style={{ color: colorA }}>{labelA} {tilt.aAvgX.toFixed(1)}</span>
-                <span style={{ color: colorB }}>{labelB} {tilt.bAvgX.toFixed(1)}</span>
-              </div>
-            </div>
-
             <div style={{ textAlign: 'center', fontSize: 11, color: SHARE_CARD_COLORS.subtitle, marginTop: 6 }}>
-              왼쪽·오른쪽은 {labelA} 공격 방향 기준(공수 교대와 무관) · 무게중심 값은 평균 x좌표(0=왼쪽 터치라인,
-              100=오른쪽) · 가로 화면에서는 위아래로 표시됩니다
+              왼쪽·오른쪽은 {labelA} 공격 방향 기준(공수 교대와 무관) · 가로 화면에서는 위아래로 표시됩니다
             </div>
           </div>
         )}

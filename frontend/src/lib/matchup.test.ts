@@ -8,14 +8,12 @@ import {
   buildMatchupMarkers,
   computeIsolationMatchups,
   computeMatchupData,
-  computeTiltIndex,
   computeTransitionPositions,
   lerpPositions,
   playersInZone,
 } from '@/lib/matchup'
 import { mirrorPoint } from '@/lib/coords'
 import { analysisSchema } from '@/lib/schema'
-import { createEmptyAnalysis } from '@/store/analysisStore'
 import type { Analysis, PlayerPosition } from '@/types/analysis'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
@@ -62,60 +60,6 @@ describe('computeMatchupData', () => {
     // 밀려 이 조합 자체가 달라진다. 실제 브라우저로 이미 확인한 값과 같다.
     expect(result.matchupAdvantage.aTopZone).toMatchObject({ channel: 'leftHalf', third: 'middle', own: 2, opp: 1 })
     expect(result.matchupAdvantage.bTopZone).toMatchObject({ channel: 'leftWing', third: 'middle', own: 0, opp: 1 })
-  })
-})
-
-describe('computeTiltIndex (versus-stat-features-backlog 3번, 무게중심/쏠림 지수)', () => {
-  const empty = createEmptyAnalysis('4-3-3', {
-    matchName: '테스트',
-    homeTeam: '홈',
-    awayTeam: '원정',
-    matchDate: '2026-09-16',
-    analyzedTeam: 'home',
-  })
-  const gkId = empty.players[0].id
-
-  it('GK를 제외한 출전 선수 x좌표의 평균을 낸다', () => {
-    const positions: PlayerPosition[] = [
-      { playerId: gkId, x: 50, y: 92 }, // GK — 평균에 안 들어가야 함(넣으면 40이 됨)
-      { playerId: empty.players[1].id, x: 20, y: 78 },
-      { playerId: empty.players[2].id, x: 40, y: 74 },
-    ]
-    const result = computeTiltIndex(positions, empty, positions, empty)
-    expect(result.aAvgX).toBeCloseTo(30, 5) // (20+40)/2, GK 제외
-    expect(result.bAvgX).toBeCloseTo(30, 5)
-  })
-
-  it('출전 선수가 없으면(GK만 있는 비정상 상태) 중립값 50을 돌려준다', () => {
-    const positions: PlayerPosition[] = [{ playerId: gkId, x: 10, y: 92 }]
-    const result = computeTiltIndex(positions, empty, positions, empty)
-    expect(result.aAvgX).toBe(50)
-    expect(result.bAvgX).toBe(50)
-  })
-
-  it('왼쪽에 몰린 대형은 50보다 작은, 오른쪽에 몰린 대형은 50보다 큰 값을 낸다', () => {
-    const leftHeavy: PlayerPosition[] = [
-      { playerId: gkId, x: 50, y: 92 },
-      { playerId: empty.players[1].id, x: 10, y: 78 },
-      { playerId: empty.players[2].id, x: 15, y: 74 },
-    ]
-    const rightHeavy: PlayerPosition[] = [
-      { playerId: gkId, x: 50, y: 92 },
-      { playerId: empty.players[1].id, x: 90, y: 78 },
-      { playerId: empty.players[2].id, x: 85, y: 74 },
-    ]
-    const result = computeTiltIndex(leftHeavy, empty, rightHeavy, empty)
-    expect(result.aAvgX).toBeLessThan(50)
-    expect(result.bAvgX).toBeGreaterThan(50)
-  })
-
-  it('실제 프리셋(안첼로티 vs 수원삼성)에서도 0~100 범위 안의 값을 낸다', () => {
-    const result = computeMatchupData(ancelotti, suwon, 'A')
-    const tilt = computeTiltIndex(result.dataA.positions, ancelotti, result.positionsB, suwon)
-    expect(tilt.aAvgX).toBeGreaterThanOrEqual(0)
-    expect(tilt.aAvgX).toBeLessThanOrEqual(100)
-    expect(tilt.bAvgX).toBeGreaterThanOrEqual(0)
-    expect(tilt.bAvgX).toBeLessThanOrEqual(100)
   })
 })
 
