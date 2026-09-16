@@ -5,6 +5,7 @@ import { KeyZoneCallout } from '@/components/versus/KeyZoneCallout'
 import { MatchupBottleneckLayer } from '@/components/versus/MatchupBottleneckLayer'
 import { MatchupOverloadLayer } from '@/components/versus/MatchupOverloadLayer'
 import { TacticalSuggestions } from '@/components/versus/TacticalSuggestions'
+import { TiltGauge } from '@/components/versus/TiltGauge'
 import { ZoneSideGauges } from '@/components/versus/ZoneSideGauges'
 import { AnnotationLayer } from '@/components/pitch/AnnotationLayer'
 import { ChannelGrid } from '@/components/pitch/ChannelGrid'
@@ -15,6 +16,7 @@ import {
   buildMatchupMarkers,
   computeMatchupData,
   computeMatchupLabelOffsets,
+  computeTiltIndex,
   computeTransitionPositions,
   computeZonesFromPositions,
   transformAnnotationsForMatchup,
@@ -121,6 +123,15 @@ export function MatchupView({
         : zones,
     [transitionPositions, zones, analysisA, analysisB],
   )
+  // 무게중심/쏠림 지수(versus-stat-features-backlog 3번)도 zones와 같은
+  // 분류(이름을 안 짚는 순수 좌표 평균)라 전환 중에도 실시간으로 바뀐다.
+  const liveTilt = useMemo(
+    () =>
+      transitionPositions
+        ? computeTiltIndex(transitionPositions.aPositions, analysisA, transitionPositions.bPositions, analysisB)
+        : computeTiltIndex(dataA.positions, analysisA, positionsB, analysisB),
+    [transitionPositions, dataA, positionsB, analysisA, analysisB],
+  )
 
   // 상단 텍스트 클릭 → 피치 하이라이트(TO-DO 50-3, "상단 바와 피치 간의
   // 인터랙션 연결" 피드백). 같은 대상을 다시 누르면 꺼지는 토글이라 여기서
@@ -150,6 +161,7 @@ export function MatchupView({
         <div className="mx-auto w-full max-w-6xl space-y-3">
           <AdvantageBadge zones={liveZones} labelA={labelA} labelB={labelB} highlight={highlight} onToggleZone={toggleZoneHighlight} />
           <ZoneSideGauges zones={liveZones} labelA={labelA} labelB={labelB} />
+          <TiltGauge tilt={liveTilt} labelA={labelA} labelB={labelB} />
           <KeyZoneCallout
             advantage={matchupAdvantage}
             labelA={labelA}

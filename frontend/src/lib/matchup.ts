@@ -190,6 +190,43 @@ export function computeZonesFromPositions(
   return computeOverload(syntheticPhase)
 }
 
+export interface TiltIndex {
+  /** 필드플레이어 평균 x좌표(0=왼쪽 터치라인, 100=오른쪽 터치라인, labelA 공격 방향 기준) */
+  aAvgX: number
+  bAvgX: number
+}
+
+/**
+ * "무게중심/쏠림 지수"(versus-stat-features-backlog 3번, 위협 가중 점수·
+ * 고립 매치업에 이어 순위대로 대기하던 항목) — 팀 필드플레이어 평균
+ * x좌표 하나로 공격이 왼쪽/오른쪽 터치라인 중 어느 쪽으로 쏠렸는지
+ * 보여준다. 15구역 이산 집계(AdvantageBadge·ZoneSideGauges)와 달리
+ * 연속값이라, 43~45번에서 문제됐던 "반대쪽 우위가 상쇄돼 안 보이는"
+ * 구조적 한계가 없다 — 평균은 상쇄되지 않고 그대로 쏠림 방향에 반영된다.
+ *
+ * GK는 평균에서 뺀다(`computeZonesFromPositions`와 같은 이유) — GK는
+ * 항상 자기 진영 중앙 근처(x≈50)에 있어서 넣으면 실제 대형과 무관하게
+ * 쏠림 값이 중앙으로 끌려간다. 출전 인원이 0명(비정상 상태)이면 중앙(50)
+ * 으로 취급한다 — 데이터가 없다고 왼쪽/오른쪽 어느 한쪽으로 쏠린 것처럼
+ * 보이면 안 되기 때문이다.
+ */
+export function computeTiltIndex(
+  aPositions: PlayerPosition[],
+  analysisA: Analysis,
+  bPositions: PlayerPosition[],
+  analysisB: Analysis,
+): TiltIndex {
+  const avgX = (positions: PlayerPosition[], players: Player[], formation: string) => {
+    const outfield = excludeGoalkeepers(positions, players, formation)
+    if (outfield.length === 0) return 50
+    return outfield.reduce((sum, p) => sum + p.x, 0) / outfield.length
+  }
+  return {
+    aAvgX: avgX(aPositions, analysisA.players, analysisA.formation),
+    bAvgX: avgX(bPositions, analysisB.players, analysisB.formation),
+  }
+}
+
 export function computeMatchupData(analysisA: Analysis, analysisB: Analysis, attacker: 'A' | 'B'): MatchupData {
   const phaseA: PhaseType = attacker === 'A' ? 'attack' : 'defense'
   const phaseB: PhaseType = attacker === 'B' ? 'attack' : 'defense'
