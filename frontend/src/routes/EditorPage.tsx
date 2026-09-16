@@ -276,16 +276,28 @@ export function EditorPage() {
                   전술 A로 곧장 채워서 바로 이동시켜준다 — B는 /versus에서
                   직접 고르게 둔다(어떤 상대와 붙일지는 여기서 미리 알 수 없다).
                   서버에 저장된 id가 있어야 /versus가 분석을 불러올 수 있어
-                  저장 전에는 비활성화한다(SaveButton과 같은 전제). */}
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={!analysis.id}
-                title={!analysis.id ? '먼저 저장해야 전술 대결에서 선택할 수 있습니다' : isDirty ? '저장하지 않은 최근 변경은 전술 대결에 반영되지 않습니다' : undefined}
-                onClick={() => navigate(`/versus?a=${analysis.id}`)}
-              >
-                상대팀과 대결
-              </Button>
+                  저장 전에는 비활성화한다(SaveButton과 같은 전제).
+
+                  비활성 이유를 title(hover 툴팁)에만 뒀더니 "버튼은 생겼는데
+                  안 눌린다"는 혼란으로 이어졌다(2026-09-16 사용자 리포트,
+                  재현 확인) — 이 다크 테마에서 disabled:opacity-50이 옆의
+                  활성 버튼과 육안으로 거의 구분이 안 돼서, 눌러도 반응이
+                  없는 이유를 hover 없이는 알 길이 없었다. 저장 전(진짜로
+                  이동 자체가 불가능한 경우)만 버튼 아래 항상 보이는 문구로
+                  이유를 밝힌다 — dirty(저장은 됐지만 그 뒤 수정함)는 버튼이
+                  여전히 눌리므로 툴팁만으로 충분하다고 판단. */}
+              <div className="flex flex-col items-start gap-0.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!analysis.id}
+                  title={!analysis.id ? '먼저 저장해야 전술 대결에서 선택할 수 있습니다' : isDirty ? '저장하지 않은 최근 변경은 전술 대결에 반영되지 않습니다' : undefined}
+                  onClick={() => navigate(`/versus?a=${analysis.id}`)}
+                >
+                  상대팀과 대결
+                </Button>
+                {!analysis.id && <span className="text-[11px] leading-none text-muted-foreground">먼저 저장하세요</span>}
+              </div>
             </div>
           </div>
           <div className="flex w-full max-w-md items-center gap-2">
