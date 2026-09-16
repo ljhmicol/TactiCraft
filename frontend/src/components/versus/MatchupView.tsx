@@ -163,62 +163,68 @@ export function MatchupView({
           />
         </div>
       )}
-      {/* flex-1이 아니라 고정 높이다(2026-09-16, "전술판이 공수교대를 하면
-          크기가 달라져. 작아졌다가 커졌다가") — flex-1이면 "남는 만큼"
-          차지하는데, 위아래 텍스트 패널(구역 칩 개수·줄바꿈, 고립 매치업
-          행 개수)은 공수 교대·전환마다 실제 내용이 바뀌어 높이가 달라진다.
-          그 결과 flex-col 전체가 정해진 높이(VersusPage의 바깥 박스) 안에서
-          나눠 가지던 구조라, 텍스트가 늘거나 줄 때마다 피치가 반대로
-          줄었다 늘었다 했다. 피치를 텍스트 높이와 무관한 고정 vh로 떼어내고,
-          VersusPage 쪽 바깥 박스의 고정 높이는 없앴다(그 경계가 없어지면
-          텍스트 패널이 늘어나는 만큼 페이지 전체 높이만 늘고, 피치 크기는
-          항상 그대로다). */}
-      <div className="h-[85vh] supports-[height:100dvh]:h-[85dvh]">
-        <Pitch orientation="landscape">
-          {showChannelGrid && <ChannelGrid halfSpaces orientation="landscape" sideLabels />}
-          {showPressingLine && transitionT === 0 && (
-            <PressingLine
-              positions={defendingPositions}
-              pressingLineY={defendingPressingLineY}
-              labelY={defendingPressingLineLevel}
-              orientation="landscape"
-            />
-          )}
-          {showOverload && (
-            <MatchupOverloadLayer zones={liveZones} orientation="landscape" showNumbers={showZoneNumbers} highlight={highlight} />
-          )}
-          {showOverload && showBottleneck && <MatchupBottleneckLayer zones={liveZones} orientation="landscape" />}
-          {showAnnotations && transitionT === 0 && (
-            <g opacity={0.55}>
-              <AnnotationLayer
-                annotations={transformAnnotationsForMatchup(dataA.annotations, false, true)}
-                loop
+      {/* 높이가 아니라 폭을 고정한다(2026-09-16, "너무 크다. 양옆이 딱
+          수적우위구역이랑 길이가 같게 줄여줘") — 전에는 flex-1(→ 공수교대
+          때마다 텍스트 높이에 따라 피치가 커졌다 작아졌다 하는 버그, 50-9
+          참조)을 h-[85vh] 고정 높이로 바꿔 해결했는데, 그 결과 화면이 넓을
+          때 피치가 위아래 텍스트 패널(max-w-6xl)보다 훨씬 넓어져 버렸다.
+          이번엔 반대로 폭을 텍스트 패널과 같은 max-w-6xl로 고정하고,
+          높이는 aspect-ratio로 폭에서 계산되게 한다.
+          Pitch.tsx 자체(h-full로 높이를 물려받아 그 높이×비율로 폭을 냄)는
+          그대로 둔다 — VersusShareCard(PNG 카드)도 같은 Pitch를 쓰는데,
+          거기는 카드 높이 기준으로 폭을 내야 해서 이 파일과 반대 방향(높이
+          우선) 계산이 필요하다. 대신 바깥에 aspect-[105/68] 래퍼 div를
+          하나 더 둬서 "폭 고정 → 높이 계산"을 먼저 해주고, 그 결과 높이를
+          Pitch가 h-full로 물려받게 한다 — 두 계산이 같은 비율(105:68)이라
+          서로 안 어긋난다. */}
+      <div className="mx-auto w-full max-w-6xl">
+        <div className="aspect-[105/68] w-full">
+          <Pitch orientation="landscape">
+            {showChannelGrid && <ChannelGrid halfSpaces orientation="landscape" sideLabels />}
+            {showPressingLine && transitionT === 0 && (
+              <PressingLine
+                positions={defendingPositions}
+                pressingLineY={defendingPressingLineY}
+                labelY={defendingPressingLineLevel}
                 orientation="landscape"
-                ballDurationScale={VERSUS_BALL_DURATION_SCALE}
               />
-              <AnnotationLayer
-                annotations={transformAnnotationsForMatchup(dataB.annotations, true, true)}
-                loop
+            )}
+            {showOverload && (
+              <MatchupOverloadLayer zones={liveZones} orientation="landscape" showNumbers={showZoneNumbers} highlight={highlight} />
+            )}
+            {showOverload && showBottleneck && <MatchupBottleneckLayer zones={liveZones} orientation="landscape" />}
+            {showAnnotations && transitionT === 0 && (
+              <g opacity={0.55}>
+                <AnnotationLayer
+                  annotations={transformAnnotationsForMatchup(dataA.annotations, false, true)}
+                  loop
+                  orientation="landscape"
+                  ballDurationScale={VERSUS_BALL_DURATION_SCALE}
+                />
+                <AnnotationLayer
+                  annotations={transformAnnotationsForMatchup(dataB.annotations, true, true)}
+                  loop
+                  orientation="landscape"
+                  ballDurationScale={VERSUS_BALL_DURATION_SCALE}
+                />
+              </g>
+            )}
+            {markers.map((marker) => (
+              <StaticPlayerNode
+                key={marker.key}
+                player={marker.player}
+                position={transitionPositionByKey?.get(marker.key) ?? marker.originalPosition}
+                formation={marker.formation}
+                index={marker.index}
+                variant={marker.variant}
                 orientation="landscape"
-                ballDurationScale={VERSUS_BALL_DURATION_SCALE}
+                labelYOffset={labelOffsets.get(marker.key) ?? 0}
+                runPoints={showAnnotations && transitionT === 0 ? marker.runPoints : null}
+                highlighted={isPlayerHighlighted(marker.key)}
               />
-            </g>
-          )}
-          {markers.map((marker) => (
-            <StaticPlayerNode
-              key={marker.key}
-              player={marker.player}
-              position={transitionPositionByKey?.get(marker.key) ?? marker.originalPosition}
-              formation={marker.formation}
-              index={marker.index}
-              variant={marker.variant}
-              orientation="landscape"
-              labelYOffset={labelOffsets.get(marker.key) ?? 0}
-              runPoints={showAnnotations && transitionT === 0 ? marker.runPoints : null}
-              highlighted={isPlayerHighlighted(marker.key)}
-            />
-          ))}
-        </Pitch>
+            ))}
+          </Pitch>
+        </div>
       </div>
       {showOverload && (
         <div className="mx-auto w-full max-w-6xl">
