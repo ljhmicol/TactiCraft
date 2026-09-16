@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { AdvantageBadge } from '@/components/versus/AdvantageBadge'
 import { KeyZoneCallout } from '@/components/versus/KeyZoneCallout'
 import { MatchupBottleneckLayer } from '@/components/versus/MatchupBottleneckLayer'
+import { MatchupCompactnessLayer } from '@/components/versus/MatchupCompactnessLayer'
 import { MatchupOverloadLayer } from '@/components/versus/MatchupOverloadLayer'
 import { TacticalSuggestions } from '@/components/versus/TacticalSuggestions'
 import { ZoneSideGauges } from '@/components/versus/ZoneSideGauges'
@@ -37,6 +38,9 @@ interface MatchupViewProps {
   /** "병목" 빗금 레이어 On/Off(2차 4개 개선안 3번, "국면별 텐션 시각화") —
    * 기본 Off. showOverload가 꺼져 있으면 이 레이어도 그리지 않는다. */
   showBottleneck: boolean
+  /** 팀 폭/깊이 정면 비교 박스 On/Off(통계 기능 백로그 4번). showOverload와
+   * 무관하다 — 좌표 bounding box일 뿐 15구역 집계를 안 쓴다. */
+  showCompactness: boolean
   /** 공수 전환 미리보기 슬라이더 값(TO-DO 50번대, 0~100) — 0이면 지금 화면
    * (기존 동작)과 완전히 같다. 0보다 크면 두 팀이 각자 반대 방향으로
    * (A는 attack→defense, B는 defense→attack) 보간된 좌표를 보여준다. */
@@ -60,6 +64,7 @@ export function MatchupView({
   showAnnotations,
   showZoneNumbers,
   showBottleneck,
+  showCompactness,
   transitionT,
 }: MatchupViewProps) {
   // computeMatchupData/buildMatchupMarkers를 useMemo로 감싼다(TO-DO 48) —
@@ -193,6 +198,13 @@ export function MatchupView({
               <MatchupOverloadLayer zones={liveZones} orientation="landscape" showNumbers={showZoneNumbers} highlight={highlight} />
             )}
             {showOverload && showBottleneck && <MatchupBottleneckLayer zones={liveZones} orientation="landscape" />}
+            {showCompactness && (
+              <MatchupCompactnessLayer
+                aPositions={transitionPositions ? transitionPositions.aPositions : dataA.positions}
+                bPositions={transitionPositions ? transitionPositions.bPositions : positionsB}
+                orientation="landscape"
+              />
+            )}
             {showAnnotations && transitionT === 0 && (
               <g opacity={0.55}>
                 <AnnotationLayer

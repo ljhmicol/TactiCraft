@@ -1,6 +1,7 @@
 import { forwardRef } from 'react'
 
 import { MatchupBottleneckLayer } from '@/components/versus/MatchupBottleneckLayer'
+import { MatchupCompactnessLayer } from '@/components/versus/MatchupCompactnessLayer'
 import { MatchupOverloadLayer } from '@/components/versus/MatchupOverloadLayer'
 import { AnnotationLayer } from '@/components/pitch/AnnotationLayer'
 import { ChannelGrid } from '@/components/pitch/ChannelGrid'
@@ -28,6 +29,7 @@ interface VersusShareCardProps {
   showAnnotations: boolean
   showZoneNumbers: boolean
   showBottleneck: boolean
+  showCompactness: boolean
   ratio: '1:1' | '4:5'
 }
 
@@ -66,6 +68,7 @@ export const VersusShareCard = forwardRef<HTMLDivElement, VersusShareCardProps>(
     showAnnotations,
     showZoneNumbers,
     showBottleneck,
+    showCompactness,
     ratio,
   },
   ref,
@@ -189,6 +192,9 @@ export const VersusShareCard = forwardRef<HTMLDivElement, VersusShareCardProps>(
               )}
               {showOverload && <MatchupOverloadLayer zones={zones} orientation="landscape" showNumbers={showZoneNumbers} />}
               {showOverload && showBottleneck && <MatchupBottleneckLayer zones={zones} orientation="landscape" />}
+              {showCompactness && (
+                <MatchupCompactnessLayer aPositions={dataA.positions} bPositions={positionsB} orientation="landscape" />
+              )}
               {showAnnotations && (
                 <g opacity={0.55}>
                   <AnnotationLayer

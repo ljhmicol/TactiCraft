@@ -37,6 +37,9 @@ export function VersusPage() {
   // 줄여서 덜 복잡하게"(50-2) 만든 작업과 정반대 방향이다 — 항상 켜져
   // 있으면 그 작업이 무의미해지니 켜고 싶을 때만 켜는 옵션으로 둔다.
   const [showBottleneck, setShowBottleneck] = useState(false)
+  // 팀 폭/깊이 정면 비교 박스(통계 기능 백로그 4번) — 기본 false, 병목
+  // 레이어와 같은 이유(정보를 더 얹는 opt-in 레이어).
+  const [showCompactness, setShowCompactness] = useState(false)
   // 공수 전환 미리보기 슬라이더(TO-DO 50번대, "국면 토글/타임라인 슬라이더"
   // 4번 개선안의 축소판) — 0~100, 0이면 지금 공수 상태 그대로다. 공수
   // 교대 버튼을 누르면(=기준 자체가 바뀌면) 0으로 되돌린다 — 안 그러면
@@ -198,6 +201,10 @@ export function VersusPage() {
             },
             { key: 'pressingLine', label: '압박 라인(수비 팀)', on: showPressingLine, set: setShowPressingLine, disabled: false },
             { key: 'annotations', label: '이동 벡터', on: showAnnotations, set: setShowAnnotations, disabled: false },
+            // 팀 폭/깊이 정면 비교(통계 기능 백로그 4번) — showOverload와
+            // 무관하다(15구역 집계가 아니라 좌표 bounding box라서), 그래서
+            // 위 "밀집 구역"과 달리 disabled 조건이 없다.
+            { key: 'compactness', label: '폭/깊이 비교', on: showCompactness, set: setShowCompactness, disabled: false },
           ] as const
         ).map((chip) => (
           <button
@@ -261,6 +268,7 @@ export function VersusPage() {
               showAnnotations={showAnnotations}
               showZoneNumbers={showZoneNumbers}
               showBottleneck={showBottleneck}
+              showCompactness={showCompactness}
               transitionT={transitionT}
             />
           </div>
@@ -346,6 +354,7 @@ export function VersusPage() {
             showAnnotations={showAnnotations}
             showZoneNumbers={showZoneNumbers}
             showBottleneck={showBottleneck}
+            showCompactness={showCompactness}
             ratio={exportRatio}
           />
         </>
