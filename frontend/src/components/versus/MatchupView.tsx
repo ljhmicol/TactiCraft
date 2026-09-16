@@ -163,7 +163,17 @@ export function MatchupView({
           />
         </div>
       )}
-      <div className="min-h-0 flex-1">
+      {/* flex-1이 아니라 고정 높이다(2026-09-16, "전술판이 공수교대를 하면
+          크기가 달라져. 작아졌다가 커졌다가") — flex-1이면 "남는 만큼"
+          차지하는데, 위아래 텍스트 패널(구역 칩 개수·줄바꿈, 고립 매치업
+          행 개수)은 공수 교대·전환마다 실제 내용이 바뀌어 높이가 달라진다.
+          그 결과 flex-col 전체가 정해진 높이(VersusPage의 바깥 박스) 안에서
+          나눠 가지던 구조라, 텍스트가 늘거나 줄 때마다 피치가 반대로
+          줄었다 늘었다 했다. 피치를 텍스트 높이와 무관한 고정 vh로 떼어내고,
+          VersusPage 쪽 바깥 박스의 고정 높이는 없앴다(그 경계가 없어지면
+          텍스트 패널이 늘어나는 만큼 페이지 전체 높이만 늘고, 피치 크기는
+          항상 그대로다). */}
+      <div className="h-[85vh] supports-[height:100dvh]:h-[85dvh]">
         <Pitch orientation="landscape">
           {showChannelGrid && <ChannelGrid halfSpaces orientation="landscape" sideLabels />}
           {showPressingLine && transitionT === 0 && (

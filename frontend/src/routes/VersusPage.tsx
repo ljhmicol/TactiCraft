@@ -241,19 +241,23 @@ export function VersusPage() {
             </Button>
           </div>
 
-          {/* EditorPage와 같은 이유(2026-09-11)로 dvh 폴백 — 모바일 실기기에서만
-              주소창 때문에 vh가 잘못 계산되는 문제 대응.
-              높이 82vh→90vh→94vh→97vh→99vh, max-w-6xl→max-w-7xl→
-              max-w-[1800px]→max-w-[2000px]→max-w-[2200px](2026-09-15,
-              "전술판이 너무 작아"류 요청이 네 차례째) — Pitch(landscape)는
-              aspect-[105/68] h-full로 높이 기준 너비를 계산한다(Pitch.tsx 주석
-              참조). 99vh는 100vh 바로 아래 — 뷰포트 안 스크롤바·브라우저
-              크롬과 겹쳐 세로 스크롤이 생기는 걸 피하려고 100vh 자체는 안
-              쓴다(모바일 dvh 폴백과 같은 종류의 여유분). 텍스트 패널은 위
-              (공수 전환 슬라이더)·MatchupView 안(AdvantageBadge 등)에서
-              각자 max-w-6xl로 따로 고정돼 있어서, 이 박스를 더 키워도
-              커지는 건 피치뿐이다. */}
-          <div className="mx-auto h-[99vh] w-full max-w-[2200px] supports-[height:100dvh]:h-[99dvh]">
+          {/* 높이 82vh→90vh→94vh→97vh→99vh였다가(2026-09-15, "전술판이
+              너무 작아"류 요청 네 차례) 고정 높이를 아예 없앴다(2026-09-16,
+              "전술판이 공수교대를 하면 크기가 달라져. 작아졌다가
+              커졌다가") — 원인은 이 박스가 고정 높이(h-[99vh])였고, 그 안
+              flex-col에서 피치가 `flex-1`(남는 만큼)로 나머지 텍스트
+              패널과 높이를 나눠 가지던 구조였다. 공수 교대·전환마다 위아래
+              텍스트(구역 칩 줄바꿈·고립 매치업 행 개수)의 실제 높이가
+              바뀌니, "남는 몫"인 피치가 반대로 늘었다 줄었다 했다. 고정
+              높이를 MatchupView.tsx의 피치 wrapper(`h-[85vh]`)로 옮기고
+              이 바깥 박스는 폭만 맡는다 — 텍스트가 늘어나는 만큼 페이지
+              전체 높이만 늘어나고, 피치 크기는 항상 그대로다.
+              max-w-6xl→max-w-7xl→max-w-[1800px]→max-w-[2000px]→
+              max-w-[2200px]로 커진 가로 폭 이력은 그대로 유지한다 —
+              텍스트 패널은 위(공수 전환 슬라이더)·MatchupView 안
+              (AdvantageBadge 등)에서 각자 max-w-6xl로 따로 고정돼 있어서,
+              이 박스를 더 키워도 커지는 건 피치뿐이다. */}
+          <div className="mx-auto w-full max-w-[2200px]">
             <MatchupView
               analysisA={analysisA.data}
               analysisB={analysisB.data}
