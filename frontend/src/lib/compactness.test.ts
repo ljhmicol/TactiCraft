@@ -39,19 +39,19 @@ describe('computeCompactness', () => {
 })
 
 describe('pressingLineLevel', () => {
-  it('하프라인(y=50) 이내는 매우 높음으로 분류한다(2026-09-08 재조정)', () => {
+  it('y=62 이내는 매우 높음으로 분류한다(2026-09-16 재조정 — 옛 "높음" 자리로 당김)', () => {
     expect(pressingLineLevel(0)).toBe('매우 높음')
-    expect(pressingLineLevel(50)).toBe('매우 높음')
+    expect(pressingLineLevel(62)).toBe('매우 높음')
   })
 
-  it('나머지 경계값도 자기 진영 쪽으로 촘촘하게 분류한다', () => {
-    expect(pressingLineLevel(51)).toBe('높음')
-    expect(pressingLineLevel(65)).toBe('높음')
-    expect(pressingLineLevel(66)).toBe('보통')
-    expect(pressingLineLevel(80)).toBe('보통')
-    expect(pressingLineLevel(81)).toBe('낮음')
-    expect(pressingLineLevel(90)).toBe('낮음')
-    expect(pressingLineLevel(91)).toBe('매우 낮음')
+  it('나머지 경계값도 7 단위 균등 간격(62/69/76/83)으로 분류한다', () => {
+    expect(pressingLineLevel(63)).toBe('높음')
+    expect(pressingLineLevel(69)).toBe('높음')
+    expect(pressingLineLevel(70)).toBe('보통')
+    expect(pressingLineLevel(76)).toBe('보통')
+    expect(pressingLineLevel(77)).toBe('낮음')
+    expect(pressingLineLevel(83)).toBe('낮음')
+    expect(pressingLineLevel(84)).toBe('매우 낮음')
     expect(pressingLineLevel(100)).toBe('매우 낮음')
   })
 })
