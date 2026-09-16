@@ -36,7 +36,7 @@ export function InfoDialogButton({ title, ariaLabel, color, children }: InfoDial
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-2 text-sm text-muted-foreground">{children}</div>
+        <div className="space-y-2 text-base text-muted-foreground">{children}</div>
       </DialogContent>
     </Dialog>
   )

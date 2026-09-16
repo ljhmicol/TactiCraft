@@ -35,15 +35,15 @@ export function ZoneSideGauges({ zones, labelA, labelB }: ZoneSideGaugesProps) {
             <div
               key={side}
               className="space-y-1 text-center"
-              title={`${SIDE_KOREAN[side]}: ${labelA} ${aZones.length}구역 우세 · ${labelB} ${bZones.length}구역 우세 · 동률 ${neutralZoneCount}구역`}
+              title={`${SIDE_KOREAN[side]}: ${labelA} ${aZones.length}구역 수적 우위 · ${labelB} ${bZones.length}구역 수적 우위 · 동률 ${neutralZoneCount}구역`}
             >
-              <p className="text-xs font-medium text-muted-foreground">{SIDE_KOREAN[side]}</p>
+              <p className="text-sm font-medium text-muted-foreground">{SIDE_KOREAN[side]}</p>
               <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-secondary">
                 <div style={{ width: `${aPct}%`, background: colorA }} />
                 <div style={{ width: `${neutralZoneCount === totalZones ? 100 : 100 - aPct - bPct}%` }} />
                 <div style={{ width: `${bPct}%`, background: colorB }} />
               </div>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 <span style={{ color: colorA }}>{aZones.length}</span> : <span style={{ color: colorB }}>{bZones.length}</span>
               </p>
             </div>
@@ -55,7 +55,7 @@ export function ZoneSideGauges({ zones, labelA, labelB }: ZoneSideGaugesProps) {
           채널(좌우) 축이 화면상 위아래로 그려진다(전진 방향=서드 축이
           화면 좌우). 둘 다 안 적어두면 화면을 직접 보고 "왼쪽"을 화면
           왼쪽이라고 오해하기 쉽다. */}
-      <p className="text-center text-[10px] text-muted-foreground">
+      <p className="text-center text-[11px] text-muted-foreground">
         왼쪽·오른쪽은 {labelA} 공격 방향 기준(공수 교대와 무관) · 가로 화면에서는 위아래로 표시됩니다
       </p>
     </div>

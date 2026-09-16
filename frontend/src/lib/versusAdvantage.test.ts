@@ -4,6 +4,7 @@ import {
   computeMatchupAdvantage,
   computeSideAdvantage,
   computeThreatWeightedScore,
+  computeZoneThreatContributions,
   suggestImprovement,
   THIRD_KOREAN,
   zoneLabel,
@@ -72,12 +73,12 @@ describe('suggestImprovement', () => {
   it('cites the concrete zone and score when a weakest zone exists', () => {
     const weak = zone(-3, 'leftHalf', 'defensive')
     expect(suggestImprovement(weak, third)).toBe(
-      '왼쪽 하프스페이스 · A팀 골문 근처(0:3)에서 수적 열세 — 이 구역에 인원을 보강하는 재배치를 고려해보세요.',
+      '왼쪽 하프스페이스 · A팀 골문 근처(0:3)에 공간이 열려 있음 — 이 구역에 인원을 보강하는 재배치를 고려해보세요.',
     )
   })
 
   it('falls back to a neutral message when there is no weakest zone', () => {
-    expect(suggestImprovement(null, third)).toBe('뚜렷한 열세 구역이 없어요 — 지금 배치를 유지해도 좋아 보입니다.')
+    expect(suggestImprovement(null, third)).toBe('뚜렷하게 공간이 열린 구역이 없어요 — 지금 배치를 유지해도 좋아 보입니다.')
   })
 })
 
@@ -137,5 +138,26 @@ describe('computeThreatWeightedScore', () => {
     const leftHeavy = computeThreatWeightedScore([zone(3, 'leftWing', 'attacking'), zone(2, 'leftHalf', 'middle')])
     const rightHeavy = computeThreatWeightedScore([zone(3, 'rightWing', 'attacking'), zone(2, 'rightHalf', 'middle')])
     expect(leftHeavy).toEqual(rightHeavy)
+  })
+})
+
+describe('computeZoneThreatContributions', () => {
+  it('returns one signed contribution per zone (diff × weight), summing to the same total as computeThreatWeightedScore', () => {
+    const zones = [
+      zone(2, 'leftHalf', 'defensive'),
+      zone(-2, 'center', 'attacking'),
+      zone(0, 'rightWing', 'middle'),
+    ]
+    const contributions = computeZoneThreatContributions(zones)
+    expect(contributions).toHaveLength(3)
+    expect(contributions.find((c) => c.channel === 'center')!.contribution).toBeLessThan(0) // B 쪽 기여는 음수
+    expect(contributions.find((c) => c.channel === 'leftHalf')!.contribution).toBeGreaterThan(0) // A 쪽 기여는 양수
+    expect(contributions.find((c) => c.channel === 'rightWing')!.contribution).toBe(0) // 동률 구역은 0
+
+    const { aScore, bScore } = computeThreatWeightedScore(zones)
+    const aSum = contributions.filter((c) => c.contribution > 0).reduce((sum, c) => sum + c.contribution, 0)
+    const bSum = contributions.filter((c) => c.contribution < 0).reduce((sum, c) => sum - c.contribution, 0)
+    expect(Math.round(aSum * 10) / 10).toBe(aScore)
+    expect(Math.round(bSum * 10) / 10).toBe(bScore)
   })
 })

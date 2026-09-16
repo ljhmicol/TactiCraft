@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { AdvantageBadge } from '@/components/versus/AdvantageBadge'
 import { KeyZoneCallout } from '@/components/versus/KeyZoneCallout'
@@ -14,10 +14,13 @@ import {
   buildMatchupMarkers,
   computeMatchupData,
   computeMatchupLabelOffsets,
+  computeTransitionPositions,
+  computeZonesFromPositions,
   transformAnnotationsForMatchup,
   VERSUS_BALL_DURATION_SCALE,
+  type MatchupHighlight,
 } from '@/lib/matchup'
-import type { Analysis } from '@/types/analysis'
+import type { Analysis, Channel, Point, Third } from '@/types/analysis'
 
 interface MatchupViewProps {
   analysisA: Analysis
@@ -28,6 +31,12 @@ interface MatchupViewProps {
   showOverload: boolean
   showPressingLine: boolean
   showAnnotations: boolean
+  /** 구역 수치("N:M") On/Off (TO-DO 50-2) — 색 타일은 showOverload가 계속 맡는다 */
+  showZoneNumbers: boolean
+  /** 공수 전환 미리보기 슬라이더 값(TO-DO 50번대, 0~100) — 0이면 지금 화면
+   * (기존 동작)과 완전히 같다. 0보다 크면 두 팀이 각자 반대 방향으로
+   * (A는 attack→defense, B는 defense→attack) 보간된 좌표를 보여준다. */
+  transitionT: number
 }
 
 /**
@@ -45,6 +54,8 @@ export function MatchupView({
   showOverload,
   showPressingLine,
   showAnnotations,
+  showZoneNumbers,
+  transitionT,
 }: MatchupViewProps) {
   // computeMatchupData/buildMatchupMarkers를 useMemo로 감싼다(TO-DO 48) —
   // 감싸지 않으면 "5채널"·"오버로드" 같은 무관한 토글을 눌러 MatchupView가
@@ -75,12 +86,65 @@ export function MatchupView({
   )
   const labelOffsets = useMemo(() => computeMatchupLabelOffsets(markers), [markers])
 
+  // 공수 전환 미리보기(TO-DO 50번대, 4번 개선안 축소판) — transitionT===0이면
+  // null을 돌려주고, 아래에서 이 null을 "보간 없음"으로 취급해 기존
+  // dataA.positions/positionsB/zones/matchupAdvantage를 그대로 쓴다(advisor
+  // 조언 — 쉬는 상태는 별도 계산이 아니라 완전히 같은 코드 경로여야 한다).
+  // 참조 안정성(TO-DO 48)을 지키려고 `markers` 자체는 절대 다시 안 만들고,
+  // 렌더링 시점에만 marker.key로 보간된 좌표를 찾아 덮어쓴다.
+  const transitionPositions = useMemo(
+    () => (transitionT === 0 ? null : computeTransitionPositions(analysisA, analysisB, phaseA, dataA, positionsB, transitionT / 100)),
+    [analysisA, analysisB, phaseA, dataA, positionsB, transitionT],
+  )
+  const transitionPositionByKey = useMemo(() => {
+    if (!transitionPositions) return null
+    const map = new Map<string, Point>()
+    for (const p of transitionPositions.aPositions) map.set(`a-${p.playerId}`, p)
+    for (const p of transitionPositions.bPositions) map.set(`b-${p.playerId}`, p)
+    return map
+  }, [transitionPositions])
+  // 화면 카드(AdvantageBadge·ZoneSideGauges)와 피치 타일은 "지금 이 좌표에
+  // 몇 명이 서 있는지"라는 사실이라 전환 중에도 실시간으로 바뀌어도 된다.
+  // 반면 KeyZoneCallout·TacticalSuggestions는 특정 선수 이름을 짚어 조언하는
+  // 문장이라(advisor 지적 — "사용자가 드래그로 만든 대형에 대한 코칭 조언"은
+  // 가짜 예측 금지 원칙에 가깝다) 항상 쉬는 상태(zones/matchupAdvantage)만
+  // 쓴다 — 아래에서 이 둘을 분리해서 각각 다른 컴포넌트에 넘긴다.
+  const liveZones = useMemo(
+    () =>
+      transitionPositions
+        ? computeZonesFromPositions(transitionPositions.aPositions, analysisA, transitionPositions.bPositions, analysisB)
+        : zones,
+    [transitionPositions, zones, analysisA, analysisB],
+  )
+
+  // 상단 텍스트 클릭 → 피치 하이라이트(TO-DO 50-3, "상단 바와 피치 간의
+  // 인터랙션 연결" 피드백). 같은 대상을 다시 누르면 꺼지는 토글이라 여기서
+  // 이전 값과 비교한다. 분석이나 공수 교대가 바뀌면 이전 하이라이트가
+  // 엉뚱한 구역/선수를 가리킬 수 있어 초기화한다.
+  const [highlight, setHighlight] = useState<MatchupHighlight>(null)
+  useEffect(() => setHighlight(null), [analysisA.id, analysisB.id, attacker])
+
+  const toggleZoneHighlight = (channel: Channel, third: Third) =>
+    setHighlight((h) => (h?.kind === 'zone' && h.channel === channel && h.third === third ? null : { kind: 'zone', channel, third }))
+  const togglePlayersHighlight = (keys: string[]) =>
+    setHighlight((h) =>
+      h?.kind === 'players' && h.keys.length === keys.length && h.keys.every((k) => keys.includes(k))
+        ? null
+        : { kind: 'players', keys },
+    )
+  const isPlayerHighlighted = (key: string) => highlight?.kind === 'players' && highlight.keys.includes(key)
+
   return (
     <div className="flex h-full flex-col gap-3">
+      {/* 텍스트 패널은 피치와 달리 넓어진다고 더 읽기 좋아지지 않는다 —
+          "전술판 그 자체만 키워달라는거였어"(2026-09-15) — 그래서 폭을
+          예전 박스 너비(max-w-6xl, 50-4번 이전)로 따로 고정한다. 피치 쪽
+          박스(아래 min-h-0 flex-1)는 이 제한 없이 VersusPage가 준 넓은
+          한도(현재 max-w-[1800px])를 그대로 쓴다. */}
       {showOverload && (
-        <>
-          <AdvantageBadge zones={zones} labelA={labelA} labelB={labelB} />
-          <ZoneSideGauges zones={zones} labelA={labelA} labelB={labelB} />
+        <div className="mx-auto w-full max-w-6xl space-y-3">
+          <AdvantageBadge zones={liveZones} labelA={labelA} labelB={labelB} highlight={highlight} onToggleZone={toggleZoneHighlight} />
+          <ZoneSideGauges zones={liveZones} labelA={labelA} labelB={labelB} />
           <KeyZoneCallout
             advantage={matchupAdvantage}
             labelA={labelA}
@@ -89,13 +153,15 @@ export function MatchupView({
             analysisB={analysisB}
             dataA={dataA}
             positionsB={positionsB}
+            highlight={highlight}
+            onToggleZone={toggleZoneHighlight}
           />
-        </>
+        </div>
       )}
       <div className="min-h-0 flex-1">
         <Pitch orientation="landscape">
           {showChannelGrid && <ChannelGrid halfSpaces orientation="landscape" sideLabels />}
-          {showPressingLine && (
+          {showPressingLine && transitionT === 0 && (
             <PressingLine
               positions={defendingPositions}
               pressingLineY={defendingPressingLineY}
@@ -103,8 +169,10 @@ export function MatchupView({
               orientation="landscape"
             />
           )}
-          {showOverload && <MatchupOverloadLayer zones={zones} orientation="landscape" />}
-          {showAnnotations && (
+          {showOverload && (
+            <MatchupOverloadLayer zones={liveZones} orientation="landscape" showNumbers={showZoneNumbers} highlight={highlight} />
+          )}
+          {showAnnotations && transitionT === 0 && (
             <g opacity={0.55}>
               <AnnotationLayer
                 annotations={transformAnnotationsForMatchup(dataA.annotations, false, true)}
@@ -124,30 +192,35 @@ export function MatchupView({
             <StaticPlayerNode
               key={marker.key}
               player={marker.player}
-              position={marker.originalPosition}
+              position={transitionPositionByKey?.get(marker.key) ?? marker.originalPosition}
               formation={marker.formation}
               index={marker.index}
               variant={marker.variant}
               orientation="landscape"
               labelYOffset={labelOffsets.get(marker.key) ?? 0}
-              runPoints={showAnnotations ? marker.runPoints : null}
+              runPoints={showAnnotations && transitionT === 0 ? marker.runPoints : null}
+              highlighted={isPlayerHighlighted(marker.key)}
             />
           ))}
         </Pitch>
       </div>
       {showOverload && (
-        <TacticalSuggestions
-          advantage={matchupAdvantage}
-          labelA={labelA}
-          labelB={labelB}
-          phaseA={phaseA}
-          phaseB={phaseB}
-          zones={zones}
-          analysisA={analysisA}
-          analysisB={analysisB}
-          dataA={dataA}
-          positionsB={positionsB}
-        />
+        <div className="mx-auto w-full max-w-6xl">
+          <TacticalSuggestions
+            advantage={matchupAdvantage}
+            labelA={labelA}
+            labelB={labelB}
+            phaseA={phaseA}
+            phaseB={phaseB}
+            zones={zones}
+            analysisA={analysisA}
+            analysisB={analysisB}
+            dataA={dataA}
+            positionsB={positionsB}
+            highlight={highlight}
+            onTogglePlayers={togglePlayersHighlight}
+          />
+        </div>
       )}
     </div>
   )

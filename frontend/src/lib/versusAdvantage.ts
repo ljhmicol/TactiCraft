@@ -72,9 +72,12 @@ export function zoneLabel(z: ZoneOverload, third: Record<Third, string>): string
  * B팀 제안에 `aTopZone`을 넘긴다(반대로 넘기는 게 아니라 "상대가 가장
  * 앞선 구역 = 내가 가장 뒤진 구역"이라는 뜻).
  */
+// "열세"(승패 지향) 대신 "공간이 열려 있다"(중립적 분석 용어)로 쓴다
+// (2026-09-15, "우세/열세 프레임에서 공간/밀집 프레임으로" 피드백) —
+// 판정이 아니라 지금 배치에서 상대적으로 인원이 비어 관찰되는 사실이다.
 export function suggestImprovement(weakestZone: ZoneOverload | null, third: Record<Third, string>): string {
-  if (!weakestZone) return '뚜렷한 열세 구역이 없어요 — 지금 배치를 유지해도 좋아 보입니다.'
-  return `${zoneLabel(weakestZone, third)}에서 수적 열세 — 이 구역에 인원을 보강하는 재배치를 고려해보세요.`
+  if (!weakestZone) return '뚜렷하게 공간이 열린 구역이 없어요 — 지금 배치를 유지해도 좋아 보입니다.'
+  return `${zoneLabel(weakestZone, third)}에 공간이 열려 있음 — 이 구역에 인원을 보강하는 재배치를 고려해보세요.`
 }
 
 /**
@@ -138,4 +141,27 @@ export function computeThreatWeightedScore(zones: ZoneOverload[]): ThreatWeighte
     else bScore += -z.diff * weight
   }
   return { aScore: Math.round(aScore * 10) / 10, bScore: Math.round(bScore * 10) / 10 }
+}
+
+export interface ZoneThreatContribution {
+  channel: Channel
+  third: Third
+  /** diff(own−opp) × zoneThreatWeight, 부호 있음 — 양수는 A, 음수는 B 쪽
+   * 기여를 뜻한다. computeThreatWeightedScore의 aScore/bScore는 이 값을
+   * 부호별로 합산한 총점이다. */
+  contribution: number
+}
+
+/**
+ * 위협 가중 점수를 구역별로 쪼갠다(TO-DO 50번대, "위협 가중 점수 옆 ⓘ
+ * 버튼 안에 히트맵" 피드백) — `computeThreatWeightedScore`는 합계만 내서
+ * "그 점수가 어느 구역에서 왔는지"를 보여줄 수 없다. 같은 diff×weight
+ * 계산을 구역 단위로 남겨서 피치 위에 그라데이션으로 칠할 때 쓴다.
+ */
+export function computeZoneThreatContributions(zones: ZoneOverload[]): ZoneThreatContribution[] {
+  return zones.map((z) => ({
+    channel: z.channel,
+    third: z.third,
+    contribution: z.diff * zoneThreatWeight(z.channel, z.third),
+  }))
 }

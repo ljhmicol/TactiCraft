@@ -1,4 +1,4 @@
-import { computeIsolationMatchups } from '@/lib/matchup'
+import { computeIsolationMatchups, type MatchupHighlight } from '@/lib/matchup'
 import { VERSUS_TEAM_COLORS } from '@/lib/theme'
 import { CHANNEL_KOREAN, suggestImprovement, THIRD_KOREAN, type MatchupAdvantage } from '@/lib/versusAdvantage'
 import type { Analysis, PhaseData, PhaseType, PlayerPosition, ZoneOverload } from '@/types/analysis'
@@ -17,6 +17,10 @@ interface TacticalSuggestionsProps {
   analysisB: Analysis
   dataA: PhaseData
   positionsB: PlayerPosition[]
+  /** 현재 하이라이트된 대상(TO-DO 50-3) — 고립 매치업 행은 구역이 아니라
+   * 두 선수(marker.key 2개)를 대상으로 삼는다. */
+  highlight: MatchupHighlight
+  onTogglePlayers: (keys: string[]) => void
 }
 
 // 여러 곳에서 1v1이 동시에 생길 수 있다 — 가장 위험한 것 2개만 보여준다
@@ -51,39 +55,68 @@ export function TacticalSuggestions({
   analysisB,
   dataA,
   positionsB,
+  highlight,
+  onTogglePlayers,
 }: TacticalSuggestionsProps) {
   const third = THIRD_KOREAN(labelA, labelB)
   const isolations = computeIsolationMatchups(zones, dataA, analysisA, positionsB, analysisB).slice(0, MAX_ISOLATIONS_SHOWN)
 
+  const colorA = VERSUS_TEAM_COLORS.A.fill
+  const colorB = VERSUS_TEAM_COLORS.B.fill
+
+  // 팀 이름을 줄글 맨 앞 <strong>이 아니라 작은 배지로 뽑아서, "누가 하는
+  // 얘기인지"가 문장을 읽지 않아도 먼저 눈에 들어오게 한다(2026-09-15
+  // "카드/배지 UI" 피드백).
+  const teamTag = (label: string, color: string, phase: PhaseType) => (
+    <span
+      className="flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold"
+      style={{ background: `${color}1a`, color }}
+    >
+      {label}
+      <span className="font-normal opacity-80">{PHASE_SUFFIX[phase]}</span>
+    </span>
+  )
+
   return (
     <div className="space-y-2 rounded-lg border border-border p-3">
-      <p className="text-xs font-semibold text-muted-foreground">전술 개선방안</p>
-      <p className="text-sm" style={{ color: VERSUS_TEAM_COLORS.A.fill }}>
-        <strong>{labelA}</strong>{' '}
-        <span className="text-xs text-muted-foreground">({PHASE_SUFFIX[phaseA]})</span>{' '}
-        {suggestImprovement(advantage.bTopZone, third)}
-      </p>
-      <p className="text-sm" style={{ color: VERSUS_TEAM_COLORS.B.fill }}>
-        <strong>{labelB}</strong>{' '}
-        <span className="text-xs text-muted-foreground">({PHASE_SUFFIX[phaseB]})</span>{' '}
-        {suggestImprovement(advantage.aTopZone, third)}
-      </p>
+      <p className="text-sm font-semibold text-muted-foreground">전술 개선방안</p>
+      <div className="flex items-start gap-2">
+        {teamTag(labelA, colorA, phaseA)}
+        <p className="text-base text-muted-foreground">{suggestImprovement(advantage.bTopZone, third)}</p>
+      </div>
+      <div className="flex items-start gap-2">
+        {teamTag(labelB, colorB, phaseB)}
+        <p className="text-base text-muted-foreground">{suggestImprovement(advantage.aTopZone, third)}</p>
+      </div>
       {isolations.length > 0 && (
-        <div className="space-y-1 border-t border-border pt-2">
-          <p className="text-xs font-semibold text-muted-foreground">고립 매치업 (1v1)</p>
-          {isolations.map(({ zone, aPlayer, bPlayer }) => (
-            <p key={`${zone.channel}-${zone.third}`} className="text-sm text-muted-foreground">
-              <span style={{ color: VERSUS_TEAM_COLORS.A.fill }}>
-                {aPlayer.line} {aPlayer.player.name}
-              </span>
-              {' vs '}
-              <span style={{ color: VERSUS_TEAM_COLORS.B.fill }}>
-                {bPlayer.line} {bPlayer.player.name}
-              </span>
-              {' — '}
-              {CHANNEL_KOREAN[zone.channel]} · {third[zone.third]}에서 1대1로 고립됩니다
-            </p>
-          ))}
+        <div className="space-y-1.5 border-t border-border pt-2">
+          <p className="text-sm font-semibold text-muted-foreground">고립 매치업 (1v1)</p>
+          {isolations.map(({ zone, aPlayer, bPlayer }) => {
+            const keys = [`a-${aPlayer.player.id}`, `b-${bPlayer.player.id}`]
+            const active = highlight?.kind === 'players' && keys.every((k) => highlight.keys.includes(k))
+            return (
+              <button
+                key={`${zone.channel}-${zone.third}`}
+                type="button"
+                onClick={() => onTogglePlayers(keys)}
+                className="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-0.5 rounded-md bg-secondary/60 px-2 py-1.5 text-left transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                style={active ? { boxShadow: '0 0 0 1px #FACC15', background: 'rgba(250,204,21,0.12)' } : undefined}
+              >
+                <span className="flex items-center gap-1.5 text-base font-medium">
+                  <span style={{ color: colorA }}>
+                    {aPlayer.line} {aPlayer.player.name}
+                  </span>
+                  <span className="text-sm font-normal text-muted-foreground">vs</span>
+                  <span style={{ color: colorB }}>
+                    {bPlayer.line} {bPlayer.player.name}
+                  </span>
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {CHANNEL_KOREAN[zone.channel]} · {third[zone.third]}
+                </span>
+              </button>
+            )
+          })}
         </div>
       )}
     </div>

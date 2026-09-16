@@ -25,6 +25,7 @@ interface VersusShareCardProps {
   showOverload: boolean
   showPressingLine: boolean
   showAnnotations: boolean
+  showZoneNumbers: boolean
   ratio: '1:1' | '4:5'
 }
 
@@ -53,7 +54,7 @@ const SIDES: PitchSide[] = ['left', 'center', 'right']
  * (SharePngCard도 코멘트를 500자로 잘라내는 것과 같은 절제 판단).
  */
 export const VersusShareCard = forwardRef<HTMLDivElement, VersusShareCardProps>(function VersusShareCard(
-  { analysisA, analysisB, attacker, showChannelGrid, showOverload, showPressingLine, showAnnotations, ratio },
+  { analysisA, analysisB, attacker, showChannelGrid, showOverload, showPressingLine, showAnnotations, showZoneNumbers, ratio },
   ref,
 ) {
   const {
@@ -119,13 +120,13 @@ export const VersusShareCard = forwardRef<HTMLDivElement, VersusShareCardProps>(
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
                 <span style={{ color: colorA, fontSize: 20, fontWeight: 700, flex: 1 }}>
-                  {labelA} {aZones.length}구역 우세
+                  {labelA} {aZones.length}구역 수적 우위
                 </span>
                 <span style={{ color: SHARE_CARD_COLORS.subtitle, fontSize: 15, whiteSpace: 'nowrap', padding: '0 12px' }}>
                   전체 {totalZones}구역 중
                 </span>
                 <span style={{ color: colorB, fontSize: 20, fontWeight: 700, flex: 1, textAlign: 'right' }}>
-                  {labelB} {bZones.length}구역 우세
+                  {labelB} {bZones.length}구역 수적 우위
                 </span>
               </div>
               <div style={{ display: 'flex', height: 10, width: '100%', overflow: 'hidden', borderRadius: 999, background: 'rgba(148,163,184,0.2)' }}>
@@ -173,7 +174,7 @@ export const VersusShareCard = forwardRef<HTMLDivElement, VersusShareCardProps>(
                   orientation="landscape"
                 />
               )}
-              {showOverload && <MatchupOverloadLayer zones={zones} orientation="landscape" />}
+              {showOverload && <MatchupOverloadLayer zones={zones} orientation="landscape" showNumbers={showZoneNumbers} />}
               {showAnnotations && (
                 <g opacity={0.55}>
                   <AnnotationLayer

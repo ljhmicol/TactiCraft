@@ -40,6 +40,9 @@ interface StaticPlayerNodeProps {
    * "경로 위 어딘가"가 자연스럽지만, 선수 마커+글자는 궤적에서 떨어져
    * 보이면 렌더링 버그처럼 읽힐 위험이 있어 export에서는 껐다). */
   animated?: boolean
+  /** 하단 "고립 매치업" 행 클릭으로 지정된 선수인지(TO-DO 50-3). true면
+   * 마커 주위에 깜빡이는 링을 덧그린다. */
+  highlighted?: boolean
 }
 
 // 22명이 한 피치에 겹치는 대결 뷰 전용 축소 반지름(TO-DO 36) — 에디터의
@@ -78,6 +81,7 @@ export function StaticPlayerNode({
   labelYOffset = 0,
   runPoints = null,
   animated = true,
+  highlighted = false,
 }: StaticPlayerNodeProps) {
   const info = positionInfoAt(formation, index)
   const isGK = info?.line === 'GK'
@@ -127,6 +131,29 @@ export function StaticPlayerNode({
 
   return (
     <g>
+      {/* highlighted 값에 따라 마운트/언마운트하지 않고 항상 그린다 — 조건부
+          마운트였을 때는 이 링이 클릭된 그 순간에야 새로 생겨서 own 타이밍
+          시계가 0부터 다시 시작했다. 그 사이 선수 마커(아래 motion.ellipse)는
+          이미 한참 전부터 같은 run 루프를 돌고 있어서 서로 다른 지점에서
+          움직여 "따로 논다"(2026-09-15 버그 리포트). 항상 마운트해 두면 두
+          도형이 같은 순간에 cx/cy 애니메이션을 시작해 계속 같은 위상으로
+          움직이고, highlighted는 opacity만 0으로 꺼서 숨긴다. */}
+      <motion.ellipse
+        initial={{ cx: p.x, cy: p.y, opacity: 0 }}
+        // opacity 목표를 [배열]↔0(스칼라)로 바꾸면 repeat:Infinity 상태에서
+        // Framer가 끄는 순간에도 이전 루프를 안 멈추고 계속 깜빡이는 문제가
+        // 있었다(2026-09-15, "고립 매치업 껐는데도 계속 노란색 원이
+        // 깜빡여") — 꺼졌을 때도 똑같이 3칸짜리 배열([0,0,0])을 줘서 배열
+        // ↔배열로만 바뀌게 하면(값만 0으로) 이 문제가 없다.
+        animate={{ cx, cy, opacity: highlighted ? [0.5, 1, 0.5] : [0, 0, 0] }}
+        transition={{ cx: activeTransition, cy: activeTransition, opacity: { duration: 1.3, repeat: Infinity, ease: 'easeInOut' } }}
+        rx={RADIUS.rx * 1.7}
+        ry={RADIUS.ry * 1.7}
+        fill="none"
+        stroke="#FACC15"
+        strokeWidth={0.6}
+        pointerEvents="none"
+      />
       {isGK && (
         <motion.ellipse
           initial={{ cx: p.x, cy: p.y }}

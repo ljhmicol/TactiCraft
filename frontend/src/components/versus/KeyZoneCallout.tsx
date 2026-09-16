@@ -1,8 +1,8 @@
 import { InfoDialogButton } from '@/components/versus/InfoDialogButton'
-import { playersInZone, type ZonePlayer } from '@/lib/matchup'
+import { playersInZone, type MatchupHighlight, type ZonePlayer } from '@/lib/matchup'
 import { VERSUS_TEAM_COLORS } from '@/lib/theme'
 import { THIRD_KOREAN, type MatchupAdvantage, zoneLabel } from '@/lib/versusAdvantage'
-import type { Analysis, PhaseData, PlayerPosition, ZoneOverload } from '@/types/analysis'
+import type { Analysis, Channel, PhaseData, PlayerPosition, Third, ZoneOverload } from '@/types/analysis'
 
 interface KeyZoneCalloutProps {
   advantage: MatchupAdvantage
@@ -12,6 +12,9 @@ interface KeyZoneCalloutProps {
   analysisB: Analysis
   dataA: PhaseData
   positionsB: PlayerPosition[]
+  /** 현재 하이라이트된 대상(TO-DO 50-3) */
+  highlight: MatchupHighlight
+  onToggleZone: (channel: Channel, third: Third) => void
 }
 
 function playerListText(players: ZonePlayer[]): string {
@@ -34,10 +37,21 @@ function playerListText(players: ZonePlayer[]): string {
  * 아니라 렌더링할 때마다 현재 좌표로 새로 계산하는 값이다 — 국면을
  * 바꾸거나 다른 분석을 고르면 그때그때 다시 계산돼서 바뀐다.
  */
-export function KeyZoneCallout({ advantage, labelA, labelB, analysisA, analysisB, dataA, positionsB }: KeyZoneCalloutProps) {
+export function KeyZoneCallout({
+  advantage,
+  labelA,
+  labelB,
+  analysisA,
+  analysisB,
+  dataA,
+  positionsB,
+  highlight,
+  onToggleZone,
+}: KeyZoneCalloutProps) {
   const { aTopZone, bTopZone } = advantage
   if (!aTopZone && !bTopZone) return null
   const third = THIRD_KOREAN(labelA, labelB)
+  const isActive = (zone: ZoneOverload) => highlight?.kind === 'zone' && highlight.channel === zone.channel && highlight.third === zone.third
 
   const explain = (zone: ZoneOverload, label: string, opponentLabel: string, players: ZonePlayer[]) => (
     <>
@@ -52,13 +66,24 @@ export function KeyZoneCallout({ advantage, labelA, labelB, analysisA, analysisB
   )
 
   return (
-    <div className="flex flex-wrap gap-2 text-xs">
+    <div className="flex flex-wrap gap-2 text-sm">
       {aTopZone && (
         <span
           className="flex items-center gap-1 rounded-full border px-3 py-1 font-medium"
-          style={{ borderColor: `${VERSUS_TEAM_COLORS.A.fill}66`, background: `${VERSUS_TEAM_COLORS.A.fill}1a`, color: VERSUS_TEAM_COLORS.A.fill }}
+          style={{
+            borderColor: isActive(aTopZone) ? '#FACC15' : `${VERSUS_TEAM_COLORS.A.fill}66`,
+            background: `${VERSUS_TEAM_COLORS.A.fill}1a`,
+            color: VERSUS_TEAM_COLORS.A.fill,
+            boxShadow: isActive(aTopZone) ? '0 0 0 1px #FACC15' : undefined,
+          }}
         >
-          ★ {labelA} 키포인트: {zoneLabel(aTopZone, third)}
+          <button
+            type="button"
+            onClick={() => onToggleZone(aTopZone.channel, aTopZone.third)}
+            className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            ★ {labelA} 키포인트: {zoneLabel(aTopZone, third)}
+          </button>
           <InfoDialogButton title={`${labelA} 키포인트 구역`} ariaLabel={`${labelA} 키포인트 구역 설명 보기`} color={VERSUS_TEAM_COLORS.A.fill}>
             {explain(aTopZone, labelA, labelB, playersInZone(dataA.positions, analysisA.players, analysisA.formation, aTopZone.channel, aTopZone.third))}
           </InfoDialogButton>
@@ -67,9 +92,20 @@ export function KeyZoneCallout({ advantage, labelA, labelB, analysisA, analysisB
       {bTopZone && (
         <span
           className="flex items-center gap-1 rounded-full border px-3 py-1 font-medium"
-          style={{ borderColor: `${VERSUS_TEAM_COLORS.B.fill}66`, background: `${VERSUS_TEAM_COLORS.B.fill}1a`, color: VERSUS_TEAM_COLORS.B.fill }}
+          style={{
+            borderColor: isActive(bTopZone) ? '#FACC15' : `${VERSUS_TEAM_COLORS.B.fill}66`,
+            background: `${VERSUS_TEAM_COLORS.B.fill}1a`,
+            color: VERSUS_TEAM_COLORS.B.fill,
+            boxShadow: isActive(bTopZone) ? '0 0 0 1px #FACC15' : undefined,
+          }}
         >
-          ★ {labelB} 키포인트: {zoneLabel(bTopZone, third)}
+          <button
+            type="button"
+            onClick={() => onToggleZone(bTopZone.channel, bTopZone.third)}
+            className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            ★ {labelB} 키포인트: {zoneLabel(bTopZone, third)}
+          </button>
           <InfoDialogButton title={`${labelB} 키포인트 구역`} ariaLabel={`${labelB} 키포인트 구역 설명 보기`} color={VERSUS_TEAM_COLORS.B.fill}>
             {explain(bTopZone, labelB, labelA, playersInZone(positionsB, analysisB.players, analysisB.formation, bTopZone.channel, bTopZone.third))}
           </InfoDialogButton>

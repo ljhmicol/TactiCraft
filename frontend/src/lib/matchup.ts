@@ -24,6 +24,16 @@ import type { Analysis, Annotation, Channel, PhaseData, PhaseType, Player, Playe
  * VersusShareCard)만 이 배율로 ~1초/구간까지 늦춘다. */
 export const VERSUS_BALL_DURATION_SCALE = 1.8
 
+/**
+ * 상단 텍스트 패널(구역 배지·고립 매치업 행)을 클릭했을 때 피치 위에서
+ * 하이라이트할 대상(TO-DO 50-3, "상단 바와 피치 간의 인터랙션 연결"
+ * 피드백). 두 종류뿐이다 — 구역 하나(채널×서드)를 켜거나, 선수 마커
+ * 몇 명(marker.key 목록, buildMatchupMarkers의 `a-${playerId}`/`b-${playerId}`
+ * 형식)을 켠다. 같은 걸 다시 누르면 꺼야 하므로(토글) MatchupView가 이
+ * 타입으로 현재 상태를 들고 있다가 같은 target인지 비교한다.
+ */
+export type MatchupHighlight = { kind: 'zone'; channel: Channel; third: Third } | { kind: 'players'; keys: string[] } | null
+
 export interface MatchupData {
   phaseA: PhaseType
   phaseB: PhaseType
@@ -158,6 +168,28 @@ export function transformAnnotationsForMatchup(annotations: Annotation[], mirror
  * 공격하는 방향(y=0)에 오도록 맞춘다 — 그래야 "A 공격이 B 수비를 어떻게
  * 깨는지"가 실제 마주 선 두 팀처럼 겹쳐 보인다.
  */
+/**
+ * 오버로드는 기존 computeOverload(own vs opponentPositions)를 그대로 재사용한다 —
+ * A를 own, 미러링한 B를 opponent로 두면 15구역 우위 계산이 그대로 맞아떨어진다.
+ * `computeMatchupData`(고정 국면)와 `computeTransitionPositions`로 보간한
+ * 좌표(TO-DO 50번대, 공수 전환 슬라이더) 둘 다 이 헬퍼로 구역을 계산한다 —
+ * 같은 계산을 두 곳에서 따로 하면 한쪽만 고치는 실수가 나기 쉽다.
+ */
+export function computeZonesFromPositions(
+  aPositions: PlayerPosition[],
+  analysisA: Analysis,
+  bPositions: PlayerPosition[],
+  analysisB: Analysis,
+): ZoneOverload[] {
+  const syntheticPhase: PhaseData = {
+    positions: excludeGoalkeepers(aPositions, analysisA.players, analysisA.formation),
+    opponentPositions: excludeGoalkeepers(bPositions, analysisB.players, analysisB.formation).map(({ x, y }) => ({ x, y })),
+    comment: '',
+    annotations: [],
+  }
+  return computeOverload(syntheticPhase)
+}
+
 export function computeMatchupData(analysisA: Analysis, analysisB: Analysis, attacker: 'A' | 'B'): MatchupData {
   const phaseA: PhaseType = attacker === 'A' ? 'attack' : 'defense'
   const phaseB: PhaseType = attacker === 'B' ? 'attack' : 'defense'
@@ -165,15 +197,6 @@ export function computeMatchupData(analysisA: Analysis, analysisB: Analysis, att
   const dataB = analysisB.phases[phaseB]
 
   const positionsB: PlayerPosition[] = dataB.positions.map((p) => ({ playerId: p.playerId, ...mirrorPoint(p) }))
-
-  // 오버로드는 기존 computeOverload(own vs opponentPositions)를 그대로 재사용한다 —
-  // A를 own, 미러링한 B를 opponent로 두면 15구역 우위 계산이 그대로 맞아떨어진다.
-  const syntheticPhase: PhaseData = {
-    positions: excludeGoalkeepers(dataA.positions, analysisA.players, analysisA.formation),
-    opponentPositions: excludeGoalkeepers(positionsB, analysisB.players, analysisB.formation).map(({ x, y }) => ({ x, y })),
-    comment: '',
-    annotations: [],
-  }
 
   // 압박 라인은 "수비하는 쪽"의 것만 보여준다. 자동 산출은 항상 각 팀 고유
   // (미러링 전) 좌표로 계산한 뒤 B가 수비인 경우에만 결과를 미러링한다 —
@@ -200,7 +223,7 @@ export function computeMatchupData(analysisA: Analysis, analysisB: Analysis, att
 
   const labelA = analysisA.match.homeTeam
   const labelB = analysisB.match.homeTeam
-  const zones = computeOverload(syntheticPhase)
+  const zones = computeZonesFromPositions(dataA.positions, analysisA, positionsB, analysisB)
   const matchupAdvantage = computeMatchupAdvantage(zones)
 
   return {
@@ -216,6 +239,57 @@ export function computeMatchupData(analysisA: Analysis, analysisB: Analysis, att
     defendingPositions,
     defendingPressingLineY,
     defendingPressingLineLevel,
+  }
+}
+
+/**
+ * `from`→`to`를 `playerId`로 매칭해 선형 보간한다(TO-DO 50번대, "공수 전환
+ * 슬라이더" — 4번 개선안 중 축소판). 배열 인덱스로 짝짓지 않는 이유는
+ * B팀 좌표가 `computeMatchupData`에서 이미 `mirrorPoint`를 거쳐 순서가
+ * 보장되지 않기 때문이다. 한쪽 배열에만 있는 선수(현재 데이터 모델에선
+ * 국면마다 같은 11명이라 실제로는 안 생기지만)는 보간하지 않고 원래
+ * 좌표를 그대로 돌려준다 — 조용히 NaN을 만드는 대신.
+ */
+export function lerpPositions(from: PlayerPosition[], to: PlayerPosition[], t: number): PlayerPosition[] {
+  const toById = new Map(to.map((p) => [p.playerId, p]))
+  return from.map((f) => {
+    const target = toById.get(f.playerId)
+    if (!target) return f
+    return { playerId: f.playerId, x: f.x + (target.x - f.x) * t, y: f.y + (target.y - f.y) * t }
+  })
+}
+
+/**
+ * 공수 전환 슬라이더가 보여주는 중간 상태의 좌표(TO-DO 50번대) — "빌드업
+ * 시/파이널서드 진입 시/수비 블록 형성 시" 같은 새 스냅샷을 저장하는 대신,
+ * 이미 있는 공격↔수비 두 국면 사이를 보간해서 "지금 공수가 전환된다면"을
+ * 미리 보여주는 축소판이다(advisor 조언 — 턴오버 순간을 보여주는 게 유일하게
+ * 앞뒤가 맞는 해석: A가 공격→수비로 내려가는 동안 B는 수비→공격으로
+ * 올라간다, 둘이 각자 반대 방향으로 동시에 움직인다).
+ *
+ * t=0이면 지금 화면과 완전히 같은 상태(각 팀의 현재 국면)를 반환한다 —
+ * 호출하는 쪽(MatchupView)이 t=0일 때 이 함수 자체를 안 부르고 기존
+ * dataA.positions/positionsB를 그대로 쓰게 하는 게 더 안전하지만(불필요한
+ * 재계산·참조 변경을 피하려고), 이 함수만 따로 테스트하기 위해 t=0 엣지
+ * 케이스도 정확한 값을 내도록 만들어 둔다.
+ */
+export function computeTransitionPositions(
+  analysisA: Analysis,
+  analysisB: Analysis,
+  phaseA: PhaseType,
+  dataA: PhaseData,
+  positionsB: PlayerPosition[],
+  t: number,
+): { aPositions: PlayerPosition[]; bPositions: PlayerPosition[] } {
+  const otherPhase: PhaseType = phaseA === 'attack' ? 'defense' : 'attack'
+  const aTo = analysisA.phases[otherPhase].positions
+  // B의 목표 국면은 "전환이 끝나면 phaseA였던 이름을 B가 갖게 된다" — 항상
+  // phaseA/phaseB가 서로 반대(computeMatchupData)이므로 B의 현재 국면은
+  // otherPhase이고, 목표는 지금 A가 있는 국면(phaseA)이다.
+  const bTo = analysisB.phases[phaseA].positions.map((p) => ({ playerId: p.playerId, ...mirrorPoint(p) }))
+  return {
+    aPositions: lerpPositions(dataA.positions, aTo, t),
+    bPositions: lerpPositions(positionsB, bTo, t),
   }
 }
 

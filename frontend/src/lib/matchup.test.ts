@@ -4,9 +4,17 @@ import { fileURLToPath } from 'node:url'
 
 import { describe, expect, it } from 'vitest'
 
-import { buildMatchupMarkers, computeIsolationMatchups, computeMatchupData, playersInZone } from '@/lib/matchup'
+import {
+  buildMatchupMarkers,
+  computeIsolationMatchups,
+  computeMatchupData,
+  computeTransitionPositions,
+  lerpPositions,
+  playersInZone,
+} from '@/lib/matchup'
+import { mirrorPoint } from '@/lib/coords'
 import { analysisSchema } from '@/lib/schema'
-import type { Analysis } from '@/types/analysis'
+import type { Analysis, PlayerPosition } from '@/types/analysis'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const samplesDir = path.resolve(here, '../../public/samples/managers')
@@ -115,6 +123,71 @@ describe('computeIsolationMatchups', () => {
     for (let i = 1; i < isolations.length; i++) {
       expect(isolations[i - 1].weight).toBeGreaterThanOrEqual(isolations[i].weight)
     }
+  })
+})
+
+describe('lerpPositions (TO-DO 50번대, 공수 전환 슬라이더)', () => {
+  const from: PlayerPosition[] = [
+    { playerId: 'p1', x: 10, y: 20 },
+    { playerId: 'p2', x: 50, y: 50 },
+  ]
+  const to: PlayerPosition[] = [
+    { playerId: 'p1', x: 30, y: 60 },
+    { playerId: 'p2', x: 90, y: 10 },
+  ]
+
+  it('returns exactly the from-endpoint at t=0', () => {
+    expect(lerpPositions(from, to, 0)).toEqual(from)
+  })
+
+  it('returns exactly the to-endpoint at t=1', () => {
+    expect(lerpPositions(from, to, 1)).toEqual([
+      { playerId: 'p1', x: 30, y: 60 },
+      { playerId: 'p2', x: 90, y: 10 },
+    ])
+  })
+
+  it('interpolates linearly at t=0.5', () => {
+    expect(lerpPositions(from, to, 0.5)).toEqual([
+      { playerId: 'p1', x: 20, y: 40 },
+      { playerId: 'p2', x: 70, y: 30 },
+    ])
+  })
+
+  it('leaves a player missing from the target set at its original point instead of producing NaN', () => {
+    const partialTo: PlayerPosition[] = [{ playerId: 'p1', x: 30, y: 60 }]
+    const result = lerpPositions(from, partialTo, 0.5)
+    expect(result.find((p) => p.playerId === 'p2')).toEqual({ playerId: 'p2', x: 50, y: 50 })
+    expect(result.some((p) => Number.isNaN(p.x) || Number.isNaN(p.y))).toBe(false)
+  })
+})
+
+describe('computeTransitionPositions (TO-DO 50번대, 공수 전환 슬라이더)', () => {
+  it('at t=0 matches the current resting state exactly (A attacking)', () => {
+    const result = computeMatchupData(ancelotti, suwon, 'A')
+    const transition = computeTransitionPositions(ancelotti, suwon, result.phaseA, result.dataA, result.positionsB, 0)
+    expect(transition.aPositions).toEqual(result.dataA.positions)
+    expect(transition.bPositions).toEqual(result.positionsB)
+  })
+
+  it('at t=1, A has fully swapped into its other phase and B into A’s starting phase (mirrored)', () => {
+    const result = computeMatchupData(ancelotti, suwon, 'A') // phaseA='attack'
+    const transition = computeTransitionPositions(ancelotti, suwon, result.phaseA, result.dataA, result.positionsB, 1)
+    expect(transition.aPositions).toEqual(ancelotti.phases.defense.positions)
+    expect(transition.bPositions).toEqual(
+      suwon.phases.attack.positions.map((p) => ({ playerId: p.playerId, ...mirrorPoint(p) })),
+    )
+  })
+
+  it('is symmetric: computing from the B-attacking side and going to t=1 lands back on A-attacking positions', () => {
+    // attacker='B'일 때 phaseA='defense' — t=1로 보내면 A는 attack으로,
+    // B는(현재 attack인) B가 phaseA(defense)로 넘어간다. 이건 정확히
+    // attacker='A' 쪽 resting 상태(t=0)와 같아야 한다(둘 다 "A 공격 × B 수비").
+    const bAttacking = computeMatchupData(ancelotti, suwon, 'B') // phaseA='defense'
+    const transition = computeTransitionPositions(ancelotti, suwon, bAttacking.phaseA, bAttacking.dataA, bAttacking.positionsB, 1)
+    const aAttacking = computeMatchupData(ancelotti, suwon, 'A')
+    expect(transition.aPositions).toEqual(aAttacking.dataA.positions)
+    expect(transition.bPositions).toEqual(aAttacking.positionsB)
   })
 })
 
