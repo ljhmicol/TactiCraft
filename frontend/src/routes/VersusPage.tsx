@@ -31,6 +31,12 @@ export function VersusPage() {
   const [showPressingLine, setShowPressingLine] = useState(true)
   const [showAnnotations, setShowAnnotations] = useState(true)
   const [showZoneNumbers, setShowZoneNumbers] = useState(true)
+  // "병목" 빗금 레이어(2차 4개 개선안 3번, "국면별 텐션 시각화") — 기본
+  // false다. 다른 토글은 전부 기본 true(기존 화면 유지)인데 이것만 다른
+  // 이유: 이 레이어는 정보를 하나 더 얹는 것이라, 방금 "숫자 표시를
+  // 줄여서 덜 복잡하게"(50-2) 만든 작업과 정반대 방향이다 — 항상 켜져
+  // 있으면 그 작업이 무의미해지니 켜고 싶을 때만 켜는 옵션으로 둔다.
+  const [showBottleneck, setShowBottleneck] = useState(false)
   // 공수 전환 미리보기 슬라이더(TO-DO 50번대, "국면 토글/타임라인 슬라이더"
   // 4번 개선안의 축소판) — 0~100, 0이면 지금 공수 상태 그대로다. 공수
   // 교대 버튼을 누르면(=기준 자체가 바뀌면) 0으로 되돌린다 — 안 그러면
@@ -179,6 +185,17 @@ export function VersusPage() {
               set: setShowZoneNumbers,
               disabled: !showOverload,
             },
+            // "국면별 텐션 시각화"(2차 4개 개선안 3번) — 어느 팀이 우세한지가
+            // 아니라 두 포메이션이 겹쳐서 밀집되는 구역을 빗금으로 보여준다.
+            // 기본 Off — 위 "구역 수치"와 반대로, 정보를 하나 더 얹는
+            // 레이어라 원할 때만 켠다.
+            {
+              key: 'bottleneck',
+              label: '밀집 구역(병목)',
+              on: showBottleneck,
+              set: setShowBottleneck,
+              disabled: !showOverload,
+            },
             { key: 'pressingLine', label: '압박 라인(수비 팀)', on: showPressingLine, set: setShowPressingLine, disabled: false },
             { key: 'annotations', label: '이동 벡터', on: showAnnotations, set: setShowAnnotations, disabled: false },
           ] as const
@@ -312,6 +329,7 @@ export function VersusPage() {
               showPressingLine={showPressingLine}
               showAnnotations={showAnnotations}
               showZoneNumbers={showZoneNumbers}
+              showBottleneck={showBottleneck}
               transitionT={transitionT}
             />
           </div>
@@ -330,6 +348,7 @@ export function VersusPage() {
             showPressingLine={showPressingLine}
             showAnnotations={showAnnotations}
             showZoneNumbers={showZoneNumbers}
+            showBottleneck={showBottleneck}
             ratio={exportRatio}
           />
         </>

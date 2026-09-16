@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { AdvantageBadge } from '@/components/versus/AdvantageBadge'
 import { KeyZoneCallout } from '@/components/versus/KeyZoneCallout'
+import { MatchupBottleneckLayer } from '@/components/versus/MatchupBottleneckLayer'
 import { MatchupOverloadLayer } from '@/components/versus/MatchupOverloadLayer'
 import { TacticalSuggestions } from '@/components/versus/TacticalSuggestions'
 import { ZoneSideGauges } from '@/components/versus/ZoneSideGauges'
@@ -33,6 +34,9 @@ interface MatchupViewProps {
   showAnnotations: boolean
   /** 구역 수치("N:M") On/Off (TO-DO 50-2) — 색 타일은 showOverload가 계속 맡는다 */
   showZoneNumbers: boolean
+  /** "병목" 빗금 레이어 On/Off(2차 4개 개선안 3번, "국면별 텐션 시각화") —
+   * 기본 Off. showOverload가 꺼져 있으면 이 레이어도 그리지 않는다. */
+  showBottleneck: boolean
   /** 공수 전환 미리보기 슬라이더 값(TO-DO 50번대, 0~100) — 0이면 지금 화면
    * (기존 동작)과 완전히 같다. 0보다 크면 두 팀이 각자 반대 방향으로
    * (A는 attack→defense, B는 defense→attack) 보간된 좌표를 보여준다. */
@@ -55,6 +59,7 @@ export function MatchupView({
   showPressingLine,
   showAnnotations,
   showZoneNumbers,
+  showBottleneck,
   transitionT,
 }: MatchupViewProps) {
   // computeMatchupData/buildMatchupMarkers를 useMemo로 감싼다(TO-DO 48) —
@@ -172,6 +177,7 @@ export function MatchupView({
           {showOverload && (
             <MatchupOverloadLayer zones={liveZones} orientation="landscape" showNumbers={showZoneNumbers} highlight={highlight} />
           )}
+          {showOverload && showBottleneck && <MatchupBottleneckLayer zones={liveZones} orientation="landscape" />}
           {showAnnotations && transitionT === 0 && (
             <g opacity={0.55}>
               <AnnotationLayer

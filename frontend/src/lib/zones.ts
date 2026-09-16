@@ -51,6 +51,29 @@ export function zoneThreatWeight(channel: Channel, third: Third): number {
   return CHANNEL_THREAT_WEIGHT[channel] * THIRD_THREAT_WEIGHT[third]
 }
 
+export type BottleneckLevel = 'none' | 'weak' | 'strong'
+
+/**
+ * "병목(Bottleneck)" 구역 판정(2차 4개 개선안 3번, "국면별 텐션 시각화" —
+ * "어느 팀이 유리한지가 아니라... 두 포메이션이 겹치면서 가장 밀집되는
+ * 압박 구역이 어디인지"). `computeOverload`의 `level`(diff 기준, 어느
+ * 팀이 우세한지)과는 다른 판정 기준이다 — 병목은 우열과 무관하게 "양쪽
+ * 다 사람이 몰려 있어서 부딪히는 구역"만 짚는다.
+ *
+ * own===0 또는 opp===0이면 "겹친다"고 볼 수 없다 — 한쪽만 몰려 있는
+ * 구역(예: own=3, opp=0)은 이미 MatchupOverloadLayer의 색 타일이 보여주는
+ * "그 팀이 우세한 구역"일 뿐, 두 포메이션이 충돌하는 지점이 아니다.
+ * 양쪽 다 있을 때만 총원(own+opp)으로 세기를 매긴다 — own=1,opp=1(총 2)은
+ * 이미 "고립 매치업"(1v1) 기능이 다루는 영역이라 여기서는 병목으로 안 친다.
+ */
+export function zoneBottleneckLevel(own: number, opp: number): BottleneckLevel {
+  if (own === 0 || opp === 0) return 'none'
+  const total = own + opp
+  if (total >= 4) return 'strong'
+  if (total === 3) return 'weak'
+  return 'none'
+}
+
 /** 실측 환산 (105m x 68m) */
 export const PITCH_LENGTH_M = 105 // y축 = 길이
 export const PITCH_WIDTH_M = 68 // x축 = 폭

@@ -1,5 +1,6 @@
 import { forwardRef } from 'react'
 
+import { MatchupBottleneckLayer } from '@/components/versus/MatchupBottleneckLayer'
 import { MatchupOverloadLayer } from '@/components/versus/MatchupOverloadLayer'
 import { AnnotationLayer } from '@/components/pitch/AnnotationLayer'
 import { ChannelGrid } from '@/components/pitch/ChannelGrid'
@@ -26,6 +27,7 @@ interface VersusShareCardProps {
   showPressingLine: boolean
   showAnnotations: boolean
   showZoneNumbers: boolean
+  showBottleneck: boolean
   ratio: '1:1' | '4:5'
 }
 
@@ -54,7 +56,18 @@ const SIDES: PitchSide[] = ['left', 'center', 'right']
  * (SharePngCard도 코멘트를 500자로 잘라내는 것과 같은 절제 판단).
  */
 export const VersusShareCard = forwardRef<HTMLDivElement, VersusShareCardProps>(function VersusShareCard(
-  { analysisA, analysisB, attacker, showChannelGrid, showOverload, showPressingLine, showAnnotations, showZoneNumbers, ratio },
+  {
+    analysisA,
+    analysisB,
+    attacker,
+    showChannelGrid,
+    showOverload,
+    showPressingLine,
+    showAnnotations,
+    showZoneNumbers,
+    showBottleneck,
+    ratio,
+  },
   ref,
 ) {
   const {
@@ -175,6 +188,7 @@ export const VersusShareCard = forwardRef<HTMLDivElement, VersusShareCardProps>(
                 />
               )}
               {showOverload && <MatchupOverloadLayer zones={zones} orientation="landscape" showNumbers={showZoneNumbers} />}
+              {showOverload && showBottleneck && <MatchupBottleneckLayer zones={zones} orientation="landscape" />}
               {showAnnotations && (
                 <g opacity={0.55}>
                   <AnnotationLayer
