@@ -39,6 +39,7 @@ _ensure_column("analyses", "thumbnail", "TEXT")
 _ensure_column("analyses", "tags", "TEXT DEFAULT '[]'")
 _ensure_column("users", "username", "VARCHAR")
 _ensure_column("analyses", "is_public", "BOOLEAN DEFAULT 0")
+_ensure_column("comments", "parent_id", "INTEGER REFERENCES comments(id) ON DELETE CASCADE")
 
 
 def _backfill_usernames() -> None:

@@ -19,6 +19,10 @@ class AnalysisNotFound(Exception):
     pass
 
 
+class CommentNotFound(Exception):
+    pass
+
+
 def _now() -> str:
     return datetime.now().isoformat(timespec="seconds")
 
@@ -272,20 +276,98 @@ def to_analysis_dict(row: models.Analysis) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def list_comments(db: Session, analysis_id: int) -> List[models.Comment]:
-    """오래된 것부터 — 대화 스레드처럼 위에서 아래로 시간순으로 읽히게."""
-    return (
+def _annotate_reactions(
+    db: Session, comments: List[models.Comment], current_user_id: Optional[int]
+) -> List[dict]:
+    """댓글 목록에 좋아요/싫어요 집계와 "내 반응"을 붙인다(TO-DO 54).
+    list_public_analyses의 댓글 수 집계와 같은 이유로 N+1을 피하려 댓글
+    id 목록으로 한 번에 GROUP BY 집계한 뒤 파이썬에서 합친다."""
+    comment_ids = [c.id for c in comments]
+    like_counts: dict[int, int] = {}
+    dislike_counts: dict[int, int] = {}
+    my_reactions: dict[int, str] = {}
+    if comment_ids:
+        count_rows = (
+            db.query(
+                models.CommentReaction.comment_id,
+                models.CommentReaction.value,
+                func.count(models.CommentReaction.id),
+            )
+            .filter(models.CommentReaction.comment_id.in_(comment_ids))
+            .group_by(models.CommentReaction.comment_id, models.CommentReaction.value)
+            .all()
+        )
+        for comment_id, value, count in count_rows:
+            if value == 1:
+                like_counts[comment_id] = count
+            else:
+                dislike_counts[comment_id] = count
+        if current_user_id is not None:
+            mine = (
+                db.query(models.CommentReaction.comment_id, models.CommentReaction.value)
+                .filter(
+                    models.CommentReaction.comment_id.in_(comment_ids),
+                    models.CommentReaction.user_id == current_user_id,
+                )
+                .all()
+            )
+            my_reactions = {cid: ("like" if v == 1 else "dislike") for cid, v in mine}
+
+    result = []
+    for c in comments:
+        result.append(
+            {
+                "id": c.id,
+                "analysis_id": c.analysis_id,
+                "user_id": c.user_id,
+                "parent_id": c.parent_id,
+                "username": c.username,
+                "body": c.body,
+                "created_at": c.created_at,
+                "like_count": like_counts.get(c.id, 0),
+                "dislike_count": dislike_counts.get(c.id, 0),
+                "my_reaction": my_reactions.get(c.id),
+            }
+        )
+    return result
+
+
+def list_comments(
+    db: Session, analysis_id: int, current_user_id: Optional[int] = None
+) -> List[dict]:
+    """오래된 것부터 — 대화 스레드처럼 위에서 아래로 시간순으로 읽히게.
+    최상위 댓글·대댓글 모두 평평하게 반환한다(parent_id로 구분) — 트리로
+    묶는 건 프론트 책임(CommunityComments가 parent_id로 그룹핑)."""
+    comments = (
         db.query(models.Comment)
         .filter(models.Comment.analysis_id == analysis_id)
         .order_by(models.Comment.id.asc())
         .all()
     )
+    return _annotate_reactions(db, comments, current_user_id)
 
 
-def create_comment(db: Session, analysis_id: int, user: "models.User", body: str) -> models.Comment:
+def create_comment(
+    db: Session,
+    analysis_id: int,
+    user: "models.User",
+    body: str,
+    parent_id: Optional[int] = None,
+) -> models.Comment:
+    """parent_id가 있으면 대댓글(TO-DO 54). 대댓글에 다시 답글을 달면(즉
+    parent가 이미 parent_id를 가지고 있으면) 그 조상의 최상위 댓글로
+    평탄화한다 — 무한 중첩 없이 1단계 깊이만 허용하는 설계다."""
+    if parent_id is not None:
+        parent = get_comment(db, parent_id)
+        if parent is None or parent.analysis_id != analysis_id:
+            raise CommentNotFound()
+        if parent.parent_id is not None:
+            parent_id = parent.parent_id
+
     comment = models.Comment(
         analysis_id=analysis_id,
         user_id=user.id,
+        parent_id=parent_id,
         username=user.username or user.email.split("@")[0],
         body=body,
         created_at=_now(),
@@ -301,8 +383,63 @@ def get_comment(db: Session, comment_id: int) -> Optional[models.Comment]:
 
 
 def delete_comment(db: Session, comment_id: int) -> None:
+    """이 댓글이 최상위 댓글이면 대댓글도 함께 지워진다 — 모델의
+    `ondelete="CASCADE"`(DB 레벨, database.py의 PRAGMA foreign_keys=ON로
+    활성화)가 처리한다."""
     db.query(models.Comment).filter(models.Comment.id == comment_id).delete()
     db.commit()
+
+
+def toggle_comment_reaction(
+    db: Session, comment_id: int, user: "models.User", value: str
+) -> tuple[Optional[str], int, int]:
+    """댓글 좋아요/싫어요 토글(TO-DO 54). analyses의 toggle_like와 같은
+    토글 원칙이되, 좋아요·싫어요가 상호 배타적이라 행의 존재가 아니라
+    `value`(1|-1) 컬럼으로 상태를 표현한다:
+    - 반응이 없으면: 새로 만든다(누름)
+    - 같은 값을 다시 누르면: 지운다(취소)
+    - 반대 값을 누르면: value만 바꾼다(좋아요→싫어요 전환, 행 추가 없음)
+    반환값은 (내 최종 반응 | None, like_count, dislike_count) — 프론트가
+    재조회 없이 버튼·카운트를 즉시 갱신하도록 analyses의 LikeToggleOut과
+    같은 방식.
+    """
+    numeric_value = 1 if value == "like" else -1
+    existing = (
+        db.query(models.CommentReaction)
+        .filter(
+            models.CommentReaction.comment_id == comment_id,
+            models.CommentReaction.user_id == user.id,
+        )
+        .first()
+    )
+    if existing is None:
+        db.add(
+            models.CommentReaction(
+                comment_id=comment_id, user_id=user.id, value=numeric_value, created_at=_now()
+            )
+        )
+        db.commit()
+        my_reaction: Optional[str] = value
+    elif existing.value == numeric_value:
+        db.delete(existing)
+        db.commit()
+        my_reaction = None
+    else:
+        existing.value = numeric_value
+        db.commit()
+        my_reaction = value
+
+    like_count = (
+        db.query(func.count(models.CommentReaction.id))
+        .filter(models.CommentReaction.comment_id == comment_id, models.CommentReaction.value == 1)
+        .scalar()
+    )
+    dislike_count = (
+        db.query(func.count(models.CommentReaction.id))
+        .filter(models.CommentReaction.comment_id == comment_id, models.CommentReaction.value == -1)
+        .scalar()
+    )
+    return my_reaction, like_count, dislike_count
 
 
 # ---------------------------------------------------------------------------

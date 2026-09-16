@@ -175,27 +175,47 @@ export function changePassword(currentPassword: string, newPassword: string): Pr
   })
 }
 
-// 댓글(TO-DO 12번) — 분석 전체 하나에 붙는 평평한 목록. 읽기는 공유 링크
-// 방문자 누구나(비로그인 포함), 작성은 로그인 필수(백엔드가 401로 막는다).
+// 댓글(TO-DO 12번) + 대댓글·좋아요/싫어요(TO-DO 54, 2026-09-16). 읽기는
+// 공유 링크 방문자 누구나(비로그인 포함), 작성·반응은 로그인 필수(백엔드가
+// 401로 막는다). parentId가 있으면 대댓글 — 최상위 댓글이면 undefined.
 export interface Comment {
   id: number
   analysisId: number
   userId: number
+  parentId?: number
   username: string
   body: string
   createdAt: string
+  likeCount: number
+  dislikeCount: number
+  myReaction: 'like' | 'dislike' | null
 }
 
 export function fetchComments(analysisId: number): Promise<Comment[]> {
   return apiFetch(`/analyses/${analysisId}/comments`)
 }
 
-export function createComment(analysisId: number, body: string): Promise<Comment> {
-  return apiFetch(`/analyses/${analysisId}/comments`, { method: 'POST', body: JSON.stringify({ body }) })
+/** parentId를 주면 대댓글로 등록된다 — 대댓글에 또 답글을 달아도(대댓글의
+ * id를 parentId로 넘겨도) 백엔드가 최상위 댓글로 평탄화한다(1단계 깊이만). */
+export function createComment(analysisId: number, body: string, parentId?: number): Promise<Comment> {
+  return apiFetch(`/analyses/${analysisId}/comments`, {
+    method: 'POST',
+    body: JSON.stringify({ body, parentId }),
+  })
 }
 
 export function deleteComment(commentId: number): Promise<void> {
   return apiFetch(`/comments/${commentId}`, { method: 'DELETE' })
+}
+
+/** 댓글 좋아요/싫어요 토글(TO-DO 54) — 로그인 필수. 같은 값을 다시 누르면
+ * 취소, 반대 값을 누르면 전환된다. 프론트가 재조회 없이 즉시 반영하도록
+ * 최신 my_reaction/카운트를 한 번에 돌려준다. */
+export function toggleCommentReaction(
+  commentId: number,
+  value: 'like' | 'dislike',
+): Promise<{ myReaction: 'like' | 'dislike' | null; likeCount: number; dislikeCount: number }> {
+  return apiFetch(`/comments/${commentId}/reaction`, { method: 'POST', body: JSON.stringify({ value }) })
 }
 
 /** 앱 진입 시 1회, 저장 실패 시 재확인한다 (3단계 §2.1). 타임아웃 2초. */

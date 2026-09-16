@@ -237,10 +237,15 @@ class ChangingPoint(Base):
 
 
 class Comment(Base):
-    """분석 전체에 붙는 댓글(TO-DO 12번). 스레드/답글 없이 평평한 목록 —
-    사용자가 "분석 전체 하나에"를 선택했다(2026-09-10). 새 테이블이라
-    create_all이 자동 생성한다(annotations/changing_points와 같은 이유로
-    ALTER TABLE 불필요).
+    """분석 전체에 붙는 댓글(TO-DO 12번) + 대댓글(TO-DO 54, 2026-09-16).
+
+    2026-09-10엔 "스레드/답글 없이 평평한 목록"을 선택했으나(당시 사용자
+    결정), 2026-09-16에 "대댓글을 남길 수 있으면 좋겠어"로 번복됐다 —
+    `parent_id`(자기 참조 FK)로 1단계 깊이만 표현한다: 대댓글에 다시
+    답글을 달면 그 대댓글의 부모(즉 최상위 댓글)로 평탄화한다(무한 중첩
+    방지, crud.create_comment 참조). 최상위 댓글이면 NULL. 기존 테이블에
+    컬럼을 추가하는 것이라 create_all이 아니라 main.py의 `_ensure_column`이
+    처리한다(players.tactical_role과 같은 이유).
 
     username은 users.username과 중복 저장이다(정규화 위반) — 이 프로젝트가
     이미 쓰는 패턴(분석 목록 썸네일을 PNG data URL로 통째로 저장)과 같은
@@ -255,12 +260,36 @@ class Comment(Base):
         Integer, ForeignKey("analyses.id", ondelete="CASCADE"), nullable=False
     )
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    parent_id = Column(Integer, ForeignKey("comments.id", ondelete="CASCADE"), nullable=True)
     username = Column(String, nullable=False)
     body = Column(Text, nullable=False)
     created_at = Column(String, nullable=False)
 
     analysis = relationship("Analysis")
     user = relationship("User")
+
+
+class CommentReaction(Base):
+    """댓글 좋아요/싫어요(TO-DO 54) — Like(분석 좋아요)와 달리 좋아요·싫어요가
+    상호 배타적이라 bool 행의 존재 여부가 아니라 `value`(1=좋아요, -1=싫어요)
+    컬럼으로 상태를 표현한다. (comment_id, user_id) 유니크 제약으로 1인
+    1표만 — 같은 값을 다시 누르면 취소(행 삭제), 반대 값을 누르면 value만
+    갱신한다(crud.toggle_comment_reaction). 새 테이블이라 create_all이
+    자동 생성한다.
+    """
+
+    __tablename__ = "comment_reactions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    comment_id = Column(Integer, ForeignKey("comments.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    value = Column(Integer, nullable=False)  # 1(좋아요) | -1(싫어요)
+    created_at = Column(String, nullable=False)
+
+    comment = relationship("Comment")
+    user = relationship("User")
+
+    __table_args__ = (UniqueConstraint("comment_id", "user_id", name="uq_comment_reactions_comment_user"),)
 
 
 class Like(Base):

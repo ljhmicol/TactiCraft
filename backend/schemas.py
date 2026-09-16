@@ -307,11 +307,13 @@ class UserOut(BaseModel):
     username: Optional[str] = None  # 백필 전 구버전 계정은 없을 수 있다
 
 
-# 댓글(TO-DO 12번) — 분석 전체 하나에 붙는 평평한 목록(스레드 없음, 2026-09-10
-# 사용자 결정). 작성은 로그인 필수, 삭제는 작성자 본인 또는 분석 소유자만
-# (라우터에서 확인).
+# 댓글(TO-DO 12번) + 대댓글·좋아요/싫어요(TO-DO 54, 2026-09-16). 작성은
+# 로그인 필수, 삭제는 작성자 본인 또는 분석 소유자만(라우터에서 확인).
 class CommentIn(BaseModel):
     body: str = Field(min_length=1, max_length=2000)
+    # 대댓글 대상 댓글 id — 없으면 최상위 댓글. 대댓글에 또 답글을 달면
+    # crud.create_comment가 최상위 댓글로 평탄화한다(1단계 깊이만 허용).
+    parent_id: Optional[int] = None
 
     @field_validator("body")
     @classmethod
@@ -328,6 +330,25 @@ class CommentOut(BaseModel):
     id: int
     analysis_id: int
     user_id: int
+    parent_id: Optional[int] = None
     username: str
     body: str
     created_at: str
+    like_count: int = 0
+    dislike_count: int = 0
+    # 지금 보는 사용자의 반응 — "like" | "dislike" | None. 비로그인 사용자는
+    # 항상 None(자기 것이 없으니).
+    my_reaction: Optional[Literal["like", "dislike"]] = None
+
+
+class CommentReactionIn(BaseModel):
+    """댓글 좋아요/싫어요(TO-DO 54). 좋아요·싫어요가 상호 배타적이라 두 개의
+    bool 필드 대신 어느 쪽을 눌렀는지 하나로 받는다."""
+
+    value: Literal["like", "dislike"]
+
+
+class CommentReactionOut(BaseModel):
+    my_reaction: Optional[Literal["like", "dislike"]] = None
+    like_count: int
+    dislike_count: int
