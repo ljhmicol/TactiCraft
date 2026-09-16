@@ -241,22 +241,48 @@ export function VersusPage() {
             </Button>
           </div>
 
+          {/* EditorPage와 같은 이유(2026-09-11)로 dvh 폴백 — 모바일 실기기에서만
+              주소창 때문에 vh가 잘못 계산되는 문제 대응.
+              높이 82vh→90vh→94vh→97vh→99vh, max-w-6xl→max-w-7xl→
+              max-w-[1800px]→max-w-[2000px]→max-w-[2200px](2026-09-15,
+              "전술판이 너무 작아"류 요청이 네 차례째) — Pitch(landscape)는
+              aspect-[105/68] h-full로 높이 기준 너비를 계산한다(Pitch.tsx 주석
+              참조). 99vh는 100vh 바로 아래 — 뷰포트 안 스크롤바·브라우저
+              크롬과 겹쳐 세로 스크롤이 생기는 걸 피하려고 100vh 자체는 안
+              쓴다(모바일 dvh 폴백과 같은 종류의 여유분). 텍스트 패널은 위
+              (공수 전환 슬라이더)·MatchupView 안(AdvantageBadge 등)에서
+              각자 max-w-6xl로 따로 고정돼 있어서, 이 박스를 더 키워도
+              커지는 건 피치뿐이다. */}
+          <div className="mx-auto h-[99vh] w-full max-w-[2200px] supports-[height:100dvh]:h-[99dvh]">
+            <MatchupView
+              analysisA={analysisA.data}
+              analysisB={analysisB.data}
+              attacker={attacker}
+              showChannelGrid={showChannelGrid}
+              showOverload={showOverload}
+              showPressingLine={showPressingLine}
+              showAnnotations={showAnnotations}
+              showZoneNumbers={showZoneNumbers}
+              showBottleneck={showBottleneck}
+              transitionT={transitionT}
+            />
+          </div>
+
           {/* 공수 전환 미리보기(TO-DO 50번대) — "국면을 시간 흐름으로 쪼개 보고
               싶다"는 요청의 축소판이다. 새 스냅샷("빌드업 시" 등)을 만드는 대신
               이미 있는 공격↔수비 두 국면을 선형 보간해서, 턴오버가 일어나
               반대 국면으로 바뀌는 순간 15구역 수적 우위가 어떻게 움직이는지
-              미리 본다. 선수 위치·구역 우위(아래 카드들)만 실시간으로 바뀌고,
+              미리 본다. 선수 위치·구역 우위(위 카드들)만 실시간으로 바뀌고,
               압박 라인·이동 벡터는 숨겨지며, 전술 개선방안·고립 매치업·
               키포인트는 0% 상태(지금 공수 상태) 기준으로 고정된다 — 사용자가
               슬라이더로 만들어낸 가상의 배치에 대해 "이 선수를 여기로
               재배치하라"는 식의 조언을 만들어내면 안 되기 때문이다(가짜 예측
               금지 원칙과 같은 이유).
-              위치·너비(2026-09-15, "png내보내기 아래, 수적우위 바로 위에
-              두자. 길이를 수적우위랑 같게") — PNG 내보내기 바로 아래,
-              MatchupView가 그리는 "N구역 수적 우위" 카드 바로 위로 옮기고,
-              그 카드와 같은 폭(MatchupView.tsx의 max-w-6xl 래퍼와 동일)으로
-              맞췄다. 글자 크기(2026-09-15, "콘텐츠 글씨들을 조금만
-              키워줘")도 버튼·라벨과 같이 한 단계씩 키웠다. */}
+              위치(2026-09-16, "공수전환 미리보기를 고립매치업 아래로
+              내리자") — PNG 내보내기 바로 아래·수적 우위 카드 바로 위였던
+              자리에서, 피치 박스(그 안 맨 아래가 TacticalSuggestions의
+              "고립 매치업") 바로 아래로 옮겼다. 폭은 그대로 max-w-6xl —
+              MatchupView가 텍스트 패널에 쓰는 폭과 계속 맞춘다. */}
           <div className="mx-auto w-full max-w-6xl space-y-1 rounded-lg border border-border p-3">
             <div className="flex items-center justify-between text-sm font-medium text-muted-foreground">
               <span className="flex items-center gap-2">
@@ -307,32 +333,6 @@ export function VersusPage() {
             </p>
           </div>
 
-          {/* EditorPage와 같은 이유(2026-09-11)로 dvh 폴백 — 모바일 실기기에서만
-              주소창 때문에 vh가 잘못 계산되는 문제 대응.
-              높이 82vh→90vh→94vh→97vh→99vh, max-w-6xl→max-w-7xl→
-              max-w-[1800px]→max-w-[2000px]→max-w-[2200px](2026-09-15,
-              "전술판이 너무 작아"류 요청이 네 차례째) — Pitch(landscape)는
-              aspect-[105/68] h-full로 높이 기준 너비를 계산한다(Pitch.tsx 주석
-              참조). 99vh는 100vh 바로 아래 — 뷰포트 안 스크롤바·브라우저
-              크롬과 겹쳐 세로 스크롤이 생기는 걸 피하려고 100vh 자체는 안
-              쓴다(모바일 dvh 폴백과 같은 종류의 여유분). 텍스트 패널은 위
-              (공수 전환 슬라이더)·MatchupView 안(AdvantageBadge 등)에서
-              각자 max-w-6xl로 따로 고정돼 있어서, 이 박스를 더 키워도
-              커지는 건 피치뿐이다. */}
-          <div className="mx-auto h-[99vh] w-full max-w-[2200px] supports-[height:100dvh]:h-[99dvh]">
-            <MatchupView
-              analysisA={analysisA.data}
-              analysisB={analysisB.data}
-              attacker={attacker}
-              showChannelGrid={showChannelGrid}
-              showOverload={showOverload}
-              showPressingLine={showPressingLine}
-              showAnnotations={showAnnotations}
-              showZoneNumbers={showZoneNumbers}
-              showBottleneck={showBottleneck}
-              transitionT={transitionT}
-            />
-          </div>
           {/* VersusShareCard(PNG 카드)엔 transitionT를 안 넘긴다 — 슬라이더로
               스크러빙 중인 상태는 탐색용 미리보기지 "저장할 요약"이 아니다
               (TacticalSuggestions를 카드에서 뺀 41번, 애니메이션을 끈 48/49번과
