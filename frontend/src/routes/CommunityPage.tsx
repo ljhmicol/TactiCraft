@@ -1,7 +1,8 @@
 import { Heart, MessageCircle } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
+import { Input } from '@/components/ui/input'
 import { useCommunityAnalyses, useToggleLike } from '@/hooks/useCommunity'
 import { useCurrentUser } from '@/hooks/useAuth'
 import { useServerHealth } from '@/hooks/useServerHealth'
@@ -36,6 +37,12 @@ const SORT_OPTIONS: { value: SortMode; label: string }[] = [
  * 공백으로 골라 사용자가 확정했다. 목록 조회는 비로그인도 가능하지만
  * 좋아요를 누르는 건 댓글 작성과 같은 이유로 로그인이 필요하다 — 누가
  * 눌렀는지 알아야 1인 1회 제한과 하트 채움 표시가 가능하다.
+ *
+ * 검색/태그 필터(2026-09-17, "커뮤니티 검색/필터 진행해줘") — 저장
+ * 목록(AnalysesPage)의 패턴을 그대로 따른다: 정렬(recent/popular)만
+ * 서버에서 다시 받아오고, 검색·태그는 이미 받아온 목록을 프론트에서
+ * 거른다(공유된 분석이 이 앱 규모에서 서버 왕복이 필요할 만큼 많아질
+ * 걸로 보이지 않는다 — AnalysesPage 상단 주석과 같은 판단).
  */
 export function CommunityPage() {
   const { isServerUp, isChecking } = useServerHealth()
@@ -44,6 +51,27 @@ export function CommunityPage() {
   const [sort, setSort] = useState<SortMode>('recent')
   const { data, isLoading, isError } = useCommunityAnalyses(sort)
   const toggleLike = useToggleLike()
+  const [search, setSearch] = useState('')
+  const [activeTag, setActiveTag] = useState<string | null>(null)
+
+  const allTags = useMemo(() => {
+    const set = new Set<string>()
+    for (const a of data ?? []) for (const t of a.tags) set.add(t)
+    return [...set].sort()
+  }, [data])
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return (data ?? []).filter((a) => {
+      const matchesSearch =
+        !q ||
+        [a.matchName, a.homeTeam, a.awayTeam, a.matchDate, a.ownerUsername, a.competition ?? '']
+          .some((field) => field.toLowerCase().includes(q)) ||
+        a.tags.some((t) => t.toLowerCase().includes(q))
+      const matchesTag = !activeTag || a.tags.includes(activeTag)
+      return matchesSearch && matchesTag
+    })
+  }, [data, search, activeTag])
 
   const handleLikeClick = (e: React.MouseEvent, analysisId: number) => {
     e.preventDefault()
@@ -62,22 +90,49 @@ export function CommunityPage() {
         다른 사람이 공유한 분석을 둘러보고 댓글을 남겨보세요. 로그인 없이도 볼 수 있습니다.
       </p>
 
-      <div className="mb-4 flex gap-1.5">
-        {SORT_OPTIONS.map((opt) => (
-          <button
-            key={opt.value}
-            type="button"
-            onClick={() => setSort(opt.value)}
-            className={cn(
-              'whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-              sort === opt.value
-                ? 'bg-accent text-accent-foreground'
-                : 'bg-secondary text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {opt.label}
-          </button>
-        ))}
+      <div className="mb-3 flex flex-col gap-2">
+        <div className="flex gap-1.5">
+          {SORT_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setSort(opt.value)}
+              className={cn(
+                'whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                sort === opt.value
+                  ? 'bg-accent text-accent-foreground'
+                  : 'bg-secondary text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="매치명·팀·작성자·태그 검색"
+          className="max-w-xs"
+        />
+        {allTags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {allTags.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => setActiveTag((cur) => (cur === tag ? null : tag))}
+                className={cn(
+                  'whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                  activeTag === tag
+                    ? 'bg-accent text-accent-foreground'
+                    : 'bg-secondary text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {isChecking ? (
@@ -94,9 +149,11 @@ export function CommunityPage() {
         <p className="text-muted-foreground">
           아직 공유된 분석이 없습니다. 에디터에서 &quot;커뮤니티에 공유&quot;를 눌러 첫 번째로 공유해보세요.
         </p>
+      ) : filtered.length === 0 ? (
+        <p className="text-muted-foreground">검색·필터 조건에 맞는 분석이 없습니다.</p>
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {data.map((a) => (
+          {filtered.map((a) => (
             <Link
               key={a.id}
               to={`/share/${a.id}`}
