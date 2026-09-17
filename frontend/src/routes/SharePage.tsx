@@ -121,20 +121,6 @@ export function SharePage() {
             {analysis.match.matchDate}
             {analysis.match.competition ? ` · ${analysis.match.competition}` : ''}
           </p>
-          <button
-            type="button"
-            onClick={handleLikeClick}
-            disabled={toggleLike.isPending}
-            title={isLoggedIn ? undefined : '로그인이 필요합니다'}
-            className={cn(
-              'mt-1 flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none disabled:opacity-50',
-              analysis.likedByMe && 'text-rose-400 hover:text-rose-400',
-            )}
-            aria-label={analysis.likedByMe ? '좋아요 취소' : '좋아요'}
-          >
-            <Heart className={cn('h-4 w-4', analysis.likedByMe && 'fill-current')} />
-            {analysis.likeCount ?? 0}
-          </button>
         </div>
         <div className="flex items-center gap-2">
           <Select value={ratio} onValueChange={(v) => setRatio(v as '1:1' | '4:5')}>
@@ -264,6 +250,25 @@ export function SharePage() {
           <p className="whitespace-pre-wrap text-sm text-muted-foreground">{bodyText}</p>
         </div>
       )}
+
+      {/* 좋아요(TO-DO 58) 위치 — 처음엔 제목 아래(상단)에 뒀다가, "좋아요를
+       * 댓글 바로 위로 이동시켜줘"(2026-09-17) 요청으로 여기로 옮겼다.
+       * "게시물을 다 읽고 반응한다"는 순서(먼저 전술판·코멘트를 보고,
+       * 그다음 반응 표시 → 댓글)가 소셜 피드에서 더 흔한 배치라는 판단. */}
+      <button
+        type="button"
+        onClick={handleLikeClick}
+        disabled={toggleLike.isPending}
+        title={isLoggedIn ? undefined : '로그인이 필요합니다'}
+        className={cn(
+          'flex items-center gap-1.5 self-start text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none disabled:opacity-50',
+          analysis.likedByMe && 'text-rose-400 hover:text-rose-400',
+        )}
+        aria-label={analysis.likedByMe ? '좋아요 취소' : '좋아요'}
+      >
+        <Heart className={cn('h-4 w-4', analysis.likedByMe && 'fill-current')} />
+        {analysis.likeCount ?? 0}
+      </button>
 
       {analysis.id !== undefined && <CommunityComments analysisId={analysis.id} isOwner={Boolean(analysis.isOwner)} />}
     </div>
