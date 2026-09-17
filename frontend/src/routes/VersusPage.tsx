@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import { VersusShareCard } from '@/components/export/VersusShareCard'
 import { MatchupView } from '@/components/versus/MatchupView'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useAnalyses, useAnalysis } from '@/hooks/useAnalyses'
+import { useCurrentUser } from '@/hooks/useAuth'
 import { useServerHealth } from '@/hooks/useServerHealth'
 import { exportCard } from '@/lib/exportImage'
 
@@ -23,6 +24,15 @@ const TRANSITION_AUTO_PLAY_MS = 2500
  */
 export function VersusPage() {
   const { isServerUp, isChecking } = useServerHealth()
+  // useAnalyses()는 비로그인 상태에서 요청 자체를 안 보낸다(enabled:
+  // isLoggedIn, useAnalyses.ts 참조) — 그런데도 react-query 캐시에 이전
+  // 세션의 401 에러 상태가 남아 있으면 이 페이지의 isError가 true로
+  // 뜨면서 "목록을 불러오지 못했습니다"라는, 원인과 안 맞는 메시지가
+  // 나온다(2026-09-17 사용자 리포트). AnalysesPage(저장 목록)와 같은
+  // 방식으로 isLoggedIn을 직접 확인해 로그인 필요 안내를 먼저 갈라낸다 —
+  // isError 분기 자체가 도달하기 전에 걸러지므로 캐시 상태와 무관하게 항상
+  // 맞는 메시지가 뜬다.
+  const { isLoggedIn, isChecking: isCheckingAuth } = useCurrentUser()
   const { data: analyses, isLoading, isError } = useAnalyses()
   // 에디터의 "상대팀과 대결" 버튼(2026-09-16)이 `?a=<analysisId>`로 넘어오면
   // 전술 A를 자동으로 채운다 — B는 여기서 직접 고르라고 비워둔다(어떤
@@ -106,6 +116,27 @@ export function VersusPage() {
           백엔드 서버가 꺼져 있어 저장된 분석을 불러올 수 없습니다.
           <br />
           <code className="text-xs">uvicorn main:app --reload</code>로 서버를 켠 뒤 새로고침하세요.
+        </div>
+      </div>
+    )
+  }
+
+  if (isCheckingAuth) return <p className="p-6 text-muted-foreground">확인 중…</p>
+
+  if (!isLoggedIn) {
+    return (
+      <div className="p-6">
+        <h1 className="mb-4 text-2xl font-semibold text-foreground">전술 대결</h1>
+        <div className="rounded-lg border border-border bg-muted p-6 text-center text-sm text-muted-foreground">
+          로그인 후 사용 가능합니다.
+          <br />
+          <Link to="/login" className="text-foreground underline">
+            로그인
+          </Link>{' '}
+          또는{' '}
+          <Link to="/register" className="text-foreground underline">
+            회원가입
+          </Link>
         </div>
       </div>
     )
