@@ -109,7 +109,7 @@ export function EditorPage() {
         <div className="relative mx-auto flex w-full max-w-4xl flex-col items-center gap-10 px-6 py-10 lg:flex-row lg:items-center lg:justify-center">
           <div className="flex w-full max-w-md flex-col items-center gap-5 text-center">
             <p className="text-lg font-semibold text-foreground">
-              전술을 그리고, 국면별로 비교하고, 카드로 공유하세요
+              나만의 전술을 만들고, 국면별로 비교하고, 카드로 공유하세요
             </p>
             {/* 참고 사이트처럼 타원형(pill) 버튼으로 — 기본 Button은 rounded-md라
              * 이 버튼에만 rounded-full을 얹는다(사이트 전역 버튼 모양을 바꾸는

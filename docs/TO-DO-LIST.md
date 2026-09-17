@@ -466,6 +466,7 @@
   - **메타 태그**: `frontend/index.html`에 `<meta name="description">` + Open Graph(`og:type`/`site_name`/`title`/`description`/`url`/`image`/`image:width`/`image:height`/`locale`) + Twitter Card(`summary_large_image`) 태그를 추가했다. `og:image`는 상대경로 대신 절대 URL(`https://tacticraft.fly.dev/og-image.jpg`)로 못 박았다 — 카카오톡·디스코드 등 일부 크롤러가 상대경로 OG 이미지를 안정적으로 못 읽는 경우가 있어서다. 배포 도메인이 나중에 커스텀 도메인으로 바뀌면 이 URL들도 같이 갱신해야 한다(TO-DO에 남겨둠 — 아직 요청 전이라 미착수).
 - **검증**: 프론트 `tsc -b`(0 errors) / `npm run lint`(0 errors) / `npx vitest run`(208 전부 통과) / `npm run build` 성공(빌드 산출물에 `favicon.svg`·`og-image.jpg`·확장된 `index.html`(1.22kB→2.46kB) 전부 포함 확인). claude-in-chrome + curl로 로컬 개발 서버에서 메타 태그 전체·파비콘 서빙 확인 → Fly.io 재배포 → `https://tacticraft.fly.dev/`에서 `curl`로 메타 태그 15개 전부·`favicon.svg`(200)·`og-image.jpg`(200) 실제 서빙까지 확인했다.
 - **미확인**: 실제 카카오톡/Discord/Slack/Facebook 등에 링크를 붙여넣었을 때 미리보기 카드가 의도대로(이미지·제목·설명) 렌더링되는지는 각 플랫폼의 크롤러가 캐시를 가지고 있어 이 세션에서 직접 확인하지 못했다 — 처음 공유할 때 카드가 비거나 옛 정보로 보이면 각 플랫폼의 캐시 새로고침 도구(예: Facebook Sharing Debugger)를 한 번 돌려야 할 수 있다.
+- **후속 수정(같은 날)**: "디스크립션을 '나만의 전술을 만들고, 국면별로 비교하고, 카드로 공유하세요'로 바꿔줘" — 메타 디스크립션·OG/Twitter description 3곳뿐 아니라, 애초에 이 문구를 그대로 가져왔던 홈 화면 태그라인(`EditorPage.tsx`)도 같이 바꿔서 화면 문구와 메타 정보가 계속 일치하도록 유지했다(사용자가 화면 쪽은 언급하지 않았지만, "화면 문구와 어긋나지 않게" 맞췄다는 구현 당시 설계 근거를 그대로 지키려면 한쪽만 바꾸면 안 됐다). OG 이미지에도 태그라인 텍스트가 그려져 있어서 `_og-render.html`을 다시 만들어 재캡처(1464×812)하고 `og:image:width`/`height`도 새 크기로 갱신했다. Fly.io 재배포 후 `curl`로 새 문구가 실제 서빙되는 것까지 확인.
 
 ## 기각 기록
 
