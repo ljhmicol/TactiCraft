@@ -453,6 +453,7 @@
 - **검증**: 프론트 `tsc -b`(0 errors) / `npm run lint`(0 errors) / `npx vitest run`(208 전부 통과) / `npm run build` 성공, 백엔드 `py_compile` 통과. claude-in-chrome으로 실제 배포된 사이트(`https://tacticcraft.fly.dev`)에서 끝까지 확인 — `curl`로 홈페이지 200·`/api/health` 200 확인 → 회원가입 → 자동 로그인 확인 → 페이지 새로고침 후에도 세션 유지 확인(Secure 쿠키가 HTTPS에서 정상 동작) → 브랜딩 변경 재배포 후 로고·탭 제목이 "TactiCraft"로 바뀐 것까지 확인.
 - **미확인**: `min_machines_running = 0`으로 인한 콜드 스타트 체감 지연(첫 요청이 얼마나 느린지)은 측정하지 않았다.
 - **후속 확인**: 테스트로 만든 `deploytest@example.com` 계정 탈퇴 중 `window.confirm` 네이티브 다이얼로그 때문에 브라우저 자동화가 멈춰서 사용자가 직접 다이얼로그를 닫아줬다 — 이후 `curl`로 그 계정 로그인을 시도해 401("이메일 또는 비밀번호가 올바르지 않습니다")을 확인, 탈퇴가 실제로 반영됐음을 검증했다.
+- **후속 작업(같은 날)**: "저장소 이름도 TactiCraft로 바꿔줘" — GitHub CLI(`gh`, winget 설치)로 로그인(디바이스 코드 방식) 후 `gh repo rename TactiCraft --repo ljhmicol/TactiCore`로 저장소를 `ljhmicol/TactiCraft`로 리네이밍하고, 로컬 `git remote set-url origin`도 새 URL로 갱신했다. `gh repo view`로 새 이름·URL을 재확인했다. 문서 본문(`docs/*.md`, `CLAUDE.md`, `README.md`)과 백엔드 FastAPI 타이틀은 아직 "TactiCore"로 남아 있다 — 요청 범위가 저장소 이름까지였고 문서 전체 리네이밍은 아직 요청받지 않았다.
 
 ## 기각 기록
 
