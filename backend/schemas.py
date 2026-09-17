@@ -178,6 +178,13 @@ class AnalysisOut(AnalysisIn):
     is_owner: bool = False
     # 커뮤니티 공개 여부(TO-DO 12번 후속) — 소유자가 에디터에서 토글한다.
     is_public: bool = False
+    # 좋아요(TO-DO 41 후속)는 원래 커뮤니티 목록(CommunityAnalysisOut)에만
+    # 있었다 — 공유 링크(/share/:id) 상세 화면엔 좋아요 버튼 자체가 없었기
+    # 때문이다(TO-DO 58, 2026-09-17 "커뮤니티에서 게시물에 좋아요 누르는
+    # 방법이 없어" — 목록 카드의 작은 하트만으론 찾기 어렵다는 리포트).
+    # liked_by_me는 CommunityAnalysisOut과 같은 이유로 비로그인 시 항상 False.
+    like_count: int = 0
+    liked_by_me: bool = False
 
 
 class AnalysisSummary(BaseModel):

@@ -555,3 +555,23 @@ def toggle_like(db: Session, analysis_id: int, user: "models.User") -> tuple[boo
         .scalar()
     )
     return liked, count
+
+
+def get_like_info(db: Session, analysis_id: int, user_id: Optional[int]) -> tuple[int, bool]:
+    """분석 상세 조회(GET /api/analyses/{id})에 좋아요 수·내 좋아요 여부를
+    얹는다(TO-DO 58) — 지금까지는 CommunityAnalysisOut(목록 카드)에만 있어서
+    공유 링크 상세 화면(/share/:id)엔 좋아요를 누를 방법 자체가 없었다."""
+    count = (
+        db.query(func.count(models.Like.id))
+        .filter(models.Like.analysis_id == analysis_id)
+        .scalar()
+    )
+    liked = False
+    if user_id is not None:
+        liked = (
+            db.query(models.Like)
+            .filter(models.Like.analysis_id == analysis_id, models.Like.user_id == user_id)
+            .first()
+            is not None
+        )
+    return count, liked

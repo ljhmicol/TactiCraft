@@ -13,15 +13,19 @@ export function useCommunityAnalyses(sort: 'recent' | 'popular' = 'recent') {
   return useQuery({ queryKey: [...COMMUNITY_KEY, sort], queryFn: () => fetchCommunityAnalyses(sort) })
 }
 
-/** 좋아요 토글(TO-DO 41 후속). 성공하면 커뮤니티 목록(정렬 무관 전부)을
- * 무효화한다 — 인기순 정렬 중이면 순서 자체가 바뀔 수 있어서 부분 갱신
- * 대신 다시 불러오는 쪽이 안전하다. */
+/** 좋아요 토글(TO-DO 41 후속) — 커뮤니티 목록 카드와 공유 링크 상세
+ * 화면(/share/:id, TO-DO 58) 양쪽에서 같이 쓴다. 성공하면 커뮤니티
+ * 목록(정렬 무관 전부)을 무효화한다 — 인기순 정렬 중이면 순서 자체가
+ * 바뀔 수 있어서 부분 갱신 대신 다시 불러오는 쪽이 안전하다. 이 분석의
+ * 상세 캐시(analyses/:id)도 같이 무효화해야 SharePage의 좋아요 버튼·
+ * 카운트가 즉시 갱신된다 — setAnalysisPublic과 같은 이유. */
 export function useToggleLike() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (analysisId: number) => toggleLike(analysisId),
-    onSuccess: () => {
+    onSuccess: (_result, analysisId) => {
       queryClient.invalidateQueries({ queryKey: COMMUNITY_KEY })
+      queryClient.invalidateQueries({ queryKey: ['analyses', analysisId] })
     },
   })
 }

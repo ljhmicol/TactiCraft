@@ -35,7 +35,13 @@ def get_analysis(
         row = crud.get_analysis(db, analysis_id)
     except crud.AnalysisNotFound:
         raise HTTPException(status_code=404, detail="Analysis not found")
-    return {**crud.to_analysis_dict(row), "is_owner": bool(user and row.user_id == user.id)}
+    like_count, liked_by_me = crud.get_like_info(db, analysis_id, user.id if user else None)
+    return {
+        **crud.to_analysis_dict(row),
+        "is_owner": bool(user and row.user_id == user.id),
+        "like_count": like_count,
+        "liked_by_me": liked_by_me,
+    }
 
 
 @router.post("", response_model=schemas.AnalysisOut, status_code=status.HTTP_201_CREATED)

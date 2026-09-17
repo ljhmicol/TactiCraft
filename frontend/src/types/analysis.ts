@@ -98,6 +98,10 @@ export interface Analysis {
   // 커뮤니티(/community) 공개 여부(TO-DO 12번 후속) — 전용 토글 API로만
   // 바뀐다(setAnalysisPublic). 일반 저장(PUT)은 이 필드를 건드리지 않는다.
   isPublic?: boolean
+  // 좋아요(TO-DO 58) — GET 시점에 서버가 채운다(isOwner와 같은 방식).
+  // 저장 페이로드에는 의미가 없다(백엔드가 무시함).
+  likeCount?: number
+  likedByMe?: boolean
 }
 
 /** 목록 조회 전용 (좌표 없음) */

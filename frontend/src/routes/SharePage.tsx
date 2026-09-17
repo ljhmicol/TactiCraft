@@ -1,5 +1,6 @@
+import { Heart } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 
 import { CommunityComments } from '@/components/comments/CommunityComments'
 import { AnnotationLayer } from '@/components/pitch/AnnotationLayer'
@@ -14,6 +15,8 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SharePngCard } from '@/components/export/SharePngCard'
 import { useAnalysis } from '@/hooks/useAnalyses'
+import { useCurrentUser } from '@/hooks/useAuth'
+import { useToggleLike } from '@/hooks/useCommunity'
 import { exportCard } from '@/lib/exportImage'
 import { cn } from '@/lib/utils'
 import type { LayerToggles, PhaseData, PhaseType } from '@/types/analysis'
@@ -41,11 +44,22 @@ type ViewKey = { kind: 'phase'; phase: PhaseType } | { kind: 'cp'; id: string }
  * 맞는 자리이자, EditorPage(자기 분석 편집)에 더 끼워 넣기엔 이미 레이아웃이
  * 복잡하다. `isOwner`는 GET 응답에 서버가 계산해 넣어준다(비로그인 방문자는
  * 항상 false) — 소유자는 자기 분석의 공유 링크에서 남의 댓글도 지울 수 있다.
+ *
+ * 좋아요(TO-DO 58, 2026-09-17) — "커뮤니티에서 게시물에 좋아요 누르는
+ * 방법이 없어" 리포트로 추가. 좋아요 자체는 TO-DO 41 후속에서 이미
+ * 구현됐지만 `/community` 목록 카드의 작은 하트에만 있었고, 실제로 게시물을
+ * 읽는 이 화면(/share/:id)엔 없었다 — "게시물"이라는 단위를 생각하면 목록
+ * 카드보다 여기가 더 자연스러운 자리다. CommunityPage와 같은
+ * `useToggleLike` 훅을 그대로 재사용한다(같은 API, 성공 시 이 분석의
+ * 상세 캐시도 같이 무효화하도록 훅 쪽을 확장했다).
  */
 export function SharePage() {
   const { id } = useParams<{ id: string }>()
   const numericId = id ? Number(id) : undefined
   const { data: analysis, isLoading, isError } = useAnalysis(numericId)
+  const { isLoggedIn } = useCurrentUser()
+  const navigate = useNavigate()
+  const toggleLike = useToggleLike()
 
   const [view, setView] = useState<ViewKey>({ kind: 'phase', phase: 'base' })
   const [layers, setLayers] = useState<LayerToggles>({
@@ -86,6 +100,15 @@ export function SharePage() {
     }
   }
 
+  const handleLikeClick = () => {
+    if (!analysis.id) return
+    if (!isLoggedIn) {
+      navigate('/login')
+      return
+    }
+    toggleLike.mutate(analysis.id)
+  }
+
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4 p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -98,6 +121,20 @@ export function SharePage() {
             {analysis.match.matchDate}
             {analysis.match.competition ? ` · ${analysis.match.competition}` : ''}
           </p>
+          <button
+            type="button"
+            onClick={handleLikeClick}
+            disabled={toggleLike.isPending}
+            title={isLoggedIn ? undefined : '로그인이 필요합니다'}
+            className={cn(
+              'mt-1 flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none disabled:opacity-50',
+              analysis.likedByMe && 'text-rose-400 hover:text-rose-400',
+            )}
+            aria-label={analysis.likedByMe ? '좋아요 취소' : '좋아요'}
+          >
+            <Heart className={cn('h-4 w-4', analysis.likedByMe && 'fill-current')} />
+            {analysis.likeCount ?? 0}
+          </button>
         </div>
         <div className="flex items-center gap-2">
           <Select value={ratio} onValueChange={(v) => setRatio(v as '1:1' | '4:5')}>
