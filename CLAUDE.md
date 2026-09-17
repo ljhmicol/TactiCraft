@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **단, AI 세션이 검증할 수 없는 항목이 남아 있습니다** — 실제 조작감, iOS Safari·Android Chrome 실기기 동작, Safari(WebKit) 렌더링 확인은 사람이 해야 합니다. 전체 목록은 `5단계_기능_완료_보고서.md` §10("사람 확인이 필요한 항목")을 참조하세요.
 
-**2026-09-17 Fly.io에 배포했습니다(TO-DO 59).** 기존 `Dockerfile`/`docker-compose.yml`(TO-DO 10, 단일 이미지 — 프론트 빌드 산출물 + 백엔드를 같은 오리진에서 서빙)을 거의 그대로 써서 `fly launch`/`fly deploy`로 올렸습니다. 앱 이름·볼륨 이름은 `tacticcraft`, 리전은 도쿄(`nrt`, 한국에서 가장 가까움), SQLite는 1GB 영속 볼륨(`data`)에 저장됩니다. `min_machines_running = 0`이라 트래픽 없으면 자동으로 꺼지고 요청이 오면 다시 뜨는 구조라 비용이 최소화됩니다(콜드 스타트는 감수). HTTPS 전환에 맞춰 로그인 세션 쿠키의 `Secure` 플래그를 `COOKIE_SECURE` 환경변수(배포 시 `true`, 로컬 개발 기본값 `false`)로 켰습니다. 배포된 사이트 주소: https://tacticcraft.fly.dev — UI에 보이는 제품명도 "TactiCraft"로 바꿨습니다(로고·브라우저 탭 제목, `frontend/src/App.tsx`·`frontend/index.html`). 프로젝트/저장소 내부 명칭("TactiCore")과 문서(`docs/*.md`, 이 파일)는 그대로 유지합니다 — 사용자가 요청한 범위는 "로고랑 사이트에 뜨는 이름"이었지 프로젝트 전체 리네이밍이 아니었습니다.
+**2026-09-17 Fly.io에 배포했습니다(TO-DO 59).** 기존 `Dockerfile`/`docker-compose.yml`(TO-DO 10, 단일 이미지 — 프론트 빌드 산출물 + 백엔드를 같은 오리진에서 서빙)을 거의 그대로 써서 `fly launch`/`fly deploy`로 올렸습니다. 앱 이름·볼륨 이름은 `tacticraft`(처음엔 오타로 `tacticcraft`로 만들었다가 재생성 — c가 하나만 들어갑니다, "Tacti"+"Craft"), 리전은 도쿄(`nrt`, 한국에서 가장 가까움), SQLite는 1GB 영속 볼륨(`data`)에 저장됩니다. `min_machines_running = 0`이라 트래픽 없으면 자동으로 꺼지고 요청이 오면 다시 뜨는 구조라 비용이 최소화됩니다(콜드 스타트는 감수). HTTPS 전환에 맞춰 로그인 세션 쿠키의 `Secure` 플래그를 `COOKIE_SECURE` 환경변수(배포 시 `true`, 로컬 개발 기본값 `false`)로 켰습니다. 배포된 사이트 주소: https://tacticraft.fly.dev — UI에 보이는 제품명도 "TactiCraft"로 바꿨습니다(로고·브라우저 탭 제목, `frontend/src/App.tsx`·`frontend/index.html`). GitHub 저장소도 `ljhmicol/TactiCore` → `ljhmicol/TactiCraft`로 이름을 바꿨습니다(로컬 `git remote`도 갱신). 문서 본문(`docs/*.md`, 이 파일, `README.md`)과 백엔드 FastAPI 타이틀("TactiCore API")은 그대로 유지합니다 — 사용자가 요청한 범위는 "로고랑 사이트에 뜨는 이름" → "저장소 이름"이었지 문서 전체 리네이밍이 아니었습니다.
 
 **2차 기능 작업은 `docs/TO-DO-LIST.md`로 관리합니다.** 상태 범례: `[ ]` 미진행 · `[/]` 진행중 · `[O]` 적용완료(구현했으나 사용자 확인 전) · `[C]` 사용자 확인완료 · `[S]` 보류. 새 아이디어는 구현 논의 전에 먼저 이 문서에 기록하고, 사용자 확인까지 끝난 `[C]` 항목은 `docs/TO-DO-ARCHIVE.md`로 옮깁니다. 기각된 항목(예: "실제 경기 검색 자동 분석")은 TO-DO-LIST.md의 기각 기록 표에 사유와 함께 남아 있습니다 — 사유를 확인하지 않고 같은 논의를 반복하지 마세요.
 
@@ -39,7 +39,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 아키텍처 (계획 확정분)
 
-프론트엔드 + **로컬** 백엔드 + SQLite 구성입니다. 개발은 PC에서 로컬 실행합니다(2프로세스 — 아래 참조). 공개 배포는 2026-09-17부터 Fly.io(https://tacticcraft.fly.dev)로 별도 존재합니다 — 로컬 개발 흐름 자체는 바뀌지 않았습니다.
+프론트엔드 + **로컬** 백엔드 + SQLite 구성입니다. 개발은 PC에서 로컬 실행합니다(2프로세스 — 아래 참조). 공개 배포는 2026-09-17부터 Fly.io(https://tacticraft.fly.dev)로 별도 존재합니다 — 로컬 개발 흐름 자체는 바뀌지 않았습니다.
 
 - 프론트: React 18 + TypeScript + Vite (포트 5173), Tailwind CSS + shadcn/ui
 - 애니메이션: Framer Motion (국면 전환 모핑)

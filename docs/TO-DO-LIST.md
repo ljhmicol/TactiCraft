@@ -454,6 +454,7 @@
 - **미확인**: `min_machines_running = 0`으로 인한 콜드 스타트 체감 지연(첫 요청이 얼마나 느린지)은 측정하지 않았다.
 - **후속 확인**: 테스트로 만든 `deploytest@example.com` 계정 탈퇴 중 `window.confirm` 네이티브 다이얼로그 때문에 브라우저 자동화가 멈춰서 사용자가 직접 다이얼로그를 닫아줬다 — 이후 `curl`로 그 계정 로그인을 시도해 401("이메일 또는 비밀번호가 올바르지 않습니다")을 확인, 탈퇴가 실제로 반영됐음을 검증했다.
 - **후속 작업(같은 날)**: "저장소 이름도 TactiCraft로 바꿔줘" — GitHub CLI(`gh`, winget 설치)로 로그인(디바이스 코드 방식) 후 `gh repo rename TactiCraft --repo ljhmicol/TactiCore`로 저장소를 `ljhmicol/TactiCraft`로 리네이밍하고, 로컬 `git remote set-url origin`도 새 URL로 갱신했다. `gh repo view`로 새 이름·URL을 재확인했다. 문서 본문(`docs/*.md`, `CLAUDE.md`, `README.md`)과 백엔드 FastAPI 타이틀은 아직 "TactiCore"로 남아 있다 — 요청 범위가 저장소 이름까지였고 문서 전체 리네이밍은 아직 요청받지 않았다.
+- **오타 수정(같은 날)**: "https://tacticraft.fly.dev/ 이렇게 뜨게 하고싶다니까" — Fly.io 앱을 처음 만들 때 이름을 `tacticcraft`(c 두 개)로 잘못 입력했다("TactiCraft"를 소문자로 내리면 "Tacti"+"craft" = c 하나인 `tacticraft`가 맞다). flyctl은 앱 이름을 직접 바꾸는 명령이 없어서, `tacticraft`로 앱·볼륨을 새로 만들고(`flyctl launch --name tacticraft`, `flyctl volumes create`) 그 위에 다시 배포한 뒤, 오타가 있던 `tacticcraft` 앱은 `flyctl apps destroy`로 지웠다 — 배포 당일이라 그 앱에는 이미 지운 테스트 계정 하나뿐이었어서 데이터 이전 없이 바로 재생성해도 안전했다. `curl`로 새 URL(`https://tacticraft.fly.dev`)의 `/api/health`·페이지 타이틀 확인, claude-in-chrome으로 로고까지 "TactiCraft"로 정상 표시되는 것 확인.
 
 ## 기각 기록
 
