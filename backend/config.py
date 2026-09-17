@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     database_url: str = f"sqlite:///{DEFAULT_DB_PATH.as_posix()}"
     cors_origins: str = "http://localhost:5173"  # 콤마 구분
     app_version: str = "1.0.0"
+    # 로그인 세션 쿠키의 Secure 플래그(TO-DO 59, Fly.io 배포 준비). 로컬
+    # 개발은 http://localhost라 True로 두면 브라우저가 쿠키를 거부해 로그인이
+    # 끊긴다 — 그래서 기본값은 False이고, HTTPS로 서빙되는 배포 환경에서만
+    # 환경변수(COOKIE_SECURE=true)로 켠다.
+    cookie_secure: bool = False
 
     @property
     def cors_origin_list(self) -> list[str]:

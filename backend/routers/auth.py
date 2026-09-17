@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session as DbSession
 import auth
 import models
 import schemas
+from config import settings
 from database import get_db
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -28,6 +29,7 @@ def _set_session_cookie(response: Response, token: str) -> None:
         max_age=auth.SESSION_MAX_AGE_SECONDS,
         httponly=True,
         samesite="lax",
+        secure=settings.cookie_secure,
     )
 
 
