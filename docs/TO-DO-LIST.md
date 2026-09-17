@@ -34,6 +34,7 @@
   - **미착수(사용자 계정 필요)**: Google Search Console 등록(소유권 확인용 메타 태그는 코드에 추가할 수 있지만, 계정 생성·확인 자체는 사용자의 구글 계정으로 직접 해야 함) + 사이트맵 제출 + 홈페이지 "색인 생성 요청"(자연 크롤링보다 훨씬 빠르게 색인됨) — 사용자에게 다음 단계로 안내했고, 진행 여부는 사용자 선택.
 - **검증**: 프론트 `tsc -b`(0 errors) / `npm run lint`(0 errors) / `npx vitest run`(208 전부 통과, `<h1>` 변경으로 깨진 테스트 없음) / `npm run build` 성공(빌드 산출물에 `robots.txt`·`sitemap.xml` 포함 확인). Fly.io 재배포 후 `curl`로 `https://tacticraft.fly.dev/robots.txt`가 실제 robots.txt 내용을 반환(더 이상 `index.html` 폴백 아님), `sitemap.xml` 200, `<html lang="ko">`·새 `<title>` 전부 실서비스에서 확인했다.
 - **미확인**: 이 조치들이 실제로 구글 색인·검색 노출로 이어지는지는 크롤링 주기(며칠~몇 주) 때문에 이 세션에서 확인 불가능하다 — 사용자가 나중에 "tacticraft" 검색으로 직접 확인해야 한다. Search Console 등록도 사용자가 아직 진행 전이라 사이트맵 제출·수동 색인 요청은 안 된 상태다.
+- **후속 작업(같은 날, "검색엔진에 걸리게 메타데이터 설정해줘")**: 계정 없이 바로 넣을 수 있는 메타데이터를 추가했다 — `<meta name="keywords">`(구글은 2009년부터 순위 신호로 안 쓰지만 harmless, 일부 국내 검색엔진은 여전히 참고 가능), `<meta name="robots" content="index, follow">`(명시적 선언), `<link rel="canonical">`(SPA라 `/versus?a=33` 같은 쿼리스트링 변형이 별도 페이지로 오인되지 않게 정식 URL을 못 박음), `Schema.org WebSite` 구조화 데이터(JSON-LD) — 검색엔진이 사이트명·URL·설명을 명확한 구조로 읽게 한다(전역 검색 기능이 없어 SearchAction은 뺐다). 한국어 사이트라 네이버 서치어드바이저 등록도 제안했으나(구글보다 한국 사용자 도달에 더 효과적일 수 있음) 이것도 사용자 본인 계정이 필요해 아직 미착수 — Google Search Console과 마찬가지로 사용자가 인증 코드를 주면 진행하기로 안내했다.
 
 ## 기각 기록
 

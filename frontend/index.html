@@ -20,6 +20,20 @@
          안 읽혀서 절대 URL로 못 박는다 — 배포 도메인이 바뀌면 같이 갱신해야
          한다(지금은 tacticraft.fly.dev, 커스텀 도메인 연결 시 갱신 필요). -->
     <meta name="description" content="나만의 전술을 만들고, 국면별로 비교하고, 카드로 공유하세요." />
+    <!-- 검색엔진용 추가 메타데이터(2026-09-17, "검색엔진에 걸리게 메타데이터
+         설정해줘") — robots.txt/sitemap.xml·title·h1·lang(바로 위 커밋)에
+         이어지는 작업.
+         - keywords는 구글은 2009년부터 순위에 안 쓴다(악용돼 신호로서 폐기)
+           — 그래도 네이버 등 일부 국내 검색엔진·구식 크롤러는 여전히
+           참고할 수 있어 harmless하게 넣어둔다. 순위를 올려주는 핵심은
+           title/description/h1/본문 텍스트 쪽이다.
+         - canonical은 이 앱이 SPA라 같은 화면이 다른 쿼리스트링으로도
+           열릴 수 있는데(예: /versus?a=33), 검색엔진이 그런 변형을
+           별도 페이지로 오인해 순위를 분산시키지 않도록 "정식 URL은
+           이거다"를 명시한다. -->
+    <meta name="keywords" content="축구 전술, 전술판, 축구 포메이션, 전술 분석, 축구 전술 시뮬레이터, 전술 대결, 축구 커뮤니티, 축구 전술 공유" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://tacticraft.fly.dev/" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="TactiCraft" />
     <meta property="og:title" content="TactiCraft" />
@@ -33,6 +47,20 @@
     <meta name="twitter:title" content="TactiCraft" />
     <meta name="twitter:description" content="나만의 전술을 만들고, 국면별로 비교하고, 카드로 공유하세요." />
     <meta name="twitter:image" content="https://tacticraft.fly.dev/og-image.jpg" />
+    <!-- 구조화 데이터(JSON-LD, Schema.org WebSite) — 검색엔진이 사이트
+         이름·URL·설명을 명확한 구조로 읽게 해서, 구글 검색 결과에 사이트명이
+         브랜드로 인식되거나(예: 사이트링크 검색창) 리치 스니펫에 도움이 될
+         수 있다. 이 앱엔 전역 검색 기능이 없어 SearchAction은 넣지 않았다. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "TactiCraft",
+        "url": "https://tacticraft.fly.dev/",
+        "description": "나만의 전술을 만들고, 국면별로 비교하고, 카드로 공유하세요.",
+        "inLanguage": "ko"
+      }
+    </script>
     <!-- Hallmark 감사(2026-09-11) 후 폰트 페어링 도입 — 본문은 IBM Plex Sans KR
          (한글 전체 지원). 헤딩은 원래 IBM Plex Mono(라틴 전용)로 시도했으나,
          이 앱은 한국어 단일 언어라 헤딩 대부분이 "단어 스페이스 낀 한글
