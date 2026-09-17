@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://tacticraft.fly.dev/sitemap.xml

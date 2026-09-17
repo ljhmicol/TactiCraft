@@ -108,9 +108,14 @@ export function EditorPage() {
          * (최근 작업 목록 등) 깨지지 않는다. */}
         <div className="relative mx-auto flex w-full max-w-4xl flex-col items-center gap-10 px-6 py-10 lg:flex-row lg:items-center lg:justify-center">
           <div className="flex w-full max-w-md flex-col items-center gap-5 text-center">
-            <p className="text-lg font-semibold text-foreground">
+            {/* SEO(2026-09-17, "축구 전술 사이트로 검색했을때도 뜨게") — 이
+             * 태그라인이 실질적으로 사이트를 소개하는 유일한 문구라 검색
+             * 엔진이 페이지 주제를 파악하는 데 가장 크게 반영하는 <h1>로
+             * 바꿨다(이전엔 그냥 <p>였음). 시각적으로는 클래스를 그대로 둬서
+             * 화면엔 전혀 차이가 없다. */}
+            <h1 className="text-lg font-semibold text-foreground">
               나만의 전술을 만들고, 국면별로 비교하고, 카드로 공유하세요
-            </p>
+            </h1>
             {/* 참고 사이트처럼 타원형(pill) 버튼으로 — 기본 Button은 rounded-md라
              * 이 버튼에만 rounded-full을 얹는다(사이트 전역 버튼 모양을 바꾸는
              * 게 아니라 이 히어로 CTA 하나만). */}
