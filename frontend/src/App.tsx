@@ -133,7 +133,7 @@ function App() {
               onClick={handleLogoClick}
               className="order-1 shrink-0 font-display text-lg font-semibold text-foreground hover:text-foreground/80 md:order-none md:row-start-1 md:justify-self-start"
             >
-              TactiCore
+              TactiCraft
             </Link>
             <div className="order-2 flex shrink-0 items-center gap-4 md:order-none md:col-start-3 md:row-start-1 md:justify-self-end">
               <AuthNav />
