@@ -5,6 +5,26 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TactiCraft</title>
+    <!-- 메타 디스크립션·OG/Twitter 카드(2026-09-17, "파비콘, 오지 이미지 사이트
+         디스크립션 추가해줘") — 문구는 홈 화면 태그라인(EditorPage.tsx)과
+         똑같이 맞췄다(따로 새 카피를 쓰면 화면 문구와 어긋날 수 있어서).
+         og:image는 상대경로가 카카오톡·디스코드 등 일부 크롤러에서 안정적으로
+         안 읽혀서 절대 URL로 못 박는다 — 배포 도메인이 바뀌면 같이 갱신해야
+         한다(지금은 tacticraft.fly.dev, 커스텀 도메인 연결 시 갱신 필요). -->
+    <meta name="description" content="전술을 그리고, 국면별로 비교하고, 카드로 공유하세요." />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="TactiCraft" />
+    <meta property="og:title" content="TactiCraft" />
+    <meta property="og:description" content="전술을 그리고, 국면별로 비교하고, 카드로 공유하세요." />
+    <meta property="og:url" content="https://tacticraft.fly.dev/" />
+    <meta property="og:image" content="https://tacticraft.fly.dev/og-image.jpg" />
+    <meta property="og:image:width" content="1512" />
+    <meta property="og:image:height" content="795" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="TactiCraft" />
+    <meta name="twitter:description" content="전술을 그리고, 국면별로 비교하고, 카드로 공유하세요." />
+    <meta name="twitter:image" content="https://tacticraft.fly.dev/og-image.jpg" />
     <!-- Hallmark 감사(2026-09-11) 후 폰트 페어링 도입 — 본문은 IBM Plex Sans KR
          (한글 전체 지원). 헤딩은 원래 IBM Plex Mono(라틴 전용)로 시도했으나,
          이 앱은 한국어 단일 언어라 헤딩 대부분이 "단어 스페이스 낀 한글
