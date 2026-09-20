@@ -113,12 +113,28 @@ function withTimeout<T>(stage: string, p: Promise<T>, ms: number): Promise<T> {
   })
 }
 
+// 2026-09-20 — 실기기(아이폰·아이패드 Safari, 안드로이드 Chrome 둘 다)에서
+// PNG 결과가 "검은 화면"으로 나오는 걸 확인(다운로드 자체는 됨, 토스트도
+// "생성 완료"로 뜸) — 두 브라우저 엔진 모두에서 재현되므로 WebKit 전용
+// 문제(prepareCaptureClone을 만든 원래 이유)가 아니라 prepareCaptureClone
+// 자체(라이브 노드가 아니라 방금 만든 복제본을 그 자리에서 바로 캡처하는
+// 것)가 새로 만든 문제일 가능성이 높다 — advisor 리뷰. 원인을 좁히기 위해
+// 이 복제본 경로를 일시적으로 끄고 원본 `node`를 직접 캡처한다(예전에
+// "다운로드는 됨, 텍스트는 보임, 피치만 안 보임" 상태를 만들었던 바로 그
+// 버전). 검은 화면이 사라지고 다시 "피치만 안 보임"으로 돌아오면
+// prepareCaptureClone이 원인으로 확정되고, 그래도 검은 화면이면 이 함수는
+// 원인이 아니었다는 뜻이다. PC(사파리 제외, 안드로이드 Chrome 기준)에서
+// 재확인되면 prepareCaptureClone을 layout flush를 더해 다시 켠다.
+const USE_PITCH_FLATTEN_CLONE = false
+
 export async function exportCard(node: HTMLElement, ratio: '1:1' | '4:5'): Promise<Blob> {
   await waitForMorphing()
   await document.fonts.ready // 웹폰트 로드 전에 캡처하면 폴백 폰트로 찍힌다
 
   const pixelRatio = 2
-  const { target, cleanup } = await prepareCaptureClone(node, pixelRatio)
+  const { target, cleanup } = USE_PITCH_FLATTEN_CLONE
+    ? await prepareCaptureClone(node, pixelRatio)
+    : { target: node, cleanup: () => {} }
 
   let blob: Blob | null
   try {
@@ -169,7 +185,9 @@ export async function exportCard(node: HTMLElement, ratio: '1:1' | '4:5'): Promi
 export async function captureThumbnail(node: HTMLElement, width: number, height: number): Promise<string> {
   await document.fonts.ready
   const pixelRatio = 2
-  const { target, cleanup } = await prepareCaptureClone(node, pixelRatio)
+  const { target, cleanup } = USE_PITCH_FLATTEN_CLONE
+    ? await prepareCaptureClone(node, pixelRatio)
+    : { target: node, cleanup: () => {} }
   try {
     return await withTimeout('toPng', toPng(target, { pixelRatio, cacheBust: true, skipFonts: true, width, height }), 20_000)
   } finally {
