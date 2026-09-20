@@ -1,4 +1,4 @@
-import { toBlob, toPng } from 'html-to-image'
+import { toCanvas } from 'html-to-image'
 
 import { rasterizeSvg } from '@/lib/rasterizeSvg'
 import { useAnalysisStore } from '@/store/analysisStore'
@@ -6,9 +6,9 @@ import { useAnalysisStore } from '@/store/analysisStore'
 /**
  * 어느 단계에서 실패했는지 메시지에 남기는 에러(2026-09-20, "다운로드 자체가
  * 안 된다" 재발 대응) — 지금까지 실패가 전부 조용히 사라져서(콘솔 접근이
- * 없는 실기기 Safari라 더더욱) 사용자 리포트만으로는 캡처 단계 실패인지,
- * toBlob 자체가 멈춘 건지, 성공했는데 다운로드만 안 된 건지 구분할 수
- * 없었다 — 최소한 토스트에 단계 이름과 원인이 그대로 보이게 한다.
+ * 없는 실기기라 더더욱) 사용자 리포트만으로는 캡처 단계 실패인지, toCanvas
+ * 자체가 멈춘 건지 구분할 수 없었다 — 최소한 토스트에 단계 이름과 원인이
+ * 그대로 보이게 한다.
  */
 class CaptureStageError extends Error {
   constructor(stage: string, detail: string, cause?: unknown) {
@@ -29,99 +29,7 @@ function waitForMorphing(): Promise<void> {
   })
 }
 
-/**
- * 캡처 직전에 `node` 안의 모든 `<svg>`(피치)를 미리 평평한 `<img>`로 바꿔치기한
- * "복제본"을 화면 밖에 만든다(2026-09-20, 실기기 Safari 리포트 — PNG로
- * 내보내면 카드 텍스트는 보이는데 피치만 안 보였다). html-to-image가 캡처
- * 대상을 `<svg><foreignObject>`에 복제해 넣는데, 캡처 대상 자체가 이미
- * svg(피치)를 담고 있어 결과적으로 svg 안에 svg가 중첩된다 — 이 구조를
- * WebKit이 못 그리는 걸로 알려져 있다.
- *
- * 최종 래스터화(toBlob/toPng)는 html-to-image가 내부적으로 쓰는
- * createImage(decode() 다음 requestAnimationFrame까지 기다림)를 그대로
- * 쓴다 — 한때 이 rAF 대기를 직접 손으로 빼려고 시도했으나(2026-09-20),
- * 그 "수정"은 자동화 탭(document.visibilityState가 강제로 hidden)에서
- * rAF가 안 도는 현상을 실제 버그로 오인해서 나온 것이었다. rAF 없이
- * decode()만으로 넘어가면 오히려 foreignObject 내용이 완전히 빈
- * 투명 이미지로 그려지는 걸 직접 재현해서 확인했다 — 그래서 이 rAF
- * 대기는 걷어내지 않고 라이브러리 기본 동작을 그대로 쓴다.
- *
- * 원본 `node`(라이브 React 트리의 일부)는 절대 건드리지 않는다 — 복제본에서만
- * svg를 img로 바꿔서, 라이브 컴포넌트의 상태·레이아웃 이펙트(예: ShareCard의
- * useFitFontSize)와 전혀 간섭하지 않는다.
- *
- * 실제 내보내기 대상(ShareCard)은 진단 페이지의 테스트용 피치와 달리
- * `position:absolute; left:-99999px`로 화면 밖에 마운트돼 있다(중복 마운트를
- * 피하려는 기존 설계) — 이 상태의 자손 svg에서 getBoundingClientRect()가
- * WebKit에서 0×0을 돌려줄 가능성을 배제할 수 없다(진단 페이지는 화면 안에
- * 보이는 작은 피치라 이 경로를 검증하지 못했다). 그래서 실패 시 어떤 rect
- * 값을 읽었는지가 에러 메시지에 그대로 남도록 한다.
- *
- * **2026-09-20, 검은 화면 회귀 원인 확정 후 수정**: 이 함수를 껐다 켜서
- * 격리한 결과 — 켜면(개정 전 버전) 피치 영역이 검게, 끄면 피치 영역이
- * 아예 안 보이는(원래 버그) 것으로 확인됐다. 즉 이 함수가 만드는 복제본
- * 자체엔 문제가 없고, **복제본을 문서에 붙인 직후 그 안의 새 `<img>`가
- * 실제로 디코드·페인트되기 전에 바로 `toBlob`을 호출해버린 것**이 원인으로
- * 보인다(원본 노드를 그대로 쓸 때보다 방금 만든 노드는 브라우저가 아직
- * 레이아웃/페인트를 못 끝냈을 가능성이 더 높다) — 그래서 각 img를
- * `decode()`로 기다린 뒤, 복제본을 문서에 붙이고 나서 레이아웃을 강제로
- * 한 번 읽어 플러시하고, 실제 페인트가 한 번 돌 시간을 벌기 위해 두 번의
- * requestAnimationFrame을 더 기다린다.
- */
-async function prepareCaptureClone(
-  node: HTMLElement,
-  pixelRatio: number,
-): Promise<{ target: HTMLElement; cleanup: () => void }> {
-  const liveSvgs = Array.from(node.querySelectorAll('svg'))
-  if (liveSvgs.length === 0) return { target: node, cleanup: () => {} }
-
-  const clone = node.cloneNode(true) as HTMLElement
-  const clonedSvgs = Array.from(clone.querySelectorAll('svg'))
-  const clonedImgs: HTMLImageElement[] = []
-
-  for (let i = 0; i < liveSvgs.length; i++) {
-    const liveSvg = liveSvgs[i]
-    const clonedSvg = clonedSvgs[i]
-    if (!clonedSvg) continue
-    const rect = liveSvg.getBoundingClientRect()
-    const width = Math.max(1, Math.round(rect.width))
-    const height = Math.max(1, Math.round(rect.height))
-    let dataUrl: string
-    try {
-      dataUrl = await rasterizeSvg(liveSvg, width, height, pixelRatio)
-    } catch (e) {
-      clone.remove()
-      throw new CaptureStageError('rasterizeSvg', `svg#${i} rect=${rect.width.toFixed(0)}x${rect.height.toFixed(0)}`, e)
-    }
-    const img = document.createElement('img')
-    img.src = dataUrl
-    img.width = width
-    img.height = height
-    img.style.width = '100%'
-    img.style.height = '100%'
-    img.style.display = 'block'
-    clonedSvg.replaceWith(img)
-    clonedImgs.push(img)
-  }
-
-  clone.style.position = 'absolute'
-  clone.style.left = '-99999px'
-  clone.style.top = '0'
-  document.body.appendChild(clone)
-
-  try {
-    await Promise.all(clonedImgs.map((img) => img.decode()))
-  } catch (e) {
-    clone.remove()
-    throw new CaptureStageError('prepareCaptureClone', '복제본 img decode 실패', e)
-  }
-  void clone.offsetHeight // 레이아웃 강제 플러시
-  await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
-
-  return { target: clone, cleanup: () => clone.remove() }
-}
-
-/** toBlob/toPng가 응답 없이 멈추면(구 rAF 이슈 등) 영원히 스피너만 도는 대신 명시적으로 실패시킨다. */
+/** toCanvas 등이 응답 없이 멈추면 영원히 스피너만 도는 대신 명시적으로 실패시킨다. */
 function withTimeout<T>(stage: string, p: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new CaptureStageError(stage, `${ms}ms 안에 응답 없음(타임아웃)`)), ms)
@@ -135,48 +43,142 @@ function withTimeout<T>(stage: string, p: Promise<T>, ms: number): Promise<T> {
   })
 }
 
-// 2026-09-20 — 격리 테스트로 원인 확정: 이 함수를 끄고(false) 재확인한
-// 결과 "카드 테두리·텍스트는 보이고 피치는 아예 안 보임"(원래 버그, 중첩
-// foreignObject-svg 문제)으로 돌아왔다 — 즉 prepareCaptureClone 자체가
-// "검은 화면" 회귀의 원인으로 확정됐다(끄면 검은 화면이 아니라 "안 보임"
-// 상태이므로). 위 prepareCaptureClone에 img decode() 대기 + 레이아웃
-// 플러시 + 2프레임 대기를 추가해 다시 켠다.
-const USE_PITCH_FLATTEN_CLONE = true
+/**
+ * PNG 캡처 파이프라인 전면 재작성(2026-09-20) — 지금까지의 모든 시도
+ * (rAF 제거, 피치 svg 사전 래스터화 + html-to-image에 통째로 넘기기,
+ * decode/레이아웃 플러시/프레임 대기 추가)가 실기기(아이폰·아이패드
+ * Safari, 안드로이드 Chrome 전부)에서 **피치 영역이 완전히 빈 채로**
+ * 나오는 걸 막지 못했다 — 사용자 확인으로 선수 마커까지 전혀 안 보이는
+ * 것까지 확정(카드의 다른 텍스트·테두리는 항상 정상 캡처됐다). 카드
+ * 배경색이 진한 남색(#0F172A, lib/theme.ts SHARE_CARD_COLORS.background)
+ * 이라 "피치가 안 보임"과 "검은 화면"은 사실 같은 증상이었다.
+ *
+ * 원인으로 좁힌 가설: html-to-image는 캡처 대상을
+ * `<svg><foreignObject>(HTML 통째로)</foreignObject></svg>`로 합성한 뒤
+ * 그 합성 결과를 `new Image()`로 불러와(=SVG를 "이미지 리소스"로 로드)
+ * 캔버스에 그린다. 그 안에 또 리소스를 불러와야 하는 요소(중첩된
+ * `<svg>`든, `data:` URL `<img>`든)가 있으면, "이미지로 쓰이는 SVG는
+ * 추가 리소스를 로드할 수 없다"는 스펙상의 제약에 걸려 그 서브트리 전체가
+ * 비는 것으로 보인다 — 어떤 형태로 넣어도(살아있는 svg, 미리 래스터화한
+ * img) 매번 같은 자리만 비었던 것과 정확히 들어맞는다.
+ *
+ * 그래서 접근을 바꾼다: html-to-image에는 **피치를 아예 안 준다.** 카드를
+ * 복제해 피치 자리를 빈 자리표시자로 바꾼 "텍스트 전용" 버전만
+ * html-to-image로 캡처하고(이 경로는 처음부터 지금까지 한 번도 실패한
+ * 적이 없다), 피치는 이미 실기기에서 검증된 `rasterizeSvg`(순수 svg→
+ * canvas, foreignObject를 전혀 거치지 않음)로 따로 래스터화한 뒤, 두
+ * 캔버스를 우리가 직접 `ctx.drawImage`로 합성한다. `drawImage`는 이미
+ * 디코드가 끝난 네이티브 이미지 객체를 그리는 것이라 "이미지로 쓰이는
+ * SVG 안에서 리소스 로드" 제약과 아예 무관하다.
+ */
+async function prepareTextOnlyClone(
+  node: HTMLElement,
+): Promise<{
+  clone: HTMLElement
+  cleanup: () => void
+  pitches: Array<{ liveSvg: SVGSVGElement; left: number; top: number; width: number; height: number }>
+}> {
+  const cardRect = node.getBoundingClientRect()
+  const liveSvgs = Array.from(node.querySelectorAll('svg'))
+  const pitches = liveSvgs.map((liveSvg) => {
+    const rect = liveSvg.getBoundingClientRect()
+    return {
+      liveSvg,
+      left: rect.left - cardRect.left,
+      top: rect.top - cardRect.top,
+      width: rect.width,
+      height: rect.height,
+    }
+  })
 
-export async function exportCard(node: HTMLElement, ratio: '1:1' | '4:5'): Promise<Blob> {
-  await waitForMorphing()
-  await document.fonts.ready // 웹폰트 로드 전에 캡처하면 폴백 폰트로 찍힌다
+  const clone = node.cloneNode(true) as HTMLElement
+  const clonedSvgs = Array.from(clone.querySelectorAll('svg'))
+  for (let i = 0; i < clonedSvgs.length; i++) {
+    const clonedSvg = clonedSvgs[i]
+    const p = pitches[i]
+    // 자리표시자는 순수 <div>일 뿐, 리소스를 더 불러올 일이 없다 — 다른
+    // 카드 레이아웃(flex 등)이 피치 공간을 기준으로 배치돼 있을 수 있어
+    // 크기만 그대로 보존한다.
+    const placeholder = document.createElement('div')
+    placeholder.style.width = `${p.width}px`
+    placeholder.style.height = `${p.height}px`
+    clonedSvg.replaceWith(placeholder)
+  }
 
-  const pixelRatio = 2
-  const { target, cleanup } = USE_PITCH_FLATTEN_CLONE
-    ? await prepareCaptureClone(node, pixelRatio)
-    : { target: node, cleanup: () => {} }
+  clone.style.position = 'absolute'
+  clone.style.left = '-99999px'
+  clone.style.top = '0'
+  document.body.appendChild(clone)
 
-  let blob: Blob | null
+  return { clone, cleanup: () => clone.remove(), pitches }
+}
+
+async function compositeCanvas(
+  node: HTMLElement,
+  width: number,
+  height: number,
+  pixelRatio: number,
+): Promise<HTMLCanvasElement> {
+  const { clone, cleanup, pitches } = await prepareTextOnlyClone(node)
+
+  let baseCanvas: HTMLCanvasElement
   try {
-    // toPng(문자열 data: URL)이 아니라 toBlob을 직접 쓴다(advisor 리뷰로
-    // 정정, 2026-09-20 실기기 Safari 리포트 대응) — data: URL을 <a download>에
-    // 그대로 넣으면 Safari(특히 iOS)에서 "다운로드/보기" 액션시트까지는 뜨지만
-    // 실제 파일 저장으로 이어지지 않는 경우가 많다(잘 알려진 제약).
-    blob = await withTimeout(
-      'toBlob',
-      toBlob(target, {
+    baseCanvas = await withTimeout(
+      'toCanvas',
+      toCanvas(clone, {
         pixelRatio,
         cacheBust: true,
         // GifExportRunner와 같은 이유(2026-09-11) — 이미 로드된 폰트를 다시
         // embed하려다 cross-origin Google Fonts CSS에서 CORS SecurityError가
         // 나며 느려지는 걸 막는다.
         skipFonts: true,
-        width: 1080,
-        height: ratio === '1:1' ? 1080 : 1350,
+        width,
+        height,
       }),
       20_000,
     )
   } finally {
     cleanup()
   }
+
+  const ctx = baseCanvas.getContext('2d')
+  if (!ctx) throw new CaptureStageError('compositeCanvas', '캔버스 컨텍스트를 만들지 못했습니다')
+
+  for (let i = 0; i < pitches.length; i++) {
+    const p = pitches[i]
+    if (p.width <= 0 || p.height <= 0) continue
+    let dataUrl: string
+    try {
+      dataUrl = await rasterizeSvg(p.liveSvg, Math.round(p.width), Math.round(p.height), pixelRatio)
+    } catch (e) {
+      throw new CaptureStageError('rasterizeSvg', `svg#${i} rect=${p.width.toFixed(0)}x${p.height.toFixed(0)}`, e)
+    }
+    const img = new Image()
+    img.src = dataUrl
+    try {
+      await img.decode()
+    } catch (e) {
+      throw new CaptureStageError('compositeCanvas', `svg#${i} 래스터 결과 decode 실패`, e)
+    }
+    ctx.drawImage(img, Math.round(p.left * pixelRatio), Math.round(p.top * pixelRatio))
+  }
+
+  return baseCanvas
+}
+
+export async function exportCard(node: HTMLElement, ratio: '1:1' | '4:5'): Promise<Blob> {
+  await waitForMorphing()
+  await document.fonts.ready // 웹폰트 로드 전에 캡처하면 폴백 폰트로 찍힌다
+
+  const canvas = await compositeCanvas(node, 1080, ratio === '1:1' ? 1080 : 1350, 2)
+
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
   if (!blob) throw new CaptureStageError('toBlob', '결과 blob이 null')
 
+  // toPng(문자열 data: URL)이 아니라 toBlob을 직접 쓴다(advisor 리뷰로
+  // 정정, 2026-09-20 실기기 Safari 리포트 대응) — data: URL을 <a download>에
+  // 그대로 넣으면 Safari(특히 iOS)에서 "다운로드/보기" 액션시트까지는 뜨지만
+  // 실제 파일 저장으로 이어지지 않는 경우가 많다(잘 알려진 제약).
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
@@ -200,13 +202,6 @@ export async function exportCard(node: HTMLElement, ratio: '1:1' | '4:5'): Promi
  */
 export async function captureThumbnail(node: HTMLElement, width: number, height: number): Promise<string> {
   await document.fonts.ready
-  const pixelRatio = 2
-  const { target, cleanup } = USE_PITCH_FLATTEN_CLONE
-    ? await prepareCaptureClone(node, pixelRatio)
-    : { target: node, cleanup: () => {} }
-  try {
-    return await withTimeout('toPng', toPng(target, { pixelRatio, cacheBust: true, skipFonts: true, width, height }), 20_000)
-  } finally {
-    cleanup()
-  }
+  const canvas = await compositeCanvas(node, width, height, 2)
+  return canvas.toDataURL('image/png')
 }
