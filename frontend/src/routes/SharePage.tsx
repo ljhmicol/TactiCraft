@@ -3,6 +3,7 @@ import { useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import { CommunityComments } from '@/components/comments/CommunityComments'
+import { ReportButton } from '@/components/common/ReportButton'
 import { AnnotationLayer } from '@/components/pitch/AnnotationLayer'
 import { ChannelGrid } from '@/components/pitch/ChannelGrid'
 import { CompactnessBox } from '@/components/pitch/CompactnessBox'
@@ -17,6 +18,7 @@ import { SharePngCard } from '@/components/export/SharePngCard'
 import { useAnalysis, useSharedAnalysis } from '@/hooks/useAnalyses'
 import { useCurrentUser } from '@/hooks/useAuth'
 import { useToggleLike } from '@/hooks/useCommunity'
+import { useReportAnalysis } from '@/hooks/useModeration'
 import { exportCard } from '@/lib/exportImage'
 import { cn } from '@/lib/utils'
 import type { Analysis, LayerToggles, PhaseData, PhaseType } from '@/types/analysis'
@@ -88,6 +90,7 @@ function ShareView({
   const { isLoggedIn } = useCurrentUser()
   const navigate = useNavigate()
   const toggleLike = useToggleLike()
+  const reportAnalysis = useReportAnalysis()
 
   const [view, setView] = useState<ViewKey>({ kind: 'phase', phase: 'base' })
   const [layers, setLayers] = useState<LayerToggles>({
@@ -297,6 +300,16 @@ function ShareView({
         <Heart className={cn('h-4 w-4', analysis.likedByMe && 'fill-current')} />
         {analysis.likeCount ?? 0}
       </button>
+
+      {/* 신고(개선 로드맵 §5.5, 2026-09-20) — 좋아요 바로 옆, 같은 "게시물에
+       * 대한 반응" 그룹으로 묶었다. 소유자가 자기 글을 신고하는 것도 막지는
+       * 않는다(막을 이유가 없고, 서버도 막지 않는다). */}
+      {analysis.id !== undefined && (
+        <ReportButton
+          isLoggedIn={isLoggedIn}
+          onReport={(reason) => reportAnalysis.mutateAsync({ analysisId: analysis.id as number, reason })}
+        />
+      )}
 
       {analysis.id !== undefined && <CommunityComments analysisId={analysis.id} isOwner={Boolean(analysis.isOwner)} />}
     </div>

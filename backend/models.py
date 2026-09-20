@@ -17,6 +17,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
+from config import settings
 from database import Base
 
 
@@ -36,11 +37,24 @@ class User(Base):
     # 이메일 앞부분으로 백필한다. 새 가입은 UserRegister가 항상 요구한다.
     username = Column(String, unique=True)
 
+    @property
+    def is_admin(self) -> bool:
+        """DB 컬럼이 아니라 config.py의 admin_emails로 판정한다(이유는 그
+        설정값 옆 주석 참조) — schemas.UserOut(from_attributes=True)이 이
+        프로퍼티를 그대로 읽어가므로 라우터마다 따로 계산할 필요가 없다."""
+        return self.email.lower() in settings.admin_email_list
+
 
 class Session(Base):
     """로그인 세션(httpOnly 쿠키에 담는 토큰). JWT 대신 이 테이블 방식을 쓴 이유는
     로그아웃 시 즉시 무효화할 수 있어야 하기 때문 — JWT는 만료 전까지 서버가
-    통제할 수 없다."""
+    통제할 수 없다.
+
+    2026-09-20(개선 로드맵 §5.5) — token 컬럼에는 이제 원문이 아니라 SHA-256
+    해시가 들어간다(auth.py의 docstring 참조). expires_at/last_used_at은
+    기존 테이블에 나중에 추가된 컬럼이라 main.py의 _ensure_column이 채운다
+    (players.tactical_role과 같은 패턴).
+    """
 
     __tablename__ = "sessions"
 
@@ -48,6 +62,8 @@ class Session(Base):
     token = Column(String, nullable=False, unique=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     created_at = Column(String, nullable=False)
+    expires_at = Column(String)
+    last_used_at = Column(String)
 
 
 class Analysis(Base):
@@ -306,6 +322,38 @@ class CommentReaction(Base):
     user = relationship("User")
 
     __table_args__ = (UniqueConstraint("comment_id", "user_id", name="uq_comment_reactions_comment_user"),)
+
+
+class Report(Base):
+    """신고(개선 로드맵 §5.5, "신고/차단도 이번에 같이" — 2026-09-20 사용자
+    선택). 분석·댓글 공통으로 쓰는 단일 테이블 — target_type으로 구분한다
+    (Like/CommentReaction이 대상별로 별도 테이블을 쓰는 것과 다른 선택인데,
+    신고는 조회·집계 빈도가 훨씬 낮고 "운영자가 미해결 신고를 한 목록에서
+    본다"는 요구가 우선이라 하나로 합쳤다). 같은 사람이 같은 대상을 두 번
+    신고해도 새 신고로 잡히지 않는다(UniqueConstraint) — 신고 폭탄으로
+    목록을 도배하는 걸 막는다.
+
+    운영자 권한은 DB 플래그가 아니라 config.py의 admin_emails로 판정한다
+    (routers/moderation.py 참조) — 이 테이블 자체는 신고 기록만 담당한다.
+    새 테이블이라 create_all이 자동 생성한다(Comment/Like와 같은 이유).
+    """
+
+    __tablename__ = "reports"
+    __table_args__ = (
+        UniqueConstraint(
+            "target_type", "target_id", "reporter_user_id", name="uq_reports_target_reporter"
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    target_type = Column(String, nullable=False)  # 'analysis' | 'comment'
+    target_id = Column(Integer, nullable=False)
+    reporter_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    reason = Column(String)
+    created_at = Column(String, nullable=False)
+    status = Column(String, nullable=False, default="open")  # 'open' | 'resolved'
+
+    reporter = relationship("User")
 
 
 class Like(Base):

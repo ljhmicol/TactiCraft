@@ -73,7 +73,10 @@ class PhaseIn(BaseModel):
     pressing_line_y: Optional[float] = Field(default=None, ge=0, le=100)
     comment: str = ""
     # 구버전 클라이언트 요청에는 없는 키다 — 기본 빈 목록으로 호환된다.
-    annotations: List[AnnotationIn] = []
+    # max_length=100(개선 로드맵 §5.5) — 국면 하나에 화살표 100개는 실제
+    # 사용 시나리오를 크게 웃돌아, 요청 본문 크기를 키워 서버에 부담을 주려는
+    # 시도만 걸러낸다.
+    annotations: List[AnnotationIn] = Field(default=[], max_length=100)
 
     @field_validator("positions")
     @classmethod
@@ -110,14 +113,29 @@ class AnalysisIn(BaseModel):
     players: List[PlayerIn]
     phases: Dict[PhaseType, PhaseIn]
     # 없으면(구버전 클라이언트/저장분) 타임라인 미사용으로 취급한다.
-    changing_points: List[ChangingPointIn] = []
-    summary: str = ""
+    # max_length=50(개선 로드맵 §5.5) — 경기 하나에 체인징 포인트 50개는
+    # 실사용을 크게 웃돈다.
+    changing_points: List[ChangingPointIn] = Field(default=[], max_length=50)
+    summary: str = Field(default="", max_length=2000)
     # 목록 검색·필터(TO-DO 7번). 자유 텍스트 태그 — 사전 정의 목록 없음.
+    # 개수·글자 수 상한은 아래 _check_tags에서 검증한다(개선 로드맵 §5.5).
     tags: List[str] = []
     # 목록 미리보기(TO-DO 7번) — 프론트가 저장 시점에 base 국면을 캡처해
     # data URL(base64 PNG)로 보낸다. 없으면(구버전 클라이언트) 목록에서
-    # 미리보기 없이 표시된다.
-    thumbnail: Optional[str] = None
+    # 미리보기 없이 표시된다. max_length=500_000(개선 로드맵 §5.5)은 base64
+    # 기준 약 375KB — 목록 미리보기용 축소 PNG치곤 넉넉하다.
+    thumbnail: Optional[str] = Field(default=None, max_length=500_000)
+
+    @field_validator("tags")
+    @classmethod
+    def _check_tags(cls, v: List[str]) -> List[str]:
+        # 개선 로드맵 §5.5 — 요청 본문 크기를 태그로 부풀리는 시도 방지.
+        if len(v) > 20:
+            raise ValueError(f"tags는 최대 20개까지 가능합니다 (현재 {len(v)}개)")
+        for tag in v:
+            if len(tag) > 30:
+                raise ValueError("태그 하나는 30자를 넘을 수 없습니다")
+        return v
 
     @field_validator("players")
     @classmethod
@@ -322,6 +340,11 @@ class UserOut(BaseModel):
     id: int
     email: str
     username: Optional[str] = None  # 백필 전 구버전 계정은 없을 수 있다
+    # 운영자 여부(개선 로드맵 §5.5) — DB 컬럼이 아니라 config.py의 admin_emails로
+    # 판정한 결과를 그대로 실어 보낸다(routers/auth.py의 me()가 채운다).
+    # 프론트가 "신고 처리" 메뉴를 보여줄지 판단하는 용도일 뿐 — 실제 권한
+    # 검사는 서버(auth.require_admin)가 매 요청마다 다시 한다.
+    is_admin: bool = False
 
 
 # 댓글(TO-DO 12번) + 대댓글·좋아요/싫어요(TO-DO 54, 2026-09-16). 작성은
@@ -369,3 +392,28 @@ class CommentReactionOut(BaseModel):
     my_reaction: Optional[Literal["like", "dislike"]] = None
     like_count: int
     dislike_count: int
+
+
+# 신고(개선 로드맵 §5.5, 2026-09-20 "신고/차단도 이번에 같이"). 분석/댓글
+# 공통 — models.Report의 target_type 참조.
+ReportTargetType = Literal["analysis", "comment"]
+
+
+class ReportIn(BaseModel):
+    reason: Optional[str] = Field(default=None, max_length=500)
+
+
+class ReportOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    target_type: ReportTargetType
+    target_id: int
+    reporter_username: str
+    reason: Optional[str] = None
+    created_at: str
+    status: Literal["open", "resolved"]
+    # 운영자가 목록에서 바로 맥락을 볼 수 있도록 신고 대상의 짧은 미리보기를
+    # 같이 얹는다(analysis면 경기 이름, comment면 본문 앞부분) — 대상이 이미
+    # 삭제됐으면 None(routers/moderation.py가 채운다).
+    target_preview: Optional[str] = None

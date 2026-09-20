@@ -1,10 +1,12 @@
 import { Reply, ThumbsDown, ThumbsUp, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 
+import { ReportButton } from '@/components/common/ReportButton'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { useCurrentUser } from '@/hooks/useAuth'
 import { useComments, useCreateComment, useDeleteComment, useToggleCommentReaction } from '@/hooks/useComments'
+import { useReportComment } from '@/hooks/useModeration'
 import { ApiError } from '@/lib/api'
 import type { Comment } from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -27,6 +29,7 @@ interface CommentRowProps {
   reactPending: boolean
   onReplyClick: () => void
   replyOpen: boolean
+  onReport: (reason: string) => Promise<unknown>
 }
 
 function CommentRow({
@@ -40,6 +43,7 @@ function CommentRow({
   reactPending,
   onReplyClick,
   replyOpen,
+  onReport,
 }: CommentRowProps) {
   return (
     <div className={cn('rounded-md border border-border p-3', isReply && 'border-dashed bg-muted/30')}>
@@ -107,6 +111,9 @@ function CommentRow({
             답글
           </button>
         )}
+        {/* 신고(개선 로드맵 §5.5, 2026-09-20) — 작성자 본인 댓글도 신고 버튼은
+         * 그대로 둔다(신고 자체를 막을 이유가 없다). */}
+        <ReportButton isLoggedIn={isLoggedIn} onReport={onReport} />
       </div>
     </div>
   )
@@ -135,6 +142,7 @@ export function CommunityComments({ analysisId, isOwner }: CommunityCommentsProp
   const createMutation = useCreateComment(analysisId)
   const deleteMutation = useDeleteComment(analysisId)
   const reactMutation = useToggleCommentReaction(analysisId)
+  const reportMutation = useReportComment()
   const [body, setBody] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [replyingTo, setReplyingTo] = useState<number | null>(null)
@@ -208,6 +216,7 @@ export function CommunityComments({ analysisId, isOwner }: CommunityCommentsProp
                     setReplyError(null)
                   }}
                   replyOpen={replyingTo === c.id}
+                  onReport={(reason) => reportMutation.mutateAsync({ commentId: c.id, reason })}
                 />
 
                 {replies.length > 0 && (
@@ -225,6 +234,7 @@ export function CommunityComments({ analysisId, isOwner }: CommunityCommentsProp
                           reactPending={reactMutation.isPending}
                           onReplyClick={() => {}}
                           replyOpen={false}
+                          onReport={(reason) => reportMutation.mutateAsync({ commentId: r.id, reason })}
                         />
                       </li>
                     ))}

@@ -14,8 +14,15 @@ import models
 import schemas
 from config import settings
 from database import get_db
+from ratelimit import rate_limit
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+# 회원가입 5회/10분, 로그인 10회/5분(IP 기준) — 개선 로드맵 §5.5. 무차별
+# 대입·대량 계정 생성을 막는 게 목적이라 일반적인 실수(비밀번호 오타 몇 번)로는
+# 걸리지 않을 만큼 여유 있게 잡았다.
+_register_rate_limit = rate_limit("register", limit=5, window_seconds=600)
+_login_rate_limit = rate_limit("login", limit=10, window_seconds=300)
 
 
 def _now() -> str:
@@ -33,7 +40,12 @@ def _set_session_cookie(response: Response, token: str) -> None:
     )
 
 
-@router.post("/register", response_model=schemas.UserOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    response_model=schemas.UserOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(_register_rate_limit)],
+)
 def register(payload: schemas.UserRegister, response: Response, db: DbSession = Depends(get_db)):
     existing = db.query(models.User).filter(models.User.email == payload.email).first()
     if existing:
@@ -67,7 +79,7 @@ def register(payload: schemas.UserRegister, response: Response, db: DbSession = 
     return user
 
 
-@router.post("/login", response_model=schemas.UserOut)
+@router.post("/login", response_model=schemas.UserOut, dependencies=[Depends(_login_rate_limit)])
 def login(payload: schemas.UserLogin, response: Response, db: DbSession = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == payload.email).first()
     if not user or not auth.verify_password(payload.password, user.password_hash):
@@ -127,10 +139,12 @@ def change_password(
     # 비밀번호를 바꾸면 이 브라우저를 뺀 다른 모든 세션을 끊는다 — 세션
     # 쿠키가 다른 기기에 남아 있었다면(공용 PC 등) 새 비밀번호로 잠그는
     # 의미가 없어지기 때문. 지금 쓰고 있는 세션(현재 쿠키)은 로그인 상태를
-    # 유지해야 하므로 제외한다.
+    # 유지해야 하므로 제외한다. token 컬럼엔 해시가 저장되므로(2026-09-20,
+    # 개선 로드맵 §5.5) 비교 전에 현재 쿠키 원문도 같은 방식으로 해시한다.
     current_token = request.cookies.get(auth.SESSION_COOKIE_NAME)
+    current_token_hash = auth._hash_token(current_token) if current_token else None
     db.query(models.Session).filter(
-        models.Session.user_id == user.id, models.Session.token != current_token
+        models.Session.user_id == user.id, models.Session.token != current_token_hash
     ).delete()
     db.commit()
 

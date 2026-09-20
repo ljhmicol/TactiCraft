@@ -25,10 +25,21 @@ class Settings(BaseSettings):
     # 끊긴다 — 그래서 기본값은 False이고, HTTPS로 서빙되는 배포 환경에서만
     # 환경변수(COOKIE_SECURE=true)로 켠다.
     cookie_secure: bool = False
+    # 신고 처리 등 운영자 전용 엔드포인트 접근 허용 목록(개선 로드맵 §5.5,
+    # 콤마 구분 이메일). DB에 is_admin 플래그를 두는 대신 설정값으로 뺀
+    # 이유 — "가입 순서상 첫 계정이 운영자"식 규칙은 테스트마다 등록 순서가
+    # 달라 테스트 결과가 우연에 좌우되고, 운영 환경에서도 실제 user id=1이
+    # 누구인지 이 세션에서 확인할 방법이 없다. 환경변수로 명시하면 둘 다
+    # 피할 수 있다.
+    admin_emails: str = ""
 
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def admin_email_list(self) -> list[str]:
+        return [e.strip().lower() for e in self.admin_emails.split(",") if e.strip()]
 
 
 settings = Settings()

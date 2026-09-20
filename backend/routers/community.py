@@ -18,8 +18,13 @@ import crud
 import models
 import schemas
 from database import get_db
+from ratelimit import rate_limit
 
 router = APIRouter(prefix="/api/community", tags=["community"])
+
+# 좋아요 토글 30회/분(IP 기준) — 개선 로드맵 §5.5, comments.py의 반응
+# 제한과 같은 값.
+_like_rate_limit = rate_limit("like", limit=30, window_seconds=60)
 
 
 @router.get("/analyses", response_model=list[schemas.CommunityAnalysisOut])
@@ -31,7 +36,11 @@ def list_public_analyses(
     return crud.list_public_analyses(db, current_user_id=user.id if user else None, sort=sort)
 
 
-@router.post("/analyses/{analysis_id}/like", response_model=schemas.LikeToggleOut)
+@router.post(
+    "/analyses/{analysis_id}/like",
+    response_model=schemas.LikeToggleOut,
+    dependencies=[Depends(_like_rate_limit)],
+)
 def toggle_like(
     analysis_id: int,
     db: Session = Depends(get_db),

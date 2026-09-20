@@ -18,17 +18,30 @@ _tmp_db_path = Path(_tmp_dir) / "test.db"
 os.environ["DATABASE_URL"] = f"sqlite:///{_tmp_db_path.as_posix()}"
 os.environ["COOKIE_SECURE"] = "false"
 os.environ["CORS_ORIGINS"] = "http://testserver"
+# 운영자 판정 테스트용 고정 이메일(개선 로드맵 §5.5) — test_moderation.py가
+# 이 이메일로 가입한 계정을 운영자로 취급한다.
+os.environ["ADMIN_EMAILS"] = "admin@t.com"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 import main  # noqa: E402
+import ratelimit  # noqa: E402
 from database import SessionLocal  # noqa: E402
 
 
 @pytest.fixture()
 def client():
     return TestClient(main.app)
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limits():
+    """TestClient는 모든 요청에 같은 호스트를 쓰므로, 모듈 전역 상태인
+    ratelimit._hits를 테스트 시작 전 비우지 않으면 회원가입/로그인이 잦은
+    테스트 모음(예: test_auth.py)에서 실제 로직과 무관한 429가 섞여
+    들어온다(개선 로드맵 §5.5)."""
+    ratelimit.reset()
 
 
 @pytest.fixture(autouse=True)

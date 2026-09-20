@@ -144,6 +144,10 @@ export interface CurrentUser {
   // 백필 전 구버전 계정엔 없을 수 있다(TO-DO 12번 도입 이전 가입) — 실질적으론
   // main.py 마이그레이션이 이메일 앞부분으로 채워 넣어서 항상 값이 있다.
   username?: string
+  // 운영자 여부(개선 로드맵 §5.5) — 서버가 config.py의 admin_emails로 판정해
+  // 내려준다. "신고함" 메뉴 노출 여부에만 쓴다 — 실제 권한 검사는 서버가
+  // 매번 다시 한다(AdminReportsPage 참조).
+  isAdmin?: boolean
 }
 
 /** 로그인(TO-DO 11번). 실패 시 ApiError(401/400)를 던진다. */
@@ -224,6 +228,40 @@ export function toggleCommentReaction(
   value: 'like' | 'dislike',
 ): Promise<{ myReaction: 'like' | 'dislike' | null; likeCount: number; dislikeCount: number }> {
   return apiFetch(`/comments/${commentId}/reaction`, { method: 'POST', body: JSON.stringify({ value }) })
+}
+
+// 신고 + 운영자 처리(개선 로드맵 §5.5, 2026-09-20 "신고/차단도 이번에
+// 같이"). "차단"은 별도 사용자 차단 기능이 아니라 운영자가 신고된 콘텐츠를
+// 숨기거나(setAnalysisVisibility 재사용) 지우는(deleteComment 재사용) 조치를
+// 가리킨다 — routers/moderation.py 상단 docstring 참조.
+export interface Report {
+  id: number
+  targetType: 'analysis' | 'comment'
+  targetId: number
+  reporterUsername: string
+  reason: string | null
+  createdAt: string
+  status: 'open' | 'resolved'
+  /** 신고 목록에서 대상을 다시 열어보지 않아도 되게 붙는 짧은 미리보기 —
+   * 대상이 이미 지워졌으면 null. */
+  targetPreview: string | null
+}
+
+export function reportAnalysis(analysisId: number, reason?: string): Promise<Report> {
+  return apiFetch(`/analyses/${analysisId}/report`, { method: 'POST', body: JSON.stringify({ reason: reason || undefined }) })
+}
+
+export function reportComment(commentId: number, reason?: string): Promise<Report> {
+  return apiFetch(`/comments/${commentId}/report`, { method: 'POST', body: JSON.stringify({ reason: reason || undefined }) })
+}
+
+/** 운영자 전용(서버가 403으로 강제) — 미해결 신고 목록. */
+export function fetchOpenReports(): Promise<Report[]> {
+  return apiFetch('/moderation/reports?status_filter=open')
+}
+
+export function resolveReport(reportId: number): Promise<Report> {
+  return apiFetch(`/moderation/reports/${reportId}/resolve`, { method: 'POST' })
 }
 
 /** 앱 진입 시 1회, 저장 실패 시 재확인한다 (3단계 §2.1). 타임아웃 2초. */

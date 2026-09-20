@@ -24,6 +24,10 @@ class CommentNotFound(Exception):
     pass
 
 
+class ReportDuplicate(Exception):
+    pass
+
+
 def _now() -> str:
     return datetime.now().isoformat(timespec="seconds")
 
@@ -586,6 +590,89 @@ def toggle_like(db: Session, analysis_id: int, user: "models.User") -> tuple[boo
         .scalar()
     )
     return liked, count
+
+
+# ---------------------------------------------------------------------------
+# 신고(개선 로드맵 §5.5, 2026-09-20 "신고/차단도 이번에 같이")
+# ---------------------------------------------------------------------------
+
+
+def create_report(
+    db: Session, target_type: str, target_id: int, reporter_user_id: int, reason: Optional[str]
+) -> models.Report:
+    """같은 사람이 같은 대상을 두 번 신고하면 새 신고를 만들지 않고
+    ReportDuplicate를 던진다 — models.Report의 UniqueConstraint와 짝이다."""
+    existing = (
+        db.query(models.Report)
+        .filter(
+            models.Report.target_type == target_type,
+            models.Report.target_id == target_id,
+            models.Report.reporter_user_id == reporter_user_id,
+        )
+        .first()
+    )
+    if existing:
+        raise ReportDuplicate()
+    report = models.Report(
+        target_type=target_type,
+        target_id=target_id,
+        reporter_user_id=reporter_user_id,
+        reason=reason,
+        created_at=_now(),
+        status="open",
+    )
+    db.add(report)
+    db.commit()
+    db.refresh(report)
+    return report
+
+
+def report_target_preview(db: Session, target_type: str, target_id: int) -> Optional[str]:
+    """운영자 신고 목록에서 대상을 다시 열어보지 않고도 무엇에 대한 신고인지
+    감을 잡을 수 있게 짧은 미리보기를 붙인다. 대상이 이미 지워졌으면
+    None(신고 자체는 기록으로 남아 있어도 대상은 사라질 수 있다)."""
+    if target_type == "analysis":
+        row = db.query(models.Analysis).filter(models.Analysis.id == target_id).first()
+        return row.match_name if row else None
+    row = db.query(models.Comment).filter(models.Comment.id == target_id).first()
+    return row.body[:80] if row else None
+
+
+def _report_dict(db: Session, report: models.Report) -> dict:
+    return {
+        "id": report.id,
+        "target_type": report.target_type,
+        "target_id": report.target_id,
+        "reporter_username": report.reporter.username or report.reporter.email.split("@")[0],
+        "reason": report.reason,
+        "created_at": report.created_at,
+        "status": report.status,
+        "target_preview": report_target_preview(db, report.target_type, report.target_id),
+    }
+
+
+def list_reports(db: Session, status: str = "open") -> List[dict]:
+    rows = (
+        db.query(models.Report)
+        .filter(models.Report.status == status)
+        .order_by(models.Report.created_at.desc())
+        .all()
+    )
+    return [_report_dict(db, r) for r in rows]
+
+
+def resolve_report(db: Session, report_id: int) -> Optional[dict]:
+    report = db.query(models.Report).filter(models.Report.id == report_id).first()
+    if not report:
+        return None
+    report.status = "resolved"
+    db.commit()
+    db.refresh(report)
+    return _report_dict(db, report)
+
+
+def get_report_dict(db: Session, report: models.Report) -> dict:
+    return _report_dict(db, report)
 
 
 def get_like_info(db: Session, analysis_id: int, user_id: Optional[int]) -> tuple[int, bool]:

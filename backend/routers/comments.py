@@ -20,8 +20,13 @@ import crud
 import models
 import schemas
 from database import get_db
+from ratelimit import rate_limit
 
 router = APIRouter(tags=["comments"])
+
+# 댓글 작성 20회/분, 반응(좋아요/싫어요) 30회/분(IP 기준) — 개선 로드맵 §5.5.
+_comment_rate_limit = rate_limit("comment", limit=20, window_seconds=60)
+_reaction_rate_limit = rate_limit("comment_reaction", limit=30, window_seconds=60)
 
 
 @router.get("/api/analyses/{analysis_id}/comments", response_model=list[schemas.CommentOut])
@@ -43,6 +48,7 @@ def list_comments(
     "/api/analyses/{analysis_id}/comments",
     response_model=schemas.CommentOut,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(_comment_rate_limit)],
 )
 def create_comment(
     analysis_id: int,
@@ -86,12 +92,18 @@ def delete_comment(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Comment not found")
     is_author = comment.user_id == user.id
     is_owner = comment.analysis is not None and comment.analysis.user_id == user.id
-    if not (is_author or is_owner):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "본인이 쓴 댓글이거나 분석 소유자만 지울 수 있습니다")
+    # 운영자는 작성자·분석 소유자가 아니어도 지울 수 있다(개선 로드맵 §5.5,
+    # 신고된 댓글을 지우는 "차단" 조치 — routers/moderation.py 참조).
+    if not (is_author or is_owner or user.is_admin):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "본인이 쓴 댓글이거나 분석 소유자, 운영자만 지울 수 있습니다")
     crud.delete_comment(db, comment_id)
 
 
-@router.post("/api/comments/{comment_id}/reaction", response_model=schemas.CommentReactionOut)
+@router.post(
+    "/api/comments/{comment_id}/reaction",
+    response_model=schemas.CommentReactionOut,
+    dependencies=[Depends(_reaction_rate_limit)],
+)
 def toggle_comment_reaction(
     comment_id: int,
     payload: schemas.CommentReactionIn,

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { useCurrentUser, useLogout } from '@/hooks/useAuth'
 import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning'
 import { cn } from '@/lib/utils'
+import { AdminReportsPage } from '@/routes/AdminReportsPage'
 import { AnalysesPage } from '@/routes/AnalysesPage'
 import { AnalysisDetailPage } from '@/routes/AnalysisDetailPage'
 import { CommunityPage } from '@/routes/CommunityPage'
@@ -48,6 +49,13 @@ function AuthNav() {
 
   return (
     <>
+      {/* 운영자 전용(개선 로드맵 §5.5, 2026-09-20) — 실제 권한 경계는 서버에
+       * 있다(AdminReportsPage 참조), 이 조건은 화면 정리용일 뿐이다. */}
+      {user?.isAdmin && (
+        <Link to="/admin/reports" className="shrink-0 whitespace-nowrap text-sm text-muted-foreground hover:text-foreground">
+          신고함
+        </Link>
+      )}
       <Link to="/profile" className="max-w-[40vw] truncate text-sm text-muted-foreground hover:text-foreground" title="내 정보">
         {user?.email}
       </Link>
@@ -168,6 +176,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/admin/reports" element={<AdminReportsPage />} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>

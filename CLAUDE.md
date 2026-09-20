@@ -59,6 +59,8 @@ uvicorn main:app --reload          # 백엔드 (8000)
 
 **테스트(2026-09-20, TO-DO 65번 신설)**: 프론트는 `cd frontend && npx vitest run`, 백엔드는 `cd backend && pytest`(테스트 전용 의존성은 `backend/requirements-dev.txt`에 따로 있음 — `pip install -r requirements-dev.txt`로 설치, 배포 이미지엔 안 들어감). 백엔드 테스트는 `conftest.py`가 실제 개발 DB(`data/tacticore.db`)와 완전히 분리된 임시 파일을 매번 새로 써서 안전합니다. CI 연동은 아직 없습니다(`.github/workflows/fly-deploy.yml`은 `FLY_API_TOKEN` 미설정으로 애초에 비활성 — [[deployment-flyio]] 참조).
 
+**운영자 계정은 DB 플래그가 아니라 `ADMIN_EMAILS` 환경변수로 지정합니다(2026-09-20, TO-DO 66번, 개선 로드맵 §5.5).** 신고 처리 화면(`/admin/reports`)·API(`/api/moderation/reports`)가 이 값에 있는 이메일만 통과시킵니다 — 설정 안 하면 아무도 운영자가 아닙니다. 설정 방법은 `docs/6단계_운영_매뉴얼.md` §2.6 참조. 로컬 개발은 `backend/.env`, 배포는 `flyctl secrets set`(이메일이 담기는 값이라 `fly.toml`의 `[env]`에 평문으로 넣지 않습니다) — **이 세션은 아직 어느 쪽도 설정하지 않았습니다.**
+
 ## 작업 시 주의할 결정 사항
 
 이 결정들은 요구사항 문서에 기록되어 있으나, 배경을 모르면 되돌리기 쉬운 것들입니다.

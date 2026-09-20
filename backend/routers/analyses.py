@@ -100,8 +100,10 @@ def set_analysis_visibility(
         existing = crud.get_analysis(db, analysis_id)
     except crud.AnalysisNotFound:
         raise HTTPException(status_code=404, detail="Analysis not found")
-    if existing.user_id != user.id:
-        raise HTTPException(status_code=403, detail="본인이 저장한 분석만 공개 설정을 바꿀 수 있습니다")
+    # 운영자는 소유자가 아니어도 바꿀 수 있다(개선 로드맵 §5.5, 신고된 분석을
+    # 비공개로 내리는 "차단" 조치 — routers/moderation.py 참조).
+    if existing.user_id != user.id and not user.is_admin:
+        raise HTTPException(status_code=403, detail="본인이 저장한 분석이거나 운영자만 공개 설정을 바꿀 수 있습니다")
     row = crud.set_analysis_visibility(db, analysis_id, payload.visibility)
     return row
 

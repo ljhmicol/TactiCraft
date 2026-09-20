@@ -4,7 +4,7 @@ import secrets
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -18,6 +18,7 @@ from routers import (
     auth as auth_router,
     comments as comments_router,
     community as community_router,
+    moderation as moderation_router,
     share as share_router,
 )
 
@@ -51,6 +52,8 @@ _ensure_column("analyses", "is_public", "BOOLEAN DEFAULT 0")
 _ensure_column("comments", "parent_id", "INTEGER REFERENCES comments(id) ON DELETE CASCADE")
 _ensure_column("analyses", "visibility", "TEXT NOT NULL DEFAULT 'private'")
 _ensure_column("analyses", "share_token", "TEXT")
+_ensure_column("sessions", "expires_at", "TEXT")
+_ensure_column("sessions", "last_used_at", "TEXT")
 
 
 def _backfill_usernames() -> None:
@@ -119,10 +122,51 @@ _backfill_visibility_and_tokens()
 
 app = FastAPI(title="TactiCore API", version=settings.app_version)
 
+_MAX_REQUEST_BODY_BYTES = 2 * 1024 * 1024  # 2MB — 썸네일 500KB 상한(schemas.py) 등을 감안해 여유 있게
+
+
+@app.middleware("http")
+async def _limit_request_body_size(request, call_next):
+    """개선 로드맵 §5.5 — Pydantic 필드별 상한(schemas.py)은 본문을 다 읽고
+    파싱한 뒤에야 걸린다. Content-Length를 먼저 보고 걸러내면 그 파싱
+    비용 자체를 아낄 수 있다. Content-Length가 없는(chunked) 요청은 이
+    앱의 프론트가 보내지 않으므로 통과시킨다.
+
+    CORSMiddleware보다 먼저 등록해 둔다(아래) — Starlette는 나중에 등록한
+    미들웨어가 더 바깥쪽을 감싸므로, 이 함수가 CORSMiddleware보다 먼저
+    있어야 CORSMiddleware가 이 함수를 감싸는 바깥쪽이 된다. 순서가
+    반대였다면 여기서 바로 반환하는 413 응답이 CORS 헤더 없이 나가
+    로컬 개발(5173→8000, 교차 출처)에서 브라우저가 이걸 CORS 오류로
+    오인해 프론트의 한글 에러 메시지 대신 "Failed to fetch"만 보였을
+    것이다(같은 출처인 배포 환경은 영향 없음)."""
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > _MAX_REQUEST_BODY_BYTES:
+        return JSONResponse(status_code=413, content={"detail": "요청 본문이 너무 큽니다"})
+    return await call_next(request)
+
+
+@app.middleware("http")
+async def _add_security_headers(request, call_next):
+    """기본 보안 헤더(개선 로드맵 §5.5). Content-Security-Policy는 일부러
+    뺐다 — Google Fonts·Vite 빌드 산출물과 충돌 없이 값을 확정하려면 실제
+    브라우저로 검증해야 하는데, 이 세션 환경에서는 배포된 프로덕션 사이트를
+    직접 눈으로 확인할 방법이 없다(shell-sandbox-vs-real-browser-network
+    메모리 참조) — 잘못된 CSP를 사람 확인 없이 배포하면 폰트·스크립트 로드가
+    조용히 깨질 위험이 있어 별도 검증 세션의 몫으로 남긴다."""
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["X-Frame-Options"] = "DENY"
+    return response
+
+
 # 로컬 전용이라도 allow_origins=["*"] 는 쓰지 않는다 (3단계 §7).
 # 로그인(TO-DO 11번) 세션 쿠키를 주고받으려면 allow_credentials=True가 필요하고,
 # CORS 스펙상 이 값이 True면 allow_origins에 "*"를 쓸 수 없다 — cors_origin_list는
-# 이미 명시적 목록이라 그대로 둔다.
+# 이미 명시적 목록이라 그대로 둔다. 위 두 미들웨어보다 뒤에 등록한다(이유는
+# _limit_request_body_size의 docstring 참조) — Starlette에서 나중에 등록한
+# 미들웨어가 더 바깥쪽을 감싸므로, CORSMiddleware가 가장 바깥쪽이어야
+# 두 미들웨어가 만드는 응답(413 조기 반환 포함)에도 CORS 헤더가 실린다.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
@@ -138,6 +182,7 @@ app.include_router(analyses.router)
 app.include_router(auth_router.router)
 app.include_router(comments_router.router)
 app.include_router(community_router.router)
+app.include_router(moderation_router.router)
 app.include_router(share_router.router)
 
 
