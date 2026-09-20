@@ -98,6 +98,11 @@ export function ExportControls({
           {exportingGif ? 'GIF 만드는 중…' : 'GIF 내보내기'}
         </Button>
       </div>
+      {/* 2026-09-20 — 실기기 리포트로 확인된 PNG 캡처 문제(전술판이 안 보임)가
+          아직 원인 미확정이라, 근본 수정 전까지는 상대적으로 더 안정적으로
+          동작하는 브라우저를 안내해 실패를 줄인다. 원인이 해결되면 이 안내는
+          지운다. */}
+      <p className="text-xs text-muted-foreground">원활한 PNG 내보내기를 원하시면 Chrome을 이용해 주세요.</p>
       {gifError && <p className="rounded-md bg-destructive/10 p-2 text-xs text-destructive">{gifError}</p>}
 
       <ShareCard ref={cardRef} analysis={analysis} phase={phase} ratio={ratio} />
