@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { DeleteConfirmDialog } from '@/components/analyses/DeleteConfirmDialog'
+import { GuardedLink } from '@/components/common/GuardedLink'
 import { useDeleteAnalysis } from '@/hooks/useAnalyses'
 import type { AnalysisSummary } from '@/types/analysis'
 
@@ -45,7 +46,7 @@ export function AnalysisList({ analyses }: { analyses: AnalysisSummary[] }) {
           {analyses.map((a) => (
             <tr key={a.id} className="border-b border-border">
               <td className="py-2 pr-4">
-                <Link to={`/analyses/${a.id}`}>
+                <GuardedLink to={`/analyses/${a.id}`}>
                   {a.thumbnail ? (
                     <img
                       src={a.thumbnail}
@@ -55,12 +56,12 @@ export function AnalysisList({ analyses }: { analyses: AnalysisSummary[] }) {
                   ) : (
                     <div className="h-12 w-8 rounded border border-dashed border-border" />
                   )}
-                </Link>
+                </GuardedLink>
               </td>
               <td className="py-2 pr-4">
-                <Link to={`/analyses/${a.id}`} className="font-medium text-primary hover:underline">
+                <GuardedLink to={`/analyses/${a.id}`} className="font-medium text-primary hover:underline">
                   {a.matchName}
-                </Link>
+                </GuardedLink>
               </td>
               <td className="py-2 pr-4">{a.homeTeam}</td>
               <td className="py-2 pr-4">{a.awayTeam}</td>

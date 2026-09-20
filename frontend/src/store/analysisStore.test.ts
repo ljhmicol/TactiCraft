@@ -99,6 +99,30 @@ describe('analysisStore — closeAnalysis', () => {
   })
 })
 
+/** 개선 로드맵 §5.1 — 초안 복구. loadAnalysis와 거의 같지만 isDirty를
+ * true로 남겨야 "서버에 없는 상태"라는 게 구분된다(SaveButton의 "저장 *"
+ * 표시, useDraftAutosave의 재저장 등이 이 값에 의존한다). */
+describe('analysisStore — restoreDraft', () => {
+  it('loadAnalysis와 달리 isDirty를 true로 남긴다', () => {
+    const draft = createEmptyAnalysis('4-3-3', {
+      matchName: '복구 대상',
+      homeTeam: '홈',
+      awayTeam: '원정',
+      matchDate: '2026-09-01',
+      analyzedTeam: 'home',
+    })
+
+    useAnalysisStore.getState().restoreDraft(draft)
+
+    const state = useAnalysisStore.getState()
+    expect(state.analysis?.match.matchName).toBe('복구 대상')
+    expect(state.isDirty).toBe(true)
+    expect(state.currentPhase).toBe('base')
+    expect(state.past).toEqual([])
+    expect(state.future).toEqual([])
+  })
+})
+
 /** TO-DO 4 — 상대 포메이션 템플릿을 대칭 배치해 오버로드 레이어를 바로 켤 수 있게 한다. */
 describe('analysisStore — addOpponentsFromFormation', () => {
   beforeEach(() => {

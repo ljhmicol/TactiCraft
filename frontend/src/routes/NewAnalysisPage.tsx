@@ -11,8 +11,17 @@ import { createEmptyAnalysis, useAnalysisStore } from '@/store/analysisStore'
 export function NewAnalysisPage() {
   const navigate = useNavigate()
   const loadAnalysis = useAnalysisStore((s) => s.loadAnalysis)
+  const isDirty = useAnalysisStore((s) => s.isDirty)
+
+  // 개선 로드맵 §5.1 — "/new" 자체를 둘러보는 건 안전하지만(스토어를 아직
+  // 안 건드림), 여기서 실제로 프리셋을 골라 loadAnalysis를 호출하는 순간
+  // 지금 에디터에 있던 미저장 변경이 조용히 덮어써진다. GuardedLink처럼
+  // 목적지 링크가 아니라 "선택" 동작 자체를 확인 시점으로 삼는다.
+  const confirmDiscardIfDirty = () =>
+    !isDirty || window.confirm('저장하지 않은 변경사항이 있습니다. 새 분석을 시작하면 사라집니다. 계속할까요?')
 
   const handleSelectFormation = (formation: string) => {
+    if (!confirmDiscardIfDirty()) return
     const analysis = createEmptyAnalysis(formation, {
       matchName: '',
       homeTeam: '',
@@ -27,6 +36,7 @@ export function NewAnalysisPage() {
   // 감독 프리셋과 실제 경기 프리셋 둘 다 형태(analysisSchema 통과하는 JSON URL)가
   // 같아서 로더 함수를 그대로 공유한다.
   const handleSelectPreset = async (url: string) => {
+    if (!confirmDiscardIfDirty()) return
     const analysis = await loadSampleAnalysis(url)
     loadAnalysis(analysis)
     navigate('/')

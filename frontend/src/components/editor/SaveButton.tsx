@@ -39,7 +39,13 @@ export function SaveButton({ analysis }: { analysis: Analysis }) {
     try {
       const saved = await saveMutation.mutateAsync({ ...analysis, thumbnail })
       if (saved.id && saved.createdAt && saved.updatedAt) {
-        applySavedMeta({ id: saved.id, createdAt: saved.createdAt, updatedAt: saved.updatedAt })
+        applySavedMeta({
+          id: saved.id,
+          createdAt: saved.createdAt,
+          updatedAt: saved.updatedAt,
+          visibility: saved.visibility,
+          shareToken: saved.shareToken,
+        })
       }
     } catch (e) {
       if (e instanceof ApiError && e.issues.length > 0) {
@@ -69,6 +75,14 @@ export function SaveButton({ analysis }: { analysis: Analysis }) {
       >
         {saveMutation.isPending ? '저장 중…' : isDirty ? '저장 *' : '저장'}
       </Button>
+      {/* 개선 로드맵 §5.1 — 서버 저장(이 버튼)과 로컬 자동 백업(useDraftAutosave,
+       * localStorage)은 별개다. "저장 *"만 보면 지금 편집이 안전한지 알기
+       * 어려워서, 서버에 아직 안 올렸어도 이 브라우저엔 남는다는 걸
+       * 명시한다 — disabled-button-visible-hint 패턴과 같은 이유로 hover
+       * 툴팁이 아니라 항상 보이는 텍스트로 둔다. */}
+      {isDirty && !saveMutation.isPending && (
+        <span className="text-xs text-slate-300">변경사항은 이 브라우저에 자동 백업됩니다</span>
+      )}
       {!isServerUp && !isChecking && (
         <span className="text-xs text-slate-300">서버 미기동 — 편집·PNG 내보내기는 계속 사용 가능합니다</span>
       )}
