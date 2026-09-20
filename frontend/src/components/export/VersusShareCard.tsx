@@ -179,7 +179,9 @@ export const VersusShareCard = forwardRef<HTMLDivElement, VersusShareCardProps>(
         )}
 
         <div style={{ flex: 1, minHeight: ratio === '1:1' ? 420 : 540, display: 'flex', justifyContent: 'center' }}>
-          <div style={{ height: '100%' }}>
+          {/* width도 명시(2026-09-20, ShareCard.tsx와 같은 이유 — "검은 화면"
+              리포트의 실제 원인이었던 shrink-to-fit/w-full 순환 참조) */}
+          <div style={{ height: '100%', width: '100%' }}>
             <Pitch orientation="landscape">
               {showChannelGrid && <ChannelGrid halfSpaces orientation="landscape" sideLabels />}
               {showPressingLine && (

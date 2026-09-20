@@ -109,7 +109,9 @@ export const SharePngCard = forwardRef<HTMLDivElement, SharePngCardProps>(functi
             justifyContent: 'center',
           }}
         >
-          <div style={{ height: '100%' }}>
+          {/* width도 명시(2026-09-20, ShareCard.tsx와 같은 이유 — "검은 화면"
+              리포트의 실제 원인이었던 shrink-to-fit/w-full 순환 참조) */}
+          <div style={{ height: '100%', width: '100%' }}>
             <Pitch>
               {layers.channelGrid && <ChannelGrid halfSpaces={layers.halfSpaces} />}
               {layers.compactness && <CompactnessBox positions={phase.positions} />}

@@ -124,7 +124,21 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(function Sha
             justifyContent: 'center',
           }}
         >
-          <div style={{ height: '100%' }}>
+          {/* width도 명시한다(2026-09-20, 실기기 검은 화면 리포트 확정 원인) —
+              이 div는 width 없이 height:100%만 있었다. 부모(위 flex:1 div)는
+              카드의 column flex 안에서 align-items 기본값(stretch)으로 폭이
+              정해지지만, 이 자식은 row-flex 안의 아이템이라 폭이 "내용 기준
+              shrink-to-fit"으로 계산된다 — 그런데 내용인 Pitch의 wrapper가
+              또 w-full(부모의 100%)이라 서로가 서로를 기준 삼는 순환
+              참조가 된다. 화면에 실제로 그려질 때는 대부분 브라우저가 무난한
+              값으로 풀어주지만, 화면 밖(position:absolute;left:-9999px)
+              오프스크린 렌더링에서 iOS WebKit이 이 순환을 0으로 풀어버리는
+              걸 실기기 진단으로 직접 확인했다(getBoundingClientRect() width
+              가 정확히 0, height는 정상) — PNG로 내보내면 피치 영역 전체가
+              비어 카드의 어두운 배경(SHARE_CARD_COLORS.background)만
+              보였던 "검은 화면" 리포트의 실제 원인이었다. width:100%로
+              고정해 순환을 끊는다. */}
+          <div style={{ height: '100%', width: '100%' }}>
             <Pitch>
               {layers.channelGrid && <ChannelGrid halfSpaces={layers.halfSpaces} />}
               {layers.compactness && <CompactnessBox positions={phase.positions} />}
