@@ -1,4 +1,4 @@
-import { toBlob } from 'html-to-image'
+import { toBlob, toCanvas, toSvg } from 'html-to-image'
 import { useEffect, useRef, useState } from 'react'
 
 import { OpponentNode } from '@/components/pitch/OpponentNode'
@@ -155,9 +155,10 @@ export function DebugExportPage() {
       document.body.appendChild(clone)
       appendCaptureLog('5. 복제본을 화면 밖에 붙임')
 
-      // toBlob이 실제로 멈추는지, 아니면 그냥 느린 건지 구분하려고 타임아웃과
-      // 경쟁시킨다(2026-09-20, Chromium에서도 응답이 안 와 추가) — 어느 쪽이든
-      // 다음 단계(더 단순한 노드로 재시도)로 넘어가 원인을 좁힌다.
+      // html-to-image 내부 단계(toSvg → toCanvas → toBlob)를 하나씩 따로
+      // 호출해 정확히 어느 단계에서 멈추는지 좁힌다(2026-09-20, Chromium
+      // 자체 테스트에서 toBlob이 통째로 8초+ 무응답이라 추가) — 각 단계에
+      // 타임아웃을 걸어 실제 "멈춤"과 "그냥 느림"을 구분한다.
       const withTimeout = async <T,>(label: string, p: Promise<T>, ms: number): Promise<T | 'timeout'> => {
         let timer: ReturnType<typeof setTimeout>
         const timeout = new Promise<'timeout'>((resolve) => {
@@ -170,45 +171,38 @@ export function DebugExportPage() {
       }
 
       try {
-        const result = await withTimeout(
-          '복제본 전체(옵션 포함)',
-          toBlob(clone, { pixelRatio: 2, cacheBust: true, skipFonts: true, width, height }),
+        const svgResult = await withTimeout('6. toSvg(clone)', toSvg(clone, { pixelRatio: 2, skipFonts: true, width, height }), 8000)
+        if (svgResult === 'timeout') {
+          appendCaptureLog('   toSvg 단계에서 멈춤 — cloneNode/embedImages/embedFonts 쪽 문제로 보임')
+          return
+        }
+        appendCaptureLog(`   toSvg 성공 (길이 ${svgResult.length}자)`)
+
+        const canvasResult = await withTimeout(
+          '7. toCanvas(clone)',
+          toCanvas(clone, { pixelRatio: 2, skipFonts: true, width, height }),
           8000,
         )
-        if (result === 'timeout') {
-          appendCaptureLog('6. 1차 시도 타임아웃 — 더 단순한 조건으로 재시도합니다.')
+        if (canvasResult === 'timeout') {
+          appendCaptureLog('   toCanvas 단계에서 멈춤 — toSvg는 됐지만 그 결과를 <img>로 불러오는 단계(createImage) 문제로 보임')
+          return
+        }
+        appendCaptureLog(`   toCanvas 성공 (${canvasResult.width} x ${canvasResult.height})`)
+        const capturedFromCanvas = canvasResult.toDataURL('image/png')
+        setCapturedImageUrl(capturedFromCanvas)
+        appendCaptureLog('   위 toCanvas 결과를 아래에 띄웠습니다 — 피치가 보이는지 확인해주세요.')
 
-          const result2 = await withTimeout('복제본 전체(옵션 없이)', toBlob(clone), 8000)
-          if (result2 !== 'timeout' && result2) {
-            appendCaptureLog(`6b. 옵션 없이는 성공 — 파일 크기 ${result2.size}바이트 (원인은 옵션 쪽)`)
-            setCapturedImageUrl(URL.createObjectURL(result2))
-          } else {
-            const minimal = document.createElement('div')
-            minimal.style.width = `${width}px`
-            minimal.style.height = `${height}px`
-            const minimalImg = document.createElement('img')
-            minimalImg.src = dataUrl
-            minimalImg.style.width = '100%'
-            minimalImg.style.height = '100%'
-            minimal.appendChild(minimalImg)
-            minimal.style.position = 'absolute'
-            minimal.style.left = '-99999px'
-            document.body.appendChild(minimal)
-            const result3 = await withTimeout('img 하나뿐인 최소 div', toBlob(minimal), 8000)
-            minimal.remove()
-            if (result3 !== 'timeout' && result3) {
-              appendCaptureLog(`6c. 최소 구성은 성공 — 파일 크기 ${result3.size}바이트 (원인은 카드 구조 쪽)`)
-              setCapturedImageUrl(URL.createObjectURL(result3))
-            } else {
-              appendCaptureLog('6c. 최소 구성도 타임아웃 — toBlob 자체가 이 페이지에서 멈추는 것으로 보임')
-            }
-          }
-        } else if (result) {
-          appendCaptureLog(`6. toBlob 성공 — 파일 크기 ${result.size}바이트`)
-          setCapturedImageUrl(URL.createObjectURL(result))
-          appendCaptureLog('7. 아래에 캡처된 이미지를 띄웠습니다 — 피치가 보이는지 확인해주세요.')
+        const blobResult = await withTimeout(
+          '8. toBlob(clone)',
+          toBlob(clone, { pixelRatio: 2, skipFonts: true, width, height }),
+          8000,
+        )
+        if (blobResult === 'timeout') {
+          appendCaptureLog('   toBlob 단계에서 멈춤 — toCanvas까지는 됐지만 canvas.toBlob() 콜백이 안 옴')
+        } else if (blobResult) {
+          appendCaptureLog(`   toBlob도 성공 — 파일 크기 ${blobResult.size}바이트`)
         } else {
-          appendCaptureLog('6. toBlob이 null을 반환함 — 캡처 실패')
+          appendCaptureLog('   toBlob이 null을 반환함')
         }
       } finally {
         clone.remove()
