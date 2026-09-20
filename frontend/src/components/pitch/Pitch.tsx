@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from 'react'
+import { useLayoutEffect, useRef, type ReactNode } from 'react'
 
 import { transposePoint, transposeRect } from '@/lib/coords'
 import { CENTER_CIRCLE, GOAL_AREA, PENALTY_AREA, PENALTY_SPOT_Y, swapForLandscape } from '@/lib/pitchMarkings'
@@ -62,6 +62,36 @@ export function Pitch({ children, orientation = 'portrait' }: PitchProps) {
         height: GOAL_AREA.depth,
       }
   const halfwayLine = landscape ? { x1: 50, y1: 0, x2: 50, y2: 100 } : { x1: 0, y1: 50, x2: 100, y2: 50 }
+
+  // html-to-image로 내보낼 때(ShareCard·ThumbnailCard 등)를 위한 안전장치
+  // (2026-09-20, 실기기 Safari 리포트 "저장은 되는데 전술판이 안 보여") — 이
+  // svg는 width/height 속성 없이 CSS(className="h-full w-full")만으로
+  // 크기가 정해진다. html-to-image는 이 서브트리를 통째로 <foreignObject>
+  // 안에 복제해 넣는데, 그 안에서 퍼센트 높이(h-full)가 기준으로 삼을
+  // "정해진 크기의 부모"를 못 찾으면 CSS 스펙상 auto로 취급되고, auto인
+  // svg는 자기 자신의 width/height 속성(없으면 기본값 300x150)으로
+  // 되돌아간다 — Chromium은 이 상황에서도 대체로 잘 버티지만 Safari(WebKit)는
+  // 실제로 찌부러뜨리는 걸로 보인다(피치만 안 보이고 카드의 나머지 텍스트는
+  // 정상 캡처된 리포트와 일치하는 증상). 실제 렌더링된 픽셀 크기를
+  // width/height 속성으로 직접 박아두면 위 퍼센트 계산이 실패해도 기댈 값이
+  // 생긴다 — CSS(h-full w-full)가 항상 이 속성보다 우선하므로 평소 화면에는
+  // 아무 영향이 없다. ResizeObserver를 쓰는 이유는 ShareCard의 ratio 전환처럼
+  // Pitch 자신은 리마운트되지 않고 부모 컨테이너 크기만 바뀌는 경우도 있어서다.
+  useLayoutEffect(() => {
+    const svg = svgRef.current
+    if (!svg) return
+    const applySize = () => {
+      const rect = svg.getBoundingClientRect()
+      if (rect.width > 0 && rect.height > 0) {
+        svg.setAttribute('width', String(rect.width))
+        svg.setAttribute('height', String(rect.height))
+      }
+    }
+    applySize()
+    const observer = new ResizeObserver(applySize)
+    observer.observe(svg)
+    return () => observer.disconnect()
+  }, [])
 
   return (
     <div
