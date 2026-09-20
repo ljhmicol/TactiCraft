@@ -1,4 +1,4 @@
-import { toBlob, toCanvas, toSvg } from 'html-to-image'
+import { toCanvas, toSvg } from 'html-to-image'
 import { useEffect, useRef, useState } from 'react'
 
 import { OpponentNode } from '@/components/pitch/OpponentNode'
@@ -133,32 +133,32 @@ export function DebugExportPage() {
       const dataUrl = await rasterizeSvg(liveSvg, width, height, 2)
       appendCaptureLog(`3. rasterizeSvg 성공 (data URL 길이 ${dataUrl.length}자)`)
 
-      const clone = cardNode.cloneNode(true) as HTMLElement
-      const clonedSvg = clone.querySelector('svg')
-      if (!clonedSvg) {
-        appendCaptureLog('4. 복제본 안에서 svg를 못 찾음 — 여기서 중단')
-        return
+      const makeClone = () => {
+        const c = cardNode.cloneNode(true) as HTMLElement
+        const svgInClone = c.querySelector('svg')
+        if (!svgInClone) return null
+        const img = document.createElement('img')
+        img.src = dataUrl
+        img.width = width
+        img.height = height
+        img.style.width = '100%'
+        img.style.height = '100%'
+        img.style.display = 'block'
+        svgInClone.replaceWith(img)
+        c.style.position = 'absolute'
+        c.style.left = '-99999px'
+        c.style.top = '0'
+        document.body.appendChild(c)
+        return c
       }
-      const img = document.createElement('img')
-      img.src = dataUrl
-      img.width = width
-      img.height = height
-      img.style.width = '100%'
-      img.style.height = '100%'
-      img.style.display = 'block'
-      clonedSvg.replaceWith(img)
-      appendCaptureLog('4. 복제본 안의 svg를 img로 교체 완료')
 
-      clone.style.position = 'absolute'
-      clone.style.left = '-99999px'
-      clone.style.top = '0'
-      document.body.appendChild(clone)
-      appendCaptureLog('5. 복제본을 화면 밖에 붙임')
-
-      // html-to-image 내부 단계(toSvg → toCanvas → toBlob)를 하나씩 따로
-      // 호출해 정확히 어느 단계에서 멈추는지 좁힌다(2026-09-20, Chromium
-      // 자체 테스트에서 toBlob이 통째로 8초+ 무응답이라 추가) — 각 단계에
-      // 타임아웃을 걸어 실제 "멈춤"과 "그냥 느림"을 구분한다.
+      // html-to-image 내부 단계를 하나씩 따로 호출해 정확히 어느 단계에서
+      // 멈추는지 좁힌다(2026-09-20). 이전 라운드에서 toSvg는 성공하고
+      // toCanvas가 멈추는 걸 확인했는데 — 같은 clone을 toSvg 다음에 또
+      // 넘긴 게 원인일 수도 있어(내부적으로 clone을 두 번 복제) 이번엔
+      // 매 단계마다 "새로 복제한" clone을 따로 써서 그 가능성도 배제한다.
+      // toSvg 결과 문자열은 window.__debugSvgResult에 저장해 콘솔에서
+      // 직접 열어볼 수 있게 한다.
       const withTimeout = async <T,>(label: string, p: Promise<T>, ms: number): Promise<T | 'timeout'> => {
         let timer: ReturnType<typeof setTimeout>
         const timeout = new Promise<'timeout'>((resolve) => {
@@ -170,42 +170,48 @@ export function DebugExportPage() {
         return result
       }
 
-      try {
-        const svgResult = await withTimeout('6. toSvg(clone)', toSvg(clone, { pixelRatio: 2, skipFonts: true, width, height }), 8000)
-        if (svgResult === 'timeout') {
-          appendCaptureLog('   toSvg 단계에서 멈춤 — cloneNode/embedImages/embedFonts 쪽 문제로 보임')
-          return
-        }
-        appendCaptureLog(`   toSvg 성공 (길이 ${svgResult.length}자)`)
+      const cloneA = makeClone()
+      if (!cloneA) {
+        appendCaptureLog('4. 복제본 생성 실패 — 여기서 중단')
+        return
+      }
+      appendCaptureLog('4. 복제본(A) 준비 완료 — toSvg 전용')
 
+      try {
+        const svgResult = await withTimeout('5. toSvg(cloneA)', toSvg(cloneA, { pixelRatio: 2, skipFonts: true, width, height }), 8000)
+        if (svgResult !== 'timeout') {
+          appendCaptureLog(`   toSvg 성공 (길이 ${svgResult.length}자)`)
+          ;(window as unknown as { __debugSvgResult?: string }).__debugSvgResult = svgResult
+          appendCaptureLog('   콘솔에서 window.__debugSvgResult로 전체 문자열을 볼 수 있습니다.')
+        } else {
+          appendCaptureLog('   toSvg 단계에서 멈춤')
+        }
+      } finally {
+        cloneA.remove()
+      }
+
+      const cloneB = makeClone()
+      if (!cloneB) {
+        appendCaptureLog('6. 복제본(B) 생성 실패 — 여기서 중단')
+        return
+      }
+      appendCaptureLog('6. 복제본(B) 준비 완료 — toCanvas 전용(첫 호출, toSvg 안 거침)')
+
+      try {
         const canvasResult = await withTimeout(
-          '7. toCanvas(clone)',
-          toCanvas(clone, { pixelRatio: 2, skipFonts: true, width, height }),
+          '7. toCanvas(cloneB) — 새 clone, 첫 호출',
+          toCanvas(cloneB, { pixelRatio: 2, skipFonts: true, width, height }),
           8000,
         )
         if (canvasResult === 'timeout') {
-          appendCaptureLog('   toCanvas 단계에서 멈춤 — toSvg는 됐지만 그 결과를 <img>로 불러오는 단계(createImage) 문제로 보임')
+          appendCaptureLog('   toCanvas가 첫 호출인데도 멈춤 — toSvg 재사용 문제가 아니라 toCanvas/createImage 자체 문제로 확정')
           return
         }
         appendCaptureLog(`   toCanvas 성공 (${canvasResult.width} x ${canvasResult.height})`)
-        const capturedFromCanvas = canvasResult.toDataURL('image/png')
-        setCapturedImageUrl(capturedFromCanvas)
+        setCapturedImageUrl(canvasResult.toDataURL('image/png'))
         appendCaptureLog('   위 toCanvas 결과를 아래에 띄웠습니다 — 피치가 보이는지 확인해주세요.')
-
-        const blobResult = await withTimeout(
-          '8. toBlob(clone)',
-          toBlob(clone, { pixelRatio: 2, skipFonts: true, width, height }),
-          8000,
-        )
-        if (blobResult === 'timeout') {
-          appendCaptureLog('   toBlob 단계에서 멈춤 — toCanvas까지는 됐지만 canvas.toBlob() 콜백이 안 옴')
-        } else if (blobResult) {
-          appendCaptureLog(`   toBlob도 성공 — 파일 크기 ${blobResult.size}바이트`)
-        } else {
-          appendCaptureLog('   toBlob이 null을 반환함')
-        }
       } finally {
-        clone.remove()
+        cloneB.remove()
       }
     } catch (e) {
       appendCaptureLog(`예외 발생: ${e instanceof Error ? `${e.name}: ${e.message}` : String(e)}`)
