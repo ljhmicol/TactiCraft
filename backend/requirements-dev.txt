@@ -1,0 +1,7 @@
+# 테스트 전용(개선 로드맵 §5.3). requirements.txt와 분리한 이유: Dockerfile이
+# `pip install -r backend/requirements.txt`를 배포 이미지 빌드 중에 실행하므로
+# (COPY로 소스만 넣는 게 아니라 그 시점에 실제로 설치까지 한다), 여기 있는
+# 패키지는 프로덕션 이미지에 그대로 들어간다 — 테스트 도구는 그럴 필요가 없다.
+-r requirements.txt
+pytest==8.3.3
+httpx==0.27.2

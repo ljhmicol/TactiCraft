@@ -57,6 +57,8 @@ uvicorn main:app --reload          # 백엔드 (8000)
 
 두 프로세스를 모두 띄워야 저장/목록 기능이 동작합니다.
 
+**테스트(2026-09-20, TO-DO 65번 신설)**: 프론트는 `cd frontend && npx vitest run`, 백엔드는 `cd backend && pytest`(테스트 전용 의존성은 `backend/requirements-dev.txt`에 따로 있음 — `pip install -r requirements-dev.txt`로 설치, 배포 이미지엔 안 들어감). 백엔드 테스트는 `conftest.py`가 실제 개발 DB(`data/tacticore.db`)와 완전히 분리된 임시 파일을 매번 새로 써서 안전합니다. CI 연동은 아직 없습니다(`.github/workflows/fly-deploy.yml`은 `FLY_API_TOKEN` 미설정으로 애초에 비활성 — [[deployment-flyio]] 참조).
+
 ## 작업 시 주의할 결정 사항
 
 이 결정들은 요구사항 문서에 기록되어 있으나, 배경을 모르면 되돌리기 쉬운 것들입니다.
