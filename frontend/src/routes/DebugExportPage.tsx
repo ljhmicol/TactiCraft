@@ -1,11 +1,10 @@
-import { toCanvas, toSvg } from 'html-to-image'
 import { useEffect, useRef, useState } from 'react'
 
 import { OpponentNode } from '@/components/pitch/OpponentNode'
 import { Pitch } from '@/components/pitch/Pitch'
 import { PlayerNode } from '@/components/pitch/PlayerNode'
+import { captureThumbnail } from '@/lib/exportImage'
 import { loadSampleAnalysis } from '@/lib/loadSample'
-import { rasterizeSvg } from '@/lib/rasterizeSvg'
 import type { Analysis } from '@/types/analysis'
 
 /**
@@ -105,114 +104,38 @@ export function DebugExportPage() {
   const appendCaptureLog = (line: string) => setCaptureLog((l) => [...l, line])
 
   /**
-   * 1번 테스트(rasterizeSvg 단독)가 성공한 걸 확인한 뒤 추가한 2번째
-   * 테스트(2026-09-20) — 실제 프로덕션 경로(exportImage.ts의
-   * prepareCaptureClone)와 동일하게 카드를 통째로 복제하고, 그 안의 svg만
-   * img로 바꿔치기한 뒤, 실제 html-to-image의 toBlob으로 캡처한다. 결과를
-   * 다운로드하지 않고 이 페이지에 <img>로 바로 띄워서, 파일 앱을 거치지
-   * 않고도 캡처된 이미지에 피치가 보이는지 눈으로 바로 확인할 수 있다.
+   * 2번째 테스트(2026-09-20) — 원인이 확정된 뒤, 실제 프로덕션 함수
+   * (`lib/exportImage.ts`의 `captureThumbnail`, PNG 내보내기와 완전히
+   * 같은 파이프라인)를 그대로 호출한다. html-to-image의 `toCanvas`가
+   * 내부에서 쓰는 `createImage`는 `decode()` 다음 `requestAnimationFrame`
+   * 콜백을 기다리는데, 실기기 진단으로 이 rAF 콜백이 전혀 호출되지 않아
+   * 캡처 전체가 멈추는 걸 확인했다(Chromium에서도 재현) — `exportImage.ts`를
+   * html-to-image의 `toSvg`(안정적으로 확인됨)까지만 쓰고, 그 결과를
+   * 이미지로 불러와 캔버스에 그리는 마지막 단계는 rAF 없이 `decode()`만
+   * 쓰도록 고쳤다. 결과를 다운로드하지 않고 이 페이지에 바로 띄워서,
+   * 파일 앱을 거치지 않고도 피치가 보이는지 눈으로 바로 확인할 수 있다.
    */
   const runFullCaptureTest = async () => {
     setCaptureLog([])
     setCapturedImageUrl(null)
     try {
-      await document.fonts.ready
-      appendCaptureLog('1. 폰트 로드 완료')
-
       const cardNode = pitchWrapRef.current
-      const liveSvg = cardNode?.querySelector('svg')
-      if (!cardNode || !liveSvg) {
-        appendCaptureLog('2. 카드 또는 svg를 못 찾음 — 여기서 중단')
+      if (!cardNode) {
+        appendCaptureLog('카드를 못 찾음 — 여기서 중단')
         return
       }
-      const rect = liveSvg.getBoundingClientRect()
-      const width = Math.max(1, Math.round(rect.width))
-      const height = Math.max(1, Math.round(rect.height))
-      appendCaptureLog(`2. 라이브 svg 크기: ${width} x ${height}`)
+      appendCaptureLog('1. captureThumbnail(실제 프로덕션 함수) 호출 시작…')
 
-      const dataUrl = await rasterizeSvg(liveSvg, width, height, 2)
-      appendCaptureLog(`3. rasterizeSvg 성공 (data URL 길이 ${dataUrl.length}자)`)
+      const timeout = new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), 15000))
+      const result = await Promise.race([captureThumbnail(cardNode, 220, 340), timeout])
 
-      const makeClone = () => {
-        const c = cardNode.cloneNode(true) as HTMLElement
-        const svgInClone = c.querySelector('svg')
-        if (!svgInClone) return null
-        const img = document.createElement('img')
-        img.src = dataUrl
-        img.width = width
-        img.height = height
-        img.style.width = '100%'
-        img.style.height = '100%'
-        img.style.display = 'block'
-        svgInClone.replaceWith(img)
-        c.style.position = 'absolute'
-        c.style.left = '-99999px'
-        c.style.top = '0'
-        document.body.appendChild(c)
-        return c
-      }
-
-      // html-to-image 내부 단계를 하나씩 따로 호출해 정확히 어느 단계에서
-      // 멈추는지 좁힌다(2026-09-20). 이전 라운드에서 toSvg는 성공하고
-      // toCanvas가 멈추는 걸 확인했는데 — 같은 clone을 toSvg 다음에 또
-      // 넘긴 게 원인일 수도 있어(내부적으로 clone을 두 번 복제) 이번엔
-      // 매 단계마다 "새로 복제한" clone을 따로 써서 그 가능성도 배제한다.
-      // toSvg 결과 문자열은 window.__debugSvgResult에 저장해 콘솔에서
-      // 직접 열어볼 수 있게 한다.
-      const withTimeout = async <T,>(label: string, p: Promise<T>, ms: number): Promise<T | 'timeout'> => {
-        let timer: ReturnType<typeof setTimeout>
-        const timeout = new Promise<'timeout'>((resolve) => {
-          timer = setTimeout(() => resolve('timeout'), ms)
-        })
-        const result = await Promise.race([p, timeout])
-        clearTimeout(timer!)
-        appendCaptureLog(`   [${label}] ${result === 'timeout' ? `${ms}ms 안에 응답 없음(타임아웃)` : '응답 옴'}`)
-        return result
-      }
-
-      const cloneA = makeClone()
-      if (!cloneA) {
-        appendCaptureLog('4. 복제본 생성 실패 — 여기서 중단')
+      if (result === 'timeout') {
+        appendCaptureLog('2. 15초 안에 응답 없음(타임아웃) — 여전히 멈추는 지점이 있음')
         return
       }
-      appendCaptureLog('4. 복제본(A) 준비 완료 — toSvg 전용')
-
-      try {
-        const svgResult = await withTimeout('5. toSvg(cloneA)', toSvg(cloneA, { pixelRatio: 2, skipFonts: true, width, height }), 8000)
-        if (svgResult !== 'timeout') {
-          appendCaptureLog(`   toSvg 성공 (길이 ${svgResult.length}자)`)
-          ;(window as unknown as { __debugSvgResult?: string }).__debugSvgResult = svgResult
-          appendCaptureLog('   콘솔에서 window.__debugSvgResult로 전체 문자열을 볼 수 있습니다.')
-        } else {
-          appendCaptureLog('   toSvg 단계에서 멈춤')
-        }
-      } finally {
-        cloneA.remove()
-      }
-
-      const cloneB = makeClone()
-      if (!cloneB) {
-        appendCaptureLog('6. 복제본(B) 생성 실패 — 여기서 중단')
-        return
-      }
-      appendCaptureLog('6. 복제본(B) 준비 완료 — toCanvas 전용(첫 호출, toSvg 안 거침)')
-
-      try {
-        const canvasResult = await withTimeout(
-          '7. toCanvas(cloneB) — 새 clone, 첫 호출',
-          toCanvas(cloneB, { pixelRatio: 2, skipFonts: true, width, height }),
-          8000,
-        )
-        if (canvasResult === 'timeout') {
-          appendCaptureLog('   toCanvas가 첫 호출인데도 멈춤 — toSvg 재사용 문제가 아니라 toCanvas/createImage 자체 문제로 확정')
-          return
-        }
-        appendCaptureLog(`   toCanvas 성공 (${canvasResult.width} x ${canvasResult.height})`)
-        setCapturedImageUrl(canvasResult.toDataURL('image/png'))
-        appendCaptureLog('   위 toCanvas 결과를 아래에 띄웠습니다 — 피치가 보이는지 확인해주세요.')
-      } finally {
-        cloneB.remove()
-      }
+      appendCaptureLog(`2. captureThumbnail 성공 (data URL 길이 ${result.length}자)`)
+      setCapturedImageUrl(result)
+      appendCaptureLog('3. 아래에 캡처된 이미지를 띄웠습니다 — 피치가 보이는지 확인해주세요.')
     } catch (e) {
       appendCaptureLog(`예외 발생: ${e instanceof Error ? `${e.name}: ${e.message}` : String(e)}`)
     }
