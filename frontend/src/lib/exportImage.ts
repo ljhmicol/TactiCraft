@@ -146,7 +146,18 @@ async function compositeCanvas(
 
   for (let i = 0; i < pitches.length; i++) {
     const p = pitches[i]
-    if (p.width <= 0 || p.height <= 0) continue
+    // 2026-09-20 — 검은 화면(피치 전체 미표시)이 새 합성 방식으로도 재현돼,
+    // 남은 유력 용의자는 "off-screen(left:-9999px) 상태의 svg에서
+    // getBoundingClientRect()가 0×0을 돌려줘 이 자리 자체를 통째로
+    // 건너뛴다"는 것 — 예전엔 이 가능성을 코드 주석으로만 적어두고 실제로
+    // 확인한 적이 없었다. 0×0이면 조용히 넘어가지 않고 정확한 수치를
+    // 에러로 그대로 노출해 다음 실기기 테스트에서 바로 확인한다.
+    if (p.width <= 0 || p.height <= 0) {
+      throw new CaptureStageError(
+        'compositeCanvas',
+        `svg#${i} rect가 ${p.width.toFixed(1)}x${p.height.toFixed(1)}(0 또는 음수) — off-screen 레이아웃 측정 실패로 추정`,
+      )
+    }
     let dataUrl: string
     try {
       dataUrl = await rasterizeSvg(p.liveSvg, Math.round(p.width), Math.round(p.height), pixelRatio)
