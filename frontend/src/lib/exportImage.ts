@@ -162,6 +162,25 @@ async function compositeCanvas(
   const ctx = baseCanvas.getContext('2d')
   if (!ctx) throw new CaptureStageError('compositeCanvas', '캔버스 컨텍스트를 만들지 못했습니다')
 
+  // 2026-09-20 — 캔버스 크기는 정상인데도 "피치만 보이고 텍스트는 안 보임"이
+  // 재현돼(사용자 확인, 153KB 성공 토스트) — toCanvas가 올바른 크기의
+  // 캔버스를 반환하되 그 안이 사실상 비어 있을 가능성(전에 자동화 탭에서
+  // 직접 재현했던 "크기는 맞는데 전부 투명" 실패 모드와 동일한 증상)을
+  // 확인한다. 카드 제목 영역(패딩 64px, 폰트 48px 굵게 — 픽셀레이쇼 2배
+  // 기준 대략 y 128~456, x 128~1900)에서 불투명 픽셀 수를 세어, 텍스트가
+  // 실제로 그려졌는지 조용히 넘어가지 않고 확인한다.
+  const titleBand = ctx.getImageData(128, 128, Math.min(1800, baseCanvas.width - 128), 200)
+  let titleNonTransparent = 0
+  for (let i = 3; i < titleBand.data.length; i += 4) {
+    if (titleBand.data[i] !== 0) titleNonTransparent++
+  }
+  if (titleNonTransparent < 100) {
+    throw new CaptureStageError(
+      'compositeCanvas',
+      `toCanvas 크기는 정상(${baseCanvas.width}x${baseCanvas.height})이지만 제목 영역 불투명 픽셀 ${titleNonTransparent}개(거의 빈 캔버스로 추정) — 텍스트가 그려지지 않은 것으로 보임`,
+    )
+  }
+
   for (let i = 0; i < pitches.length; i++) {
     const p = pitches[i]
     // 2026-09-20 — 검은 화면(피치 전체 미표시)이 새 합성 방식으로도 재현돼,
