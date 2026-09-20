@@ -76,8 +76,6 @@ export function BottomActionBar({
                 </button>
               ))}
             </div>
-            {/* ExportControls.tsx와 같은 이유(2026-09-20) — 원인 해결 전까지 안내만 */}
-            <p className="mb-3 text-xs text-muted-foreground">원활한 PNG 내보내기를 원하시면 Chrome을 이용해 주세요.</p>
             <Button className="w-full" onClick={handleGenerate} disabled={exporting}>
               {exporting ? '내보내는 중…' : 'PNG 생성'}
             </Button>

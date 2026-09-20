@@ -12,7 +12,6 @@ import { AdminUsersPage } from '@/routes/AdminUsersPage'
 import { AnalysesPage } from '@/routes/AnalysesPage'
 import { AnalysisDetailPage } from '@/routes/AnalysisDetailPage'
 import { CommunityPage } from '@/routes/CommunityPage'
-import { DebugExportPage } from '@/routes/DebugExportPage'
 import { EditorPage } from '@/routes/EditorPage'
 import { LoginPage } from '@/routes/LoginPage'
 import { NewAnalysisPage } from '@/routes/NewAnalysisPage'
@@ -186,9 +185,6 @@ function App() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/admin/reports" element={<AdminReportsPage />} />
           <Route path="/admin/users" element={<AdminUsersPage />} />
-          {/* 임시 진단 라우트(2026-09-20, TO-DO 71) — DebugExportPage.tsx 참조.
-           * 조사가 끝나면 이 줄과 그 파일을 같이 지운다. */}
-          <Route path="/debug/export" element={<DebugExportPage />} />
         </Routes>
         {/* 라우트 밖(BrowserRouter 안, Routes 밖)에 둬서 페이지 전환에도
          * 살아남는다 — 개선 로드맵 §6.3. */}
