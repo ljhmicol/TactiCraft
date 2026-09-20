@@ -56,6 +56,17 @@ function waitForMorphing(): Promise<void> {
  * WebKit에서 0×0을 돌려줄 가능성을 배제할 수 없다(진단 페이지는 화면 안에
  * 보이는 작은 피치라 이 경로를 검증하지 못했다). 그래서 실패 시 어떤 rect
  * 값을 읽었는지가 에러 메시지에 그대로 남도록 한다.
+ *
+ * **2026-09-20, 검은 화면 회귀 원인 확정 후 수정**: 이 함수를 껐다 켜서
+ * 격리한 결과 — 켜면(개정 전 버전) 피치 영역이 검게, 끄면 피치 영역이
+ * 아예 안 보이는(원래 버그) 것으로 확인됐다. 즉 이 함수가 만드는 복제본
+ * 자체엔 문제가 없고, **복제본을 문서에 붙인 직후 그 안의 새 `<img>`가
+ * 실제로 디코드·페인트되기 전에 바로 `toBlob`을 호출해버린 것**이 원인으로
+ * 보인다(원본 노드를 그대로 쓸 때보다 방금 만든 노드는 브라우저가 아직
+ * 레이아웃/페인트를 못 끝냈을 가능성이 더 높다) — 그래서 각 img를
+ * `decode()`로 기다린 뒤, 복제본을 문서에 붙이고 나서 레이아웃을 강제로
+ * 한 번 읽어 플러시하고, 실제 페인트가 한 번 돌 시간을 벌기 위해 두 번의
+ * requestAnimationFrame을 더 기다린다.
  */
 async function prepareCaptureClone(
   node: HTMLElement,
@@ -66,6 +77,7 @@ async function prepareCaptureClone(
 
   const clone = node.cloneNode(true) as HTMLElement
   const clonedSvgs = Array.from(clone.querySelectorAll('svg'))
+  const clonedImgs: HTMLImageElement[] = []
 
   for (let i = 0; i < liveSvgs.length; i++) {
     const liveSvg = liveSvgs[i]
@@ -89,12 +101,22 @@ async function prepareCaptureClone(
     img.style.height = '100%'
     img.style.display = 'block'
     clonedSvg.replaceWith(img)
+    clonedImgs.push(img)
   }
 
   clone.style.position = 'absolute'
   clone.style.left = '-99999px'
   clone.style.top = '0'
   document.body.appendChild(clone)
+
+  try {
+    await Promise.all(clonedImgs.map((img) => img.decode()))
+  } catch (e) {
+    clone.remove()
+    throw new CaptureStageError('prepareCaptureClone', '복제본 img decode 실패', e)
+  }
+  void clone.offsetHeight // 레이아웃 강제 플러시
+  await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
 
   return { target: clone, cleanup: () => clone.remove() }
 }
@@ -113,19 +135,13 @@ function withTimeout<T>(stage: string, p: Promise<T>, ms: number): Promise<T> {
   })
 }
 
-// 2026-09-20 — 실기기(아이폰·아이패드 Safari, 안드로이드 Chrome 둘 다)에서
-// PNG 결과가 "검은 화면"으로 나오는 걸 확인(다운로드 자체는 됨, 토스트도
-// "생성 완료"로 뜸) — 두 브라우저 엔진 모두에서 재현되므로 WebKit 전용
-// 문제(prepareCaptureClone을 만든 원래 이유)가 아니라 prepareCaptureClone
-// 자체(라이브 노드가 아니라 방금 만든 복제본을 그 자리에서 바로 캡처하는
-// 것)가 새로 만든 문제일 가능성이 높다 — advisor 리뷰. 원인을 좁히기 위해
-// 이 복제본 경로를 일시적으로 끄고 원본 `node`를 직접 캡처한다(예전에
-// "다운로드는 됨, 텍스트는 보임, 피치만 안 보임" 상태를 만들었던 바로 그
-// 버전). 검은 화면이 사라지고 다시 "피치만 안 보임"으로 돌아오면
-// prepareCaptureClone이 원인으로 확정되고, 그래도 검은 화면이면 이 함수는
-// 원인이 아니었다는 뜻이다. PC(사파리 제외, 안드로이드 Chrome 기준)에서
-// 재확인되면 prepareCaptureClone을 layout flush를 더해 다시 켠다.
-const USE_PITCH_FLATTEN_CLONE = false
+// 2026-09-20 — 격리 테스트로 원인 확정: 이 함수를 끄고(false) 재확인한
+// 결과 "카드 테두리·텍스트는 보이고 피치는 아예 안 보임"(원래 버그, 중첩
+// foreignObject-svg 문제)으로 돌아왔다 — 즉 prepareCaptureClone 자체가
+// "검은 화면" 회귀의 원인으로 확정됐다(끄면 검은 화면이 아니라 "안 보임"
+// 상태이므로). 위 prepareCaptureClone에 img decode() 대기 + 레이아웃
+// 플러시 + 2프레임 대기를 추가해 다시 켠다.
+const USE_PITCH_FLATTEN_CLONE = true
 
 export async function exportCard(node: HTMLElement, ratio: '1:1' | '4:5'): Promise<Blob> {
   await waitForMorphing()
