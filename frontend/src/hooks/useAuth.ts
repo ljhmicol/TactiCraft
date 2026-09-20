@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
+  ApiError,
   changePassword,
   changeUsername,
   fetchCurrentUser,
@@ -13,14 +14,26 @@ import {
 const ME_KEY = ['auth', 'me']
 
 /**
- * 로그인 상태(TO-DO 11번). 비로그인 상태는 401(ApiError)로 오므로 에러가 곧
- * "로그아웃 상태"다 — retry하지 않는다(useServerHealth와 같은 패턴).
+ * 로그인 상태(TO-DO 11번). 비로그인 상태는 401(ApiError)로 오므로 그 경우는
+ * 에러가 곧 "로그아웃 상태"라 재시도하지 않는다 — 대부분의 방문이 비로그인
+ * 상태라, 여기서 재시도하면 익명 방문자 전원이 매번 불필요한 지연을 겪는다.
+ *
+ * 401이 **아닌** 실패(개선 로드맵 §5.6, 2026-09-20 정정)는 재시도한다 —
+ * Fly.io 콜드 스타트(TO-DO 59) 중 이 요청이 일시적으로 실패하면 로그인한
+ * 사용자도 `isLoggedIn`이 false로 굳어버렸다. SaveButton이 `!isLoggedIn`
+ * 이면 "로그인이 필요합니다"로 저장 버튼을 막는데, 실제로는 로그인 상태고
+ * 서버만 깨어나는 중인 상황을 구분하지 못해 §5.6이 고치려던 버그가
+ * 그대로 재현됐다 — useServerHealth와 같은 백오프로 맞춘다.
  */
 export function useCurrentUser() {
   const query = useQuery({
     queryKey: ME_KEY,
     queryFn: fetchCurrentUser,
-    retry: false,
+    retry: (failureCount, error) => {
+      if (error instanceof ApiError && error.status === 401) return false
+      return failureCount < 2
+    },
+    retryDelay: (attemptIndex) => Math.min(1500 * 2 ** attemptIndex, 6000),
     staleTime: 30_000,
   })
 

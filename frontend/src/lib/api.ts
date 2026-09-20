@@ -264,10 +264,22 @@ export function resolveReport(reportId: number): Promise<Report> {
   return apiFetch(`/moderation/reports/${reportId}/resolve`, { method: 'POST' })
 }
 
-/** 앱 진입 시 1회, 저장 실패 시 재확인한다 (3단계 §2.1). 타임아웃 2초. */
+/**
+ * 앱 진입 시 1회, 저장 실패 시 재확인한다 (3단계 §2.1). 타임아웃 8초(개선
+ * 로드맵 §5.6, 2026-09-20 정정) — 원래 2초였는데, Fly.io는
+ * `min_machines_running = 0`이라 트래픽이 없으면 머신이 꺼지고 요청이 오면
+ * 다시 켜지는 구조다(TO-DO 59). 이 콜드 스타트 동안은 Fly 프록시가 연결을
+ * 계속 물고 있다가 머신이 뜨면 응답하므로 "서버가 느린 것"과 "서버가 아예
+ * 없는 것"을 구분할 수 없는데, 2초는 콜드 스타트가 끝나기도 전에 매번
+ * 타임아웃나기 충분히 짧은 값이었다 — 실제로 백엔드가 꺼져 있는 경우(로컬
+ * 개발에서 의도적으로 안 띄운 경우)는 연결 자체가 즉시 거부되므로(TCP
+ * connection refused) 이 타임아웃과 무관하게 곧바로 실패한다. 재시도
+ * 백오프는 이 함수가 아니라 호출부(useServerHealth)의 react-query
+ * retry/retryDelay가 맡는다 — 이 함수는 "한 번 시도"만 책임진다.
+ */
 export async function fetchHealth(): Promise<{ status: string; version: string }> {
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), 2000)
+  const timer = setTimeout(() => controller.abort(), 8000)
   try {
     const res = await fetch(`${BASE}/health`, { signal: controller.signal })
     if (!res.ok) throw new Error(`health check failed (${res.status})`)
