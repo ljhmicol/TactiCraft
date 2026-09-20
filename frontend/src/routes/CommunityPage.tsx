@@ -1,8 +1,9 @@
 import { Heart, MessageCircle } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { Input } from '@/components/ui/input'
+import { toast } from '@/hooks/use-toast'
 import { useCommunityAnalyses, useToggleLike } from '@/hooks/useCommunity'
 import { useCurrentUser } from '@/hooks/useAuth'
 import { useServerHealth } from '@/hooks/useServerHealth'
@@ -48,6 +49,7 @@ export function CommunityPage() {
   const { isServerUp, isChecking } = useServerHealth()
   const { isLoggedIn } = useCurrentUser()
   const navigate = useNavigate()
+  const location = useLocation()
   const [sort, setSort] = useState<SortMode>('recent')
   const { data, isLoading, isError } = useCommunityAnalyses(sort)
   const toggleLike = useToggleLike()
@@ -77,7 +79,11 @@ export function CommunityPage() {
     e.preventDefault()
     e.stopPropagation()
     if (!isLoggedIn) {
-      navigate('/login')
+      // 개선 로드맵 §6.3 — 전엔 아무 설명 없이 /login으로 튕겨서 "왜
+      // 갑자기 로그인 화면이지?"가 됐다. state.from을 실어 보내
+      // LoginPage가 로그인 후 이 화면으로 돌려보내게 한다.
+      toast({ description: '좋아요를 누르려면 로그인이 필요합니다.' })
+      navigate('/login', { state: { from: location } })
       return
     }
     toggleLike.mutate(analysisId)

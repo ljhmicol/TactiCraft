@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { toast } from '@/hooks/use-toast'
 import type { Analysis } from '@/types/analysis'
 
 /**
@@ -57,6 +58,7 @@ export function ShareLinkButton({ analysis }: { analysis: Analysis }) {
       return
     }
     setCopied(true)
+    toast({ description: '공유 링크를 복사했습니다.' })
     setTimeout(() => setCopied(false), 1500)
   }
 

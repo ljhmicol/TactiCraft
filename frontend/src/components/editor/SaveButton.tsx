@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { useSaveAnalysis } from '@/hooks/useAnalyses'
 import { useCurrentUser } from '@/hooks/useAuth'
 import { useServerHealth } from '@/hooks/useServerHealth'
+import { toast } from '@/hooks/use-toast'
 import { ApiError } from '@/lib/api'
 import { captureThumbnail } from '@/lib/exportImage'
 import { useAnalysisStore } from '@/store/analysisStore'
@@ -73,6 +74,7 @@ export function SaveButton({ analysis }: { analysis: Analysis }) {
           })
         }
         setSaveState('done')
+        toast({ description: '저장되었습니다.' })
         setTimeout(() => setSaveState('idle'), 1500)
       } catch (e) {
         // ApiError = 서버가 실제로 응답을 줬다(4xx/5xx) — 재시도해도 같은
@@ -81,17 +83,27 @@ export function SaveButton({ analysis }: { analysis: Analysis }) {
         const isDefiniteFailure = e instanceof ApiError
         if (!isDefiniteFailure && retriesLeft > 0) {
           setSaveState('retrying')
+          // 개선 로드맵 §6.3 "서버 재시도" — 버튼 라벨만으로는 버튼을 보고
+          // 있지 않은 사용자가 놓친다. 재시도로 들어가는 이 순간에만
+          // 토스트를 띄운다(waking/saving은 버튼 자체로 충분히 보여서
+          // 매번 띄우면 성공 경로에서도 잡음이 된다).
+          toast({ description: '서버를 깨우는 중입니다. 잠시 후 다시 시도합니다…' })
           recheck()
           const delay = RETRY_DELAYS_MS[MAX_SAVE_RETRIES - retriesLeft] ?? RETRY_DELAYS_MS[RETRY_DELAYS_MS.length - 1]
           await new Promise((r) => setTimeout(r, delay))
           return attempt(retriesLeft - 1)
         }
         setSaveState('idle')
-        if (e instanceof ApiError && e.issues.length > 0) {
-          setErrors(e.issues.map((i) => `${i.path}: ${i.message}`))
-        } else {
-          setErrors([e instanceof Error ? e.message : '저장에 실패했습니다.'])
-        }
+        const messages =
+          e instanceof ApiError && e.issues.length > 0
+            ? e.issues.map((i) => `${i.path}: ${i.message}`)
+            : [e instanceof Error ? e.message : '저장에 실패했습니다.']
+        setErrors(messages)
+        toast({
+          variant: 'destructive',
+          title: '저장 실패',
+          description: messages.length > 1 ? `${messages[0]} 외 ${messages.length - 1}건` : messages[0],
+        })
         recheck()
       }
     }

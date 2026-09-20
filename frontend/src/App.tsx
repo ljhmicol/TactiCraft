@@ -3,6 +3,7 @@ import type { MouseEvent } from 'react'
 import { BrowserRouter, Link, NavLink, Route, Routes } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
+import { Toaster } from '@/components/ui/toaster'
 import { useCurrentUser, useLogout } from '@/hooks/useAuth'
 import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning'
 import { cn } from '@/lib/utils'
@@ -178,6 +179,9 @@ function App() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/admin/reports" element={<AdminReportsPage />} />
         </Routes>
+        {/* 라우트 밖(BrowserRouter 안, Routes 밖)에 둬서 페이지 전환에도
+         * 살아남는다 — 개선 로드맵 §6.3. */}
+        <Toaster />
       </BrowserRouter>
     </QueryClientProvider>
   )

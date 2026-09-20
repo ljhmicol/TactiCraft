@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { toast } from '@/hooks/use-toast'
 import { useSetAnalysisVisibility } from '@/hooks/useCommunity'
 import { useAnalysisStore } from '@/store/analysisStore'
 import type { Analysis, Visibility } from '@/types/analysis'
@@ -41,8 +42,15 @@ export function VisibilitySelect({ analysis }: { analysis: Analysis }) {
 
   const handleChange = async (next: Visibility) => {
     if (next === visibility) return
-    await mutation.mutateAsync(next)
-    applyVisibility(next)
+    try {
+      await mutation.mutateAsync(next)
+      applyVisibility(next)
+      toast({ description: `공개 범위가 "${LABELS[next]}"(으)로 변경되었습니다.` })
+    } catch {
+      // 개선 로드맵 §6.3 — 전엔 여기 catch가 없어서 실패해도 Select 값이
+      // 조용히 그대로 남았다(성공했는지 실패했는지 구분할 방법이 없었다).
+      toast({ variant: 'destructive', description: '공개 범위를 변경하지 못했습니다.' })
+    }
   }
 
   return (

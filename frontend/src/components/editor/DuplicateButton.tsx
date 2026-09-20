@@ -16,7 +16,7 @@ import type { Analysis } from '@/types/analysis'
  * 헷갈린다.
  */
 export function DuplicateButton({ analysis }: { analysis: Analysis }) {
-  const { isServerUp, isChecking, recheck } = useServerHealth()
+  const { recheck } = useServerHealth()
   const { isLoggedIn, isChecking: isCheckingAuth } = useCurrentUser()
   const duplicateMutation = useDuplicateAnalysis()
   const loadAnalysis = useAnalysisStore((s) => s.loadAnalysis)
@@ -45,7 +45,10 @@ export function DuplicateButton({ analysis }: { analysis: Analysis }) {
     }
   }
 
-  const disabled = !isServerUp || isChecking || isCheckingAuth || !isLoggedIn || duplicateMutation.isPending
+  // 개선 로드맵 §5.6/§6.3(2026-09-20) — SaveButton과 같은 이유로 헬스체크
+  // 실패만으로 영구 비활성화하지 않는다: Fly.io 콜드 스타트 중엔 곧 뜰
+  // 서버인데도 이 버튼이 눌리지 않으면 사용자가 서버를 깨울 방법이 없다.
+  const disabled = isCheckingAuth || !isLoggedIn || duplicateMutation.isPending
 
   return (
     <div className="flex flex-col items-end gap-1">
@@ -54,13 +57,7 @@ export function DuplicateButton({ analysis }: { analysis: Analysis }) {
         variant="outline"
         onClick={handleDuplicate}
         disabled={disabled}
-        title={
-          !isServerUp
-            ? '백엔드 서버가 꺼져 있어 복제할 수 없습니다'
-            : !isLoggedIn && !isCheckingAuth
-              ? '로그인이 필요합니다'
-              : '원본은 그대로 두고 새 분석으로 복제합니다'
-        }
+        title={!isLoggedIn && !isCheckingAuth ? '로그인이 필요합니다' : '원본은 그대로 두고 새 분석으로 복제합니다'}
       >
         {duplicateMutation.isPending ? '복제 중…' : '복제 저장'}
       </Button>

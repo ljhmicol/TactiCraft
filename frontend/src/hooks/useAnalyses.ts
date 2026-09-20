@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import { toast } from '@/hooks/use-toast'
 import { useCurrentUser } from '@/hooks/useAuth'
 import {
   createAnalysis,
@@ -77,6 +78,15 @@ export function useDuplicateAnalysis() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ANALYSES_KEY })
+      // 개선 로드맵 §6.3 — 복제가 끝나면 에디터가 새 사본으로 조용히
+      // 전환된다(DuplicateButton.handleDuplicate의 loadAnalysis 호출).
+      // 화면이 미묘하게 바뀌는 것 말고는 "복제됐다"는 신호가 없었다.
+      toast({ description: '분석을 복제했습니다.' })
+    },
+    // 실패 상세(필드별 검증 오류 등)는 DuplicateButton이 여전히 인라인
+    // 목록으로 보여준다 — 여기 토스트는 "뭔가 실패했다"는 빠른 신호만 준다.
+    onError: () => {
+      toast({ variant: 'destructive', description: '복제하지 못했습니다.' })
     },
   })
 }
@@ -87,6 +97,12 @@ export function useDeleteAnalysis() {
     mutationFn: (id: number) => deleteAnalysis(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ANALYSES_KEY })
+      // 개선 로드맵 §6.3 — 전엔 AnalysisList의 삭제가 완전히 fire-and-forget
+      // 이었다(성공/실패 모두 아무 피드백 없음).
+      toast({ description: '분석을 삭제했습니다.' })
+    },
+    onError: () => {
+      toast({ variant: 'destructive', description: '삭제하지 못했습니다.' })
     },
   })
 }

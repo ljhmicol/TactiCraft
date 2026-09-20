@@ -1,6 +1,6 @@
 import { Heart } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 
 import { CommunityComments } from '@/components/comments/CommunityComments'
 import { ReportButton } from '@/components/common/ReportButton'
@@ -19,6 +19,7 @@ import { useAnalysis, useSharedAnalysis } from '@/hooks/useAnalyses'
 import { useCurrentUser } from '@/hooks/useAuth'
 import { useToggleLike } from '@/hooks/useCommunity'
 import { useReportAnalysis } from '@/hooks/useModeration'
+import { toast } from '@/hooks/use-toast'
 import { exportCard } from '@/lib/exportImage'
 import { cn } from '@/lib/utils'
 import type { Analysis, LayerToggles, PhaseData, PhaseType } from '@/types/analysis'
@@ -89,6 +90,7 @@ function ShareView({
 }) {
   const { isLoggedIn } = useCurrentUser()
   const navigate = useNavigate()
+  const location = useLocation()
   const toggleLike = useToggleLike()
   const reportAnalysis = useReportAnalysis()
 
@@ -134,7 +136,9 @@ function ShareView({
   const handleLikeClick = () => {
     if (!analysis.id) return
     if (!isLoggedIn) {
-      navigate('/login')
+      // 개선 로드맵 §6.3 — CommunityPage.handleLikeClick과 같은 이유.
+      toast({ description: '좋아요를 누르려면 로그인이 필요합니다.' })
+      navigate('/login', { state: { from: location } })
       return
     }
     toggleLike.mutate(analysis.id)

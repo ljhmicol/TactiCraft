@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,6 +24,7 @@ import { useAnalysisStore } from '@/store/analysisStore'
 export function ProfilePage() {
   const { user, isLoggedIn, isChecking } = useCurrentUser()
   const navigate = useNavigate()
+  const location = useLocation()
   const closeAnalysis = useAnalysisStore((s) => s.closeAnalysis)
 
   const changeUsernameMutation = useChangeUsername()
@@ -40,7 +41,9 @@ export function ProfilePage() {
   const withdrawMutation = useWithdraw()
 
   if (isChecking) return null
-  if (!isLoggedIn || !user) return <Navigate to="/login" replace />
+  // 개선 로드맵 §6.3 — 로그인 후 이 화면(/profile)으로 돌아오게 state.from을
+  // 실어 보낸다(LoginPage 참조).
+  if (!isLoggedIn || !user) return <Navigate to="/login" state={{ from: location }} replace />
 
   const handleUsernameSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
