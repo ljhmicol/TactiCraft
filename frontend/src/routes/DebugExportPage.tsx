@@ -1,9 +1,11 @@
+import { toBlob } from 'html-to-image'
 import { useEffect, useRef, useState } from 'react'
 
 import { OpponentNode } from '@/components/pitch/OpponentNode'
 import { Pitch } from '@/components/pitch/Pitch'
 import { PlayerNode } from '@/components/pitch/PlayerNode'
 import { loadSampleAnalysis } from '@/lib/loadSample'
+import { rasterizeSvg } from '@/lib/rasterizeSvg'
 import type { Analysis } from '@/types/analysis'
 
 /**
@@ -20,6 +22,8 @@ export function DebugExportPage() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [log, setLog] = useState<string[]>([])
+  const [captureLog, setCaptureLog] = useState<string[]>([])
+  const [capturedImageUrl, setCapturedImageUrl] = useState<string | null>(null)
   const pitchWrapRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -98,6 +102,77 @@ export function DebugExportPage() {
     }
   }
 
+  const appendCaptureLog = (line: string) => setCaptureLog((l) => [...l, line])
+
+  /**
+   * 1번 테스트(rasterizeSvg 단독)가 성공한 걸 확인한 뒤 추가한 2번째
+   * 테스트(2026-09-20) — 실제 프로덕션 경로(exportImage.ts의
+   * prepareCaptureClone)와 동일하게 카드를 통째로 복제하고, 그 안의 svg만
+   * img로 바꿔치기한 뒤, 실제 html-to-image의 toBlob으로 캡처한다. 결과를
+   * 다운로드하지 않고 이 페이지에 <img>로 바로 띄워서, 파일 앱을 거치지
+   * 않고도 캡처된 이미지에 피치가 보이는지 눈으로 바로 확인할 수 있다.
+   */
+  const runFullCaptureTest = async () => {
+    setCaptureLog([])
+    setCapturedImageUrl(null)
+    try {
+      await document.fonts.ready
+      appendCaptureLog('1. 폰트 로드 완료')
+
+      const cardNode = pitchWrapRef.current
+      const liveSvg = cardNode?.querySelector('svg')
+      if (!cardNode || !liveSvg) {
+        appendCaptureLog('2. 카드 또는 svg를 못 찾음 — 여기서 중단')
+        return
+      }
+      const rect = liveSvg.getBoundingClientRect()
+      const width = Math.max(1, Math.round(rect.width))
+      const height = Math.max(1, Math.round(rect.height))
+      appendCaptureLog(`2. 라이브 svg 크기: ${width} x ${height}`)
+
+      const dataUrl = await rasterizeSvg(liveSvg, width, height, 2)
+      appendCaptureLog(`3. rasterizeSvg 성공 (data URL 길이 ${dataUrl.length}자)`)
+
+      const clone = cardNode.cloneNode(true) as HTMLElement
+      const clonedSvg = clone.querySelector('svg')
+      if (!clonedSvg) {
+        appendCaptureLog('4. 복제본 안에서 svg를 못 찾음 — 여기서 중단')
+        return
+      }
+      const img = document.createElement('img')
+      img.src = dataUrl
+      img.width = width
+      img.height = height
+      img.style.width = '100%'
+      img.style.height = '100%'
+      img.style.display = 'block'
+      clonedSvg.replaceWith(img)
+      appendCaptureLog('4. 복제본 안의 svg를 img로 교체 완료')
+
+      clone.style.position = 'absolute'
+      clone.style.left = '-99999px'
+      clone.style.top = '0'
+      document.body.appendChild(clone)
+      appendCaptureLog('5. 복제본을 화면 밖에 붙임')
+
+      try {
+        const blob = await toBlob(clone, { pixelRatio: 2, cacheBust: true, skipFonts: true, width, height })
+        if (!blob) {
+          appendCaptureLog('6. toBlob이 null을 반환함 — 캡처 실패')
+        } else {
+          appendCaptureLog(`6. toBlob 성공 — 파일 크기 ${blob.size}바이트`)
+          const url = URL.createObjectURL(blob)
+          setCapturedImageUrl(url)
+          appendCaptureLog('7. 아래에 캡처된 이미지를 띄웠습니다 — 피치가 보이는지 확인해주세요.')
+        }
+      } finally {
+        clone.remove()
+      }
+    } catch (e) {
+      appendCaptureLog(`예외 발생: ${e instanceof Error ? `${e.name}: ${e.message}` : String(e)}`)
+    }
+  }
+
   if (loadError) return <div style={{ padding: 20 }}>샘플 로드 실패: {loadError}</div>
   if (!analysis) return <div style={{ padding: 20 }}>샘플 불러오는 중…</div>
 
@@ -132,6 +207,29 @@ export function DebugExportPage() {
       <pre style={{ whiteSpace: 'pre-wrap', background: '#eee', padding: 10, borderRadius: 6 }}>
         {log.length > 0 ? log.join('\n') : '(아직 실행 안 함)'}
       </pre>
+
+      <h2 style={{ fontSize: 16, marginTop: 32, marginBottom: 8 }}>테스트 2 — 실제 캡처 전체 파이프라인</h2>
+      <p style={{ marginBottom: 12 }}>
+        위 테스트가 전부 정상이었다면, 이번엔 실제로 쓰는 캡처 함수(html-to-image)까지 그대로 실행해서
+        결과 이미지를 이 페이지에 바로 띄웁니다 — 파일 앱을 열 필요 없이 여기서 바로 피치가 보이는지
+        확인할 수 있습니다.
+      </p>
+      <button
+        type="button"
+        onClick={runFullCaptureTest}
+        style={{ padding: '10px 20px', fontSize: 16, marginBottom: 16 }}
+      >
+        전체 캡처 테스트 실행
+      </button>
+      <pre style={{ whiteSpace: 'pre-wrap', background: '#eee', padding: 10, borderRadius: 6, marginBottom: 16 }}>
+        {captureLog.length > 0 ? captureLog.join('\n') : '(아직 실행 안 함)'}
+      </pre>
+      {capturedImageUrl && (
+        <div>
+          <p style={{ marginBottom: 8, fontWeight: 'bold' }}>캡처된 이미지 (아래에 피치가 보이나요?):</p>
+          <img src={capturedImageUrl} alt="캡처 결과" style={{ maxWidth: '100%', border: '2px solid red' }} />
+        </div>
+      )}
     </div>
   )
 }
