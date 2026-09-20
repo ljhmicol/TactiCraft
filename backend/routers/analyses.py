@@ -1,8 +1,12 @@
 """분석 CRUD 엔드포인트 (3단계 §2).
 
-읽기(get_analysis)는 로그인 여부와 무관하게 항상 공개다 — 공유 링크(TO-DO 8번,
-/share/:id)가 이 엔드포인트로 남의 분석을 읽는다. 로그인(TO-DO 11번) 이후에도
-그 설계를 그대로 유지한다. 목록·생성·수정·삭제만 로그인을 요구하고, 수정·삭제는
+get_analysis(id 기반)는 2026-09-18(개선 로드맵 §5.2)부터 더 이상 무조건
+공개가 아니다 — 소유자 또는 visibility='community'인 분석만 id로 읽을 수
+있다. visibility='link'인 분석은 id로는 404이고 반드시 공유 토큰
+(GET /api/share/{token}, routers/share.py)으로만 읽힌다 — id는 순차 정수라
+그 자체로 비밀이 될 수 없어서다. 이 변경 전에는 로그인 여부와 무관하게
+누구나 id만 알면 비공개 분석도 읽을 수 있었다(실제 취약점, 로드맵 문서
+5.2절에서 지적됨). 목록·생성·수정·삭제는 로그인을 요구하고, 수정·삭제는
 소유자 본인인지도 확인한다.
 """
 
@@ -35,10 +39,16 @@ def get_analysis(
         row = crud.get_analysis(db, analysis_id)
     except crud.AnalysisNotFound:
         raise HTTPException(status_code=404, detail="Analysis not found")
+    is_owner = bool(user and row.user_id == user.id)
+    if not is_owner and row.visibility != "community":
+        # link/private는 id로 접근 불가 — link는 반드시 /api/share/{token}으로
+        # 접근해야 한다(존재 여부를 노출하지 않도록 403이 아니라 404).
+        raise HTTPException(status_code=404, detail="Analysis not found")
     like_count, liked_by_me = crud.get_like_info(db, analysis_id, user.id if user else None)
     return {
         **crud.to_analysis_dict(row),
-        "is_owner": bool(user and row.user_id == user.id),
+        "is_owner": is_owner,
+        "share_token": row.share_token if is_owner else None,
         "like_count": like_count,
         "liked_by_me": liked_by_me,
     }
@@ -51,7 +61,11 @@ def create_analysis(
     user: models.User = Depends(auth.get_current_user),
 ):
     row = crud.upsert_analysis(db, payload, user_id=user.id)
-    return crud.to_analysis_dict(row)
+    # 생성·수정 요청은 항상 로그인한 본인 소유로 만들어지므로(auth.get_current_user
+    # + upsert_analysis의 user_id=user.id) is_owner는 항상 True다. 이걸 빼먹으면
+    # 방금 만든 분석을 곧바로 "링크 공개"로 바꿨을 때 share_token이 응답에 없어서
+    # 프론트가 `/s/undefined` 링크를 만드는 문제가 생긴다(2026-09-18 발견).
+    return {**crud.to_analysis_dict(row), "is_owner": True, "share_token": row.share_token}
 
 
 @router.put("/{analysis_id}", response_model=schemas.AnalysisOut)
@@ -68,18 +82,18 @@ def update_analysis(
     if existing.user_id != user.id:
         raise HTTPException(status_code=403, detail="본인이 저장한 분석만 수정할 수 있습니다")
     row = crud.upsert_analysis(db, payload, analysis_id, user_id=user.id)
-    return crud.to_analysis_dict(row)
+    return {**crud.to_analysis_dict(row), "is_owner": True, "share_token": row.share_token}
 
 
-@router.patch("/{analysis_id}/public", response_model=schemas.AnalysisSummary)
-def set_analysis_public(
+@router.patch("/{analysis_id}/visibility", response_model=schemas.AnalysisSummary)
+def set_analysis_visibility(
     analysis_id: int,
-    payload: schemas.AnalysisPublicIn,
+    payload: schemas.AnalysisVisibilityIn,
     db: Session = Depends(get_db),
     user: models.User = Depends(auth.get_current_user),
 ):
-    """커뮤니티 공개 토글(TO-DO 12번 후속). 전체 AnalysisIn PUT과 별개의
-    전용 엔드포인트인 이유는 schemas.AnalysisPublicIn의 docstring 참조 —
+    """공개 범위 변경(개선 로드맵 §5.2). 전체 AnalysisIn PUT과 별개의 전용
+    엔드포인트인 이유는 schemas.AnalysisVisibilityIn의 docstring 참조 —
     에디터의 다른 미저장 변경과 뒤섞이지 않게 이 필드 하나만 바꾼다.
     """
     try:
@@ -88,7 +102,7 @@ def set_analysis_public(
         raise HTTPException(status_code=404, detail="Analysis not found")
     if existing.user_id != user.id:
         raise HTTPException(status_code=403, detail="본인이 저장한 분석만 공개 설정을 바꿀 수 있습니다")
-    row = crud.set_analysis_public(db, analysis_id, payload.is_public)
+    row = crud.set_analysis_visibility(db, analysis_id, payload.visibility)
     return row
 
 

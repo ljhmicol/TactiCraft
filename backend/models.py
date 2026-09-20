@@ -86,7 +86,23 @@ class Analysis(Base):
     # 선택했다(전체 자동 공개는 기각) — 기존 저장분도 이 컬럼이 없던 시절엔
     # 전부 비공개로 취급되도록 기본값 False로 마이그레이션한다
     # (_ensure_column, curved/carry/username과 같은 패턴).
+    # 2026-09-18(개선 로드맵 §5.2) — visibility로 대체됐다. 이 컬럼은 마이그레이션
+    # 시 visibility 초기값을 정하는 데 한 번만 읽히고 이후로는 앱 코드 어디서도
+    # 읽거나 쓰지 않는다 — SQLite에서 컬럼 삭제(ALTER TABLE DROP COLUMN)는 구버전
+    # 호환 위험이 있어 죽은 컬럼으로 남겨 두는 쪽을 택했다(_ensure_column 패턴이
+    # 애초에 컬럼 삭제를 지원하지 않는다).
     is_public = Column(Boolean, nullable=False, default=False)
+    # 공개 범위 3단계(2026-09-18, 개선 로드맵 §5.2) — "private"(소유자만) |
+    # "link"(share_token을 아는 사람) | "community"(누구나, 커뮤니티 목록 노출).
+    # is_public 불리언 하나로는 "링크만 아는 사람에게 공유"를 표현할 수 없었고,
+    # 무엇보다 비공개 분석도 순차 정수 id를 스캔하면 그대로 읽히는 게 실제
+    # 취약점이었다(공유 링크와 편집기 로드가 같은 id 기반 엔드포인트를 공유).
+    visibility = Column(String, nullable=False, default="private")
+    # 링크 공개용 추측 불가능한 토큰(2026-09-18) — id는 순차 정수라 그 자체로는
+    # 비밀이 될 수 없으므로, "링크를 아는 사람만" 접근을 진짜로 강제하려면
+    # id와 별개의 랜덤 값이 필요하다. 생성 시점(crud.upsert_analysis)에
+    # secrets.token_urlsafe로 한 번 발급되고 이후 바뀌지 않는다.
+    share_token = Column(String, unique=True, index=True)
 
     players = relationship(
         "Player",

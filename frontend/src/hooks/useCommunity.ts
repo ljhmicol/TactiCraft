@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { fetchCommunityAnalyses, setAnalysisPublic, toggleLike } from '@/lib/api'
+import { fetchCommunityAnalyses, setAnalysisVisibility, toggleLike } from '@/lib/api'
+import type { Visibility } from '@/types/analysis'
 
 const COMMUNITY_KEY = ['community', 'analyses']
 
@@ -14,11 +15,14 @@ export function useCommunityAnalyses(sort: 'recent' | 'popular' = 'recent') {
 }
 
 /** 좋아요 토글(TO-DO 41 후속) — 커뮤니티 목록 카드와 공유 링크 상세
- * 화면(/share/:id, TO-DO 58) 양쪽에서 같이 쓴다. 성공하면 커뮤니티
+ * 화면(/share/:id·/s/:token, TO-DO 58) 양쪽에서 같이 쓴다. 성공하면 커뮤니티
  * 목록(정렬 무관 전부)을 무효화한다 — 인기순 정렬 중이면 순서 자체가
  * 바뀔 수 있어서 부분 갱신 대신 다시 불러오는 쪽이 안전하다. 이 분석의
  * 상세 캐시(analyses/:id)도 같이 무효화해야 SharePage의 좋아요 버튼·
- * 카운트가 즉시 갱신된다 — setAnalysisPublic과 같은 이유. */
+ * 카운트가 즉시 갱신된다 — setAnalysisVisibility와 같은 이유. `['share']`도
+ * 같이 무효화한다(두 번째 인자 token 없이 접두어로) — 링크 공개
+ * 페이지(/s/:token, useSharedAnalysis)는 analysisId가 아니라 token으로
+ * 캐시되므로 위 두 무효화만으론 그 화면의 하트가 안 갱신된다. */
 export function useToggleLike() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -26,17 +30,19 @@ export function useToggleLike() {
     onSuccess: (_result, analysisId) => {
       queryClient.invalidateQueries({ queryKey: COMMUNITY_KEY })
       queryClient.invalidateQueries({ queryKey: ['analyses', analysisId] })
+      queryClient.invalidateQueries({ queryKey: ['share'] })
     },
   })
 }
 
-/** 에디터의 "커뮤니티에 공유" 토글이 쓴다. 성공하면 커뮤니티 목록과 이
- * 분석의 상세 캐시(analyses/:id) 둘 다 무효화한다 — 목록에 새로 들어가거나
- * 빠지는 것과, 토글 버튼 자신이 보여주는 현재 상태 둘 다 갱신돼야 한다. */
-export function useSetAnalysisPublic(analysisId: number) {
+/** 에디터의 공개 범위 선택(개선 로드맵 §5.2)이 쓴다. 성공하면 커뮤니티
+ * 목록과 이 분석의 상세 캐시(analyses/:id) 둘 다 무효화한다 — 목록에 새로
+ * 들어가거나 빠지는 것과, 선택 UI 자신이 보여주는 현재 상태 둘 다
+ * 갱신돼야 한다. */
+export function useSetAnalysisVisibility(analysisId: number) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (isPublic: boolean) => setAnalysisPublic(analysisId, isPublic),
+    mutationFn: (visibility: Visibility) => setAnalysisVisibility(analysisId, visibility),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: COMMUNITY_KEY })
       queryClient.invalidateQueries({ queryKey: ['analyses', analysisId] })

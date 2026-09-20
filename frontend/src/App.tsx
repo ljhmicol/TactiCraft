@@ -4,6 +4,7 @@ import { BrowserRouter, Link, NavLink, Route, Routes } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
 import { useCurrentUser, useLogout } from '@/hooks/useAuth'
+import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning'
 import { cn } from '@/lib/utils'
 import { AnalysesPage } from '@/routes/AnalysesPage'
 import { AnalysisDetailPage } from '@/routes/AnalysisDetailPage'
@@ -13,7 +14,7 @@ import { LoginPage } from '@/routes/LoginPage'
 import { NewAnalysisPage } from '@/routes/NewAnalysisPage'
 import { ProfilePage } from '@/routes/ProfilePage'
 import { RegisterPage } from '@/routes/RegisterPage'
-import { SharePage } from '@/routes/SharePage'
+import { SharePage, SharedLinkPage } from '@/routes/SharePage'
 import { VersusPage } from '@/routes/VersusPage'
 import { useAnalysisStore } from '@/store/analysisStore'
 
@@ -84,6 +85,10 @@ function NavItem({ to, children, end }: { to: string; children: string; end?: bo
 function App() {
   const closeAnalysis = useAnalysisStore((s) => s.closeAnalysis)
   const isDirty = useAnalysisStore((s) => s.isDirty)
+  // 새로고침·탭 종료 전 경고(개선 로드맵 §5.1) — 라우트와 무관하게 항상
+  // 적용돼야 해서(다른 화면을 보고 있어도 에디터에 미저장 변경이 남아있을
+  // 수 있음) 라우트별 페이지가 아니라 App 최상단에서 건다.
+  useUnsavedChangesWarning()
 
   // 로고는 지금 어느 화면에 있든 항상 처음 화면(빈 편집기)으로 보낸다
   // (2026-09-07 사용자 요청) — "/"로만 이동하면 이미 로드된 분석이 store에
@@ -158,6 +163,7 @@ function App() {
           <Route path="/analyses/:id" element={<AnalysisDetailPage />} />
           <Route path="/community" element={<CommunityPage />} />
           <Route path="/share/:id" element={<SharePage />} />
+          <Route path="/s/:token" element={<SharedLinkPage />} />
           <Route path="/versus" element={<VersusPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />

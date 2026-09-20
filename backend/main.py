@@ -1,16 +1,25 @@
 """FastAPI 앱 진입점 (4단계 Phase 1-7)."""
 
-from fastapi import FastAPI
+import secrets
+
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 import models  # noqa: F401  (create_all 전에 모델 등록이 필요)
 import schemas
 from config import PROJECT_ROOT, settings
-from database import Base, engine
-from routers import analyses, auth as auth_router, comments as comments_router, community as community_router
+from database import Base, engine, get_db
+from routers import (
+    analyses,
+    auth as auth_router,
+    comments as comments_router,
+    community as community_router,
+    share as share_router,
+)
 
 Base.metadata.create_all(bind=engine)
 
@@ -40,6 +49,8 @@ _ensure_column("analyses", "tags", "TEXT DEFAULT '[]'")
 _ensure_column("users", "username", "VARCHAR")
 _ensure_column("analyses", "is_public", "BOOLEAN DEFAULT 0")
 _ensure_column("comments", "parent_id", "INTEGER REFERENCES comments(id) ON DELETE CASCADE")
+_ensure_column("analyses", "visibility", "TEXT NOT NULL DEFAULT 'private'")
+_ensure_column("analyses", "share_token", "TEXT")
 
 
 def _backfill_usernames() -> None:
@@ -67,6 +78,45 @@ def _backfill_usernames() -> None:
 
 _backfill_usernames()
 
+
+def _backfill_visibility_and_tokens() -> None:
+    """visibility/share_token 컬럼을 막 추가한 직후엔 기존 분석이 전부
+    share_token=NULL이다(visibility는 컬럼 기본값 덕에 이미 'private'로
+    채워져 있다). 이 함수는 WHERE share_token IS NULL 조건이라 매번 실행돼도
+    안전하다(_backfill_usernames와 같은 패턴) — 새로 만들어지는 분석은
+    crud.upsert_analysis가 생성 시점에 토큰을 발급해서 여기 걸릴 일이 없다.
+
+    기존에 is_public=1이던(TO-DO 12번 후속 "커뮤니티 공개") 분석은 이미
+    완전히 공개였던 상태이므로 visibility='community'로 승격해 기존 공유
+    링크·좋아요·댓글이 안 깨지게 한다. is_public=0이던 분석은 기본값
+    'private' 그대로 둔다 — "링크 공개" 중간 단계는 이 컬럼이 생기기 전엔
+    존재하지 않았으므로 소급 적용할 근거가 없다.
+    """
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("SELECT id, is_public FROM analyses WHERE share_token IS NULL")
+        ).fetchall()
+        for row in rows:
+            token = secrets.token_urlsafe(16)
+            visibility = "community" if row[1] else "private"
+            conn.execute(
+                text("UPDATE analyses SET share_token = :t, visibility = :v WHERE id = :i"),
+                {"t": token, "v": visibility, "i": row[0]},
+            )
+        if rows:
+            conn.commit()
+    # models.py의 share_token은 unique=True, index=True지만 create_all은 기존
+    # 테이블의 인덱스를 반영하지 않는다(users.username과 같은 이유 — 위
+    # _backfill_usernames 참조) — 이 인덱스가 없으면 get_analysis_by_token이
+    # 매번 전체 스캔하고, 극히 낮은 확률이지만 토큰 충돌도 DB가 막아주지
+    # 못한다.
+    with engine.connect() as conn:
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_analyses_share_token ON analyses(share_token)"))
+        conn.commit()
+
+
+_backfill_visibility_and_tokens()
+
 app = FastAPI(title="TactiCore API", version=settings.app_version)
 
 # 로컬 전용이라도 allow_origins=["*"] 는 쓰지 않는다 (3단계 §7).
@@ -88,11 +138,26 @@ app.include_router(analyses.router)
 app.include_router(auth_router.router)
 app.include_router(comments_router.router)
 app.include_router(community_router.router)
+app.include_router(share_router.router)
 
 
 @app.get("/api/health", response_model=schemas.HealthOut, tags=["health"])
-def health():
-    """프론트가 저장/목록 UI 활성화 여부를 판단하는 데 쓴다 (FR-08 폴백)."""
+def health(db: Session = Depends(get_db)):
+    """프론트가 저장/목록 UI 활성화 여부를 판단하는 데 쓴다 (FR-08 폴백).
+
+    개선 로드맵 §5.4 — 전엔 프로세스가 떠 있기만 하면(uvicorn 응답만 오면)
+    무조건 "ok"였다. FastAPI 프로세스는 살아있는데 SQLite 파일이 없어졌거나
+    (배포 볼륨 마운트 실패 등) 잠겨 있는 상태는 구분하지 못했다 — 그 경우
+    프론트는 "서버 켜져 있음"으로 착각해 저장을 시도했다가 그제서야 실패를
+    본다. 매 요청마다 가벼운 `SELECT 1`로 DB까지 실제로 살아있는지 확인하고,
+    실패하면 503을 준다 — `useServerHealth`(프론트)는 `isServerUp`을
+    `query.isSuccess`로만 판정하므로 503도 "서버 다운"과 똑같이 저장/목록
+    UI를 비활성화한다(추가 프론트 변경 불필요).
+    """
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception as e:
+        raise HTTPException(status_code=503, detail="database unavailable") from e
     return {"status": "ok", "version": settings.app_version}
 
 

@@ -5,6 +5,7 @@
 부분 갱신의 이득이 없다 (2단계 §5).
 """
 
+import secrets
 from datetime import datetime
 from typing import List, Optional
 
@@ -27,26 +28,53 @@ def _now() -> str:
     return datetime.now().isoformat(timespec="seconds")
 
 
+def _analysis_load_options():
+    return (
+        selectinload(models.Analysis.players),
+        selectinload(models.Analysis.phases).selectinload(models.Phase.positions),
+        selectinload(models.Analysis.phases).selectinload(models.Phase.annotations),
+        selectinload(models.Analysis.changing_points)
+        .selectinload(models.ChangingPoint.phase)
+        .selectinload(models.Phase.positions),
+        selectinload(models.Analysis.changing_points)
+        .selectinload(models.ChangingPoint.phase)
+        .selectinload(models.Phase.annotations),
+    )
+
+
 def _load(db: Session, analysis_id: int) -> models.Analysis:
     stmt = (
         select(models.Analysis)
         .where(models.Analysis.id == analysis_id)
-        .options(
-            selectinload(models.Analysis.players),
-            selectinload(models.Analysis.phases).selectinload(models.Phase.positions),
-            selectinload(models.Analysis.phases).selectinload(models.Phase.annotations),
-            selectinload(models.Analysis.changing_points)
-            .selectinload(models.ChangingPoint.phase)
-            .selectinload(models.Phase.positions),
-            selectinload(models.Analysis.changing_points)
-            .selectinload(models.ChangingPoint.phase)
-            .selectinload(models.Phase.annotations),
-        )
+        .options(*_analysis_load_options())
     )
     row = db.execute(stmt).scalar_one_or_none()
     if row is None:
         raise AnalysisNotFound(analysis_id)
     return row
+
+
+def get_analysis_by_token(db: Session, token: str) -> models.Analysis:
+    """공유 토큰(2026-09-18, 개선 로드맵 §5.2)으로 분석을 찾는다. id 기반
+    _load와 조회 조건만 다르고 나머지(eager load 옵션)는 동일하다."""
+    stmt = (
+        select(models.Analysis)
+        .where(models.Analysis.share_token == token)
+        .options(*_analysis_load_options())
+    )
+    row = db.execute(stmt).scalar_one_or_none()
+    if row is None:
+        raise AnalysisNotFound(token)
+    return row
+
+
+def is_visible_to(row: models.Analysis, user_id: Optional[int]) -> bool:
+    """소유자는 항상 볼 수 있고, 그 외엔 링크 공개·커뮤니티 공개만 허용한다
+    (비공개는 소유자 전용) — 개선 로드맵 §5.2, 비공개 분석이 순차 id 스캔으로
+    새던 문제의 수정. analyses/comments/community 라우터가 공통으로 쓴다."""
+    if user_id is not None and row.user_id == user_id:
+        return True
+    return row.visibility in ("link", "community")
 
 
 def list_analyses(db: Session, user_id: int) -> List[models.Analysis]:
@@ -123,7 +151,10 @@ def upsert_analysis(
     now = _now()
 
     if analysis_id is None:
-        row = models.Analysis(created_at=now, user_id=user_id)
+        # share_token은 링크 공개(visibility='link')의 유일한 접근 열쇠라 생성
+        # 시점에 한 번만 발급하고 이후 바꾸지 않는다(개선 로드맵 §5.2) — id는
+        # 순차 정수라 그 자체로 비밀이 될 수 없다.
+        row = models.Analysis(created_at=now, user_id=user_id, share_token=secrets.token_urlsafe(16))
         db.add(row)
     else:
         row = _load(db, analysis_id)
@@ -267,7 +298,7 @@ def to_analysis_dict(row: models.Analysis) -> dict:
         "thumbnail": row.thumbnail,
         "created_at": row.created_at,
         "updated_at": row.updated_at,
-        "is_public": bool(row.is_public),
+        "visibility": row.visibility,
     }
 
 
@@ -447,9 +478,9 @@ def toggle_comment_reaction(
 # ---------------------------------------------------------------------------
 
 
-def set_analysis_public(db: Session, analysis_id: int, is_public: bool) -> models.Analysis:
+def set_analysis_visibility(db: Session, analysis_id: int, visibility: str) -> models.Analysis:
     row = _load(db, analysis_id)
-    row.is_public = is_public
+    row.visibility = visibility
     db.commit()
     db.refresh(row)
     return row
@@ -458,7 +489,7 @@ def set_analysis_public(db: Session, analysis_id: int, is_public: bool) -> model
 def list_public_analyses(
     db: Session, current_user_id: Optional[int] = None, sort: str = "recent"
 ) -> List[dict]:
-    """공개(is_public=True) 분석을 최신순으로 — 작성자 표시명·댓글 수·좋아요
+    """공개(visibility='community') 분석을 최신순으로 — 작성자 표시명·댓글 수·좋아요
     수를 같이 계산해 카드에 바로 쓸 형태로 돌려준다. N+1을 피하려고 댓글
     수·좋아요 수는 분석 id 목록으로 한 번에 GROUP BY 집계한 뒤 파이썬에서
     합친다(분석 수가 이 앱 규모에서 수백~수천 단위를 넘지 않을 것으로 보여,
@@ -472,7 +503,7 @@ def list_public_analyses(
     rows = (
         db.query(models.Analysis, models.User.username)
         .join(models.User, models.Analysis.user_id == models.User.id)
-        .filter(models.Analysis.is_public.is_(True))
+        .filter(models.Analysis.visibility == "community")
         .order_by(models.Analysis.updated_at.desc())
         .all()
     )

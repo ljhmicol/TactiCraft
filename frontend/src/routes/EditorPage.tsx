@@ -7,6 +7,7 @@ import { BottomActionBar } from '@/components/editor/BottomActionBar'
 import { RecentAnalyses } from '@/components/editor/RecentAnalyses'
 import { StartScreenPitchShowcase } from '@/components/editor/StartScreenPitchShowcase'
 import { CommentPanel } from '@/components/editor/CommentPanel'
+import { DraftRecoveryBanner } from '@/components/editor/DraftRecoveryBanner'
 import { DuplicateButton } from '@/components/editor/DuplicateButton'
 import { LayerToggleChips } from '@/components/editor/LayerToggleChips'
 import { MatchInfoForm } from '@/components/editor/MatchInfoForm'
@@ -15,11 +16,11 @@ import { PhaseTabs } from '@/components/editor/PhaseTabs'
 import { PlayerEditDialog } from '@/components/editor/PlayerEditDialog'
 import { PlayerForm } from '@/components/editor/PlayerForm'
 import { SaveButton } from '@/components/editor/SaveButton'
-import { CommunityShareToggle } from '@/components/editor/CommunityShareToggle'
 import { ShareLinkButton } from '@/components/editor/ShareLinkButton'
 import { Timeline } from '@/components/editor/Timeline'
 import { ToolPalette } from '@/components/editor/ToolPalette'
 import { UndoRedoButtons } from '@/components/editor/UndoRedoButtons'
+import { VisibilitySelect } from '@/components/editor/VisibilitySelect'
 import { ExportControls } from '@/components/export/ExportControls'
 import { AnnotationLayer } from '@/components/pitch/AnnotationLayer'
 import { ChannelGrid } from '@/components/pitch/ChannelGrid'
@@ -33,6 +34,7 @@ import { PlayerNode } from '@/components/pitch/PlayerNode'
 import { PressingLine } from '@/components/pitch/PressingLine'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useDraftAutosave } from '@/hooks/useDraftAutosave'
 import { pressingLineLevel, type PressingLineLevel } from '@/lib/compactness'
 import { FORMATION_NAMES } from '@/lib/formations'
 import { currentPressingLineLevel, findGkPlayerId, PRESSING_LINE_LEVELS } from '@/lib/pressingLineSteps'
@@ -87,6 +89,7 @@ export function EditorPage() {
   // 화살표 선택 상태. 피치 어디를 눌러도(pointerdown 버블링) 해제된다 —
   // 화살표 자체는 stopPropagation으로 해제를 막는다.
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null)
+  useDraftAutosave()
 
   if (!analysis) {
     return (
@@ -94,6 +97,9 @@ export function EditorPage() {
         {/* 2026-09-11 "첫번째 화면에서도 이렇게 나오면 좋겠어" — /new의 축구장
          * 배경을 앱을 열었을 때 가장 먼저 보이는 이 빈 안내 화면(/)에도 확장. */}
         <PitchFieldBackdrop />
+        <div className="relative mx-auto w-full max-w-4xl px-6 pt-6">
+          <DraftRecoveryBanner />
+        </div>
         {/* "아직 분석이 없습니다" 안내문과 로그인/회원가입 버튼은 뺐다(TO-DO 37) —
          * 로그인/회원가입은 상단 내비(AuthNav)에 이미 항상 있어서 중복이었다.
          * 예시 전술판 캐러셀은 참고 사이트(formationbuilder.com/ko)처럼
@@ -164,6 +170,7 @@ export function EditorPage() {
 
   return (
     <div className="flex flex-col gap-4 p-6 pb-24 lg:pb-6">
+      <DraftRecoveryBanner />
       <div
         id="export-toolbar"
         className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4"
@@ -178,7 +185,7 @@ export function EditorPage() {
           <SaveButton analysis={analysis} />
           <DuplicateButton analysis={analysis} />
           <ShareLinkButton analysis={analysis} />
-          <CommunityShareToggle analysis={analysis} />
+          <VisibilitySelect analysis={analysis} />
           <ExportControls analysis={analysis} phase={currentPhase} />
         </div>
       </div>

@@ -38,8 +38,10 @@ def toggle_like(
     user: models.User = Depends(auth.get_current_user),
 ):
     try:
-        crud.get_analysis(db, analysis_id)
+        row = crud.get_analysis(db, analysis_id)
     except crud.AnalysisNotFound:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Analysis not found")
+    if not crud.is_visible_to(row, user.id):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Analysis not found")
     liked, like_count = crud.toggle_like(db, analysis_id, user)
     return {"liked": liked, "like_count": like_count}

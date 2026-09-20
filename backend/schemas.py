@@ -166,6 +166,9 @@ class AnalysisIn(BaseModel):
         return self
 
 
+Visibility = Literal["private", "link", "community"]
+
+
 class AnalysisOut(AnalysisIn):
     model_config = ConfigDict(from_attributes=True)
 
@@ -176,8 +179,14 @@ class AnalysisOut(AnalysisIn):
     # 판정용) — 라우터가 채운다(crud.to_analysis_dict는 요청자를 모른다).
     # 비로그인 방문자에게도 분석 자체는 공개이므로 기본값 False로 안전하게 둔다.
     is_owner: bool = False
-    # 커뮤니티 공개 여부(TO-DO 12번 후속) — 소유자가 에디터에서 토글한다.
-    is_public: bool = False
+    # 공개 범위 3단계(2026-09-18, 개선 로드맵 §5.2) — "private"(소유자만) |
+    # "link"(share_token을 아는 사람) | "community"(누구나 + 커뮤니티 목록 노출).
+    # 기존 is_public 불리언을 대체한다.
+    visibility: Visibility = "private"
+    # 링크 공개 URL을 만드는 데 필요한 토큰 — 소유자에게만 내려준다(라우터가
+    # is_owner가 아니면 None으로 채운다). 남에게 노출되면 링크 공개의 의미가
+    # 없어지므로 여기서 항상 값이 있다고 가정하면 안 된다.
+    share_token: Optional[str] = None
     # 좋아요(TO-DO 41 후속)는 원래 커뮤니티 목록(CommunityAnalysisOut)에만
     # 있었다 — 공유 링크(/share/:id) 상세 화면엔 좋아요 버튼 자체가 없었기
     # 때문이다(TO-DO 58, 2026-09-17 "커뮤니티에서 게시물에 좋아요 누르는
@@ -201,16 +210,17 @@ class AnalysisSummary(BaseModel):
     updated_at: str
     tags: List[str] = []
     thumbnail: Optional[str] = None
-    is_public: bool = False
+    visibility: Visibility = "private"
 
 
-class AnalysisPublicIn(BaseModel):
-    """커뮤니티 공개 토글(TO-DO 12번 후속) — 이 필드 하나만 바꾸는 전용
-    엔드포인트를 쓴다(전체 AnalysisIn PUT을 재사용하지 않는 이유는, 그러면
-    에디터에 남아 있는 다른 미저장 변경까지 토글 한 번에 같이 저장돼버려
-    "공유만 켜려고 눌렀는데 다른 것도 저장됐다"는 놀람을 줄 수 있어서다)."""
+class AnalysisVisibilityIn(BaseModel):
+    """공개 범위 변경(개선 로드맵 §5.2, 기존 AnalysisPublicIn 대체) — 이 필드
+    하나만 바꾸는 전용 엔드포인트를 쓴다(전체 AnalysisIn PUT을 재사용하지
+    않는 이유는, 그러면 에디터에 남아 있는 다른 미저장 변경까지 토글 한 번에
+    같이 저장돼버려 "공개 범위만 바꾸려고 눌렀는데 다른 것도 저장됐다"는
+    놀람을 줄 수 있어서다)."""
 
-    is_public: bool
+    visibility: Visibility
 
 
 class CommunityAnalysisOut(BaseModel):

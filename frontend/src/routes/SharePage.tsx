@@ -14,12 +14,12 @@ import { SharePlayerNode } from '@/components/pitch/SharePlayerNode'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SharePngCard } from '@/components/export/SharePngCard'
-import { useAnalysis } from '@/hooks/useAnalyses'
+import { useAnalysis, useSharedAnalysis } from '@/hooks/useAnalyses'
 import { useCurrentUser } from '@/hooks/useAuth'
 import { useToggleLike } from '@/hooks/useCommunity'
 import { exportCard } from '@/lib/exportImage'
 import { cn } from '@/lib/utils'
-import type { LayerToggles, PhaseData, PhaseType } from '@/types/analysis'
+import type { Analysis, LayerToggles, PhaseData, PhaseType } from '@/types/analysis'
 
 const PHASE_LABELS: Record<PhaseType, string> = { base: '기본', attack: '공격', defense: '수비' }
 const PHASES: PhaseType[] = ['base', 'attack', 'defense']
@@ -27,7 +27,15 @@ const PHASES: PhaseType[] = ['base', 'attack', 'defense']
 type ViewKey = { kind: 'phase'; phase: PhaseType } | { kind: 'cp'; id: string }
 
 /**
- * /share/:id — 저장된 분석의 읽기 전용 공개 뷰(TO-DO 8번). 편집기와 달리
+ * /share/:id(커뮤니티 공개) + /s/:token(링크 공개, 2026-09-18 개선 로드맵
+ * §5.2) — 저장된 분석의 읽기 전용 공개 뷰(TO-DO 8번). 두 라우트가 fetch
+ * 방식만 다르고(`SharePage`는 id로 `/api/analyses/:id`, `SharedLinkPage`는
+ * 토큰으로 `/api/share/:token`) 나머지 렌더링은 100% 같아서 `ShareView`
+ * 하나를 공유한다 — "비공개 분석이 id 스캔으로 새던 문제"를 고치면서
+ * "링크 공개"라는 새 접근 경로가 생겼을 뿐, 화면 자체가 달라질 이유는
+ * 없었다.
+ *
+ * 편집기와 달리
  * `useAnalysisStore`를 전혀 쓰지 않는다 — 이 페이지가 보여주는 분석은 지금
  * 브라우저에 "열려 있는" 분석과 무관할 수 있어서(다른 사람이 링크로 바로
  * 들어옴), 스토어에 얹으면 그 사람이 우연히 편집기를 열었을 때 남의 분석이
@@ -57,6 +65,26 @@ export function SharePage() {
   const { id } = useParams<{ id: string }>()
   const numericId = id ? Number(id) : undefined
   const { data: analysis, isLoading, isError } = useAnalysis(numericId)
+  return <ShareView analysis={analysis} isLoading={isLoading} isError={isError} />
+}
+
+/** /s/:token — 링크 공개(개선 로드맵 §5.2) 전용 진입점. SharePage와 렌더링은
+ * 같고 fetch만 토큰 기반이다(useSharedAnalysis). */
+export function SharedLinkPage() {
+  const { token } = useParams<{ token: string }>()
+  const { data: analysis, isLoading, isError } = useSharedAnalysis(token)
+  return <ShareView analysis={analysis} isLoading={isLoading} isError={isError} />
+}
+
+function ShareView({
+  analysis,
+  isLoading,
+  isError,
+}: {
+  analysis: Analysis | undefined
+  isLoading: boolean
+  isError: boolean
+}) {
   const { isLoggedIn } = useCurrentUser()
   const navigate = useNavigate()
   const toggleLike = useToggleLike()

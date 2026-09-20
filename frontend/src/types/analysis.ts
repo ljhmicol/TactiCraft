@@ -78,6 +78,11 @@ export interface ChangingPoint extends PhaseData {
   steps?: PhaseData[]
 }
 
+/** 공개 범위 3단계(2026-09-18, 개선 로드맵 §5.2) — "private"(소유자만) |
+ * "link"(공유 토큰을 아는 사람) | "community"(누구나, 커뮤니티 목록 노출).
+ * 기존 isPublic 불리언을 대체한다. */
+export type Visibility = 'private' | 'link' | 'community'
+
 export interface Analysis {
   id?: number // 서버 저장 후에만 존재
   schemaVersion: 1
@@ -95,9 +100,12 @@ export interface Analysis {
   // 노출 판정용) — 서버가 GET 시점에 계산해 채운다. 저장 페이로드에는
   // 의미가 없지만(백엔드가 무시함) 굳이 걷어내지 않는다.
   isOwner?: boolean
-  // 커뮤니티(/community) 공개 여부(TO-DO 12번 후속) — 전용 토글 API로만
-  // 바뀐다(setAnalysisPublic). 일반 저장(PUT)은 이 필드를 건드리지 않는다.
-  isPublic?: boolean
+  // 공개 범위(개선 로드맵 §5.2) — 전용 API로만 바뀐다(setAnalysisVisibility).
+  // 일반 저장(PUT)은 이 필드를 건드리지 않는다.
+  visibility?: Visibility
+  // 링크 공개 URL을 만드는 데 필요한 토큰 — 소유자로 조회했을 때만 서버가
+  // 채워준다(남에게 노출되면 링크 공개의 의미가 없다).
+  shareToken?: string | null
   // 좋아요(TO-DO 58) — GET 시점에 서버가 채운다(isOwner와 같은 방식).
   // 저장 페이로드에는 의미가 없다(백엔드가 무시함).
   likeCount?: number
@@ -115,7 +123,7 @@ export interface AnalysisSummary {
   updatedAt: string
   tags: string[]
   thumbnail?: string
-  isPublic?: boolean
+  visibility?: Visibility
 }
 
 /** 커뮤니티(/community, TO-DO 12번 후속) 목록 카드 한 장 — AnalysisSummary에

@@ -1,4 +1,4 @@
-import type { Analysis, AnalysisSummary, CommunityAnalysis } from '@/types/analysis'
+import type { Analysis, AnalysisSummary, CommunityAnalysis, Visibility } from '@/types/analysis'
 
 const BASE = import.meta.env.VITE_API_BASE_URL as string
 
@@ -97,6 +97,13 @@ export function fetchAnalysis(id: number): Promise<Analysis> {
   return apiFetch(`/analyses/${id}`)
 }
 
+/** 공유 토큰으로 분석을 읽는다(개선 로드맵 §5.2, "링크 공개" 전용 경로) —
+ * id 기반 fetchAnalysis와 달리 이 엔드포인트는 visibility가 'link' 또는
+ * 'community'인 분석만 반환한다. */
+export function fetchSharedAnalysis(token: string): Promise<Analysis> {
+  return apiFetch(`/share/${token}`)
+}
+
 type AnalysisPayload = Omit<Analysis, 'id' | 'createdAt' | 'updatedAt'>
 
 export function createAnalysis(data: AnalysisPayload): Promise<Analysis> {
@@ -111,13 +118,14 @@ export function deleteAnalysis(id: number): Promise<void> {
   return apiFetch(`/analyses/${id}`, { method: 'DELETE' })
 }
 
-/** 커뮤니티 공개 토글(TO-DO 12번 후속) — 전용 PATCH, 전체 저장(PUT)과 분리된
- * 이유는 백엔드 schemas.AnalysisPublicIn의 docstring 참조. */
-export function setAnalysisPublic(id: number, isPublic: boolean): Promise<AnalysisSummary> {
-  return apiFetch(`/analyses/${id}/public`, { method: 'PATCH', body: JSON.stringify({ isPublic }) })
+/** 공개 범위 변경(개선 로드맵 §5.2, 기존 setAnalysisPublic 대체) — 전용 PATCH,
+ * 전체 저장(PUT)과 분리된 이유는 백엔드 schemas.AnalysisVisibilityIn의
+ * docstring 참조. */
+export function setAnalysisVisibility(id: number, visibility: Visibility): Promise<AnalysisSummary> {
+  return apiFetch(`/analyses/${id}/visibility`, { method: 'PATCH', body: JSON.stringify({ visibility }) })
 }
 
-/** 커뮤니티 목록(TO-DO 12번 후속) — 공개(isPublic=true)로 설정된 분석만.
+/** 커뮤니티 목록(TO-DO 12번 후속) — 공개(visibility='community')로 설정된 분석만.
  * 댓글 읽기와 같은 이유로 로그인 여부와 무관하게 공개다. sort(TO-DO 41
  * 후속) — 'recent'(기본, 최신순) | 'popular'(좋아요 많은 순). */
 export function fetchCommunityAnalyses(sort: 'recent' | 'popular' = 'recent'): Promise<CommunityAnalysis[]> {

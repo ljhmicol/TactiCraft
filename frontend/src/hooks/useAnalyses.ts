@@ -1,7 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { useCurrentUser } from '@/hooks/useAuth'
-import { createAnalysis, deleteAnalysis, fetchAnalyses, fetchAnalysis, updateAnalysis } from '@/lib/api'
+import {
+  createAnalysis,
+  deleteAnalysis,
+  fetchAnalyses,
+  fetchAnalysis,
+  fetchSharedAnalysis,
+  updateAnalysis,
+} from '@/lib/api'
 import type { Analysis } from '@/types/analysis'
 
 const ANALYSES_KEY = ['analyses']
@@ -18,6 +25,17 @@ export function useAnalysis(id: number | undefined) {
     queryKey: [...ANALYSES_KEY, id],
     queryFn: () => fetchAnalysis(id!),
     enabled: id !== undefined,
+  })
+}
+
+/** 공유 토큰으로 읽는 "링크 공개"(개선 로드맵 §5.2) 전용 조회 — /s/:token
+ * 라우트(SharePage.tsx)가 쓴다. id 기반 useAnalysis와 캐시 키를 분리해
+ * 같은 분석이라도 토큰 경로와 id 경로가 서로의 캐시를 덮어쓰지 않게 한다. */
+export function useSharedAnalysis(token: string | undefined) {
+  return useQuery({
+    queryKey: ['share', token],
+    queryFn: () => fetchSharedAnalysis(token!),
+    enabled: token !== undefined,
   })
 }
 

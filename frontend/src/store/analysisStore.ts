@@ -15,6 +15,7 @@ import type {
   PhaseType,
   Player,
   Point,
+  Visibility,
 } from '@/types/analysis'
 
 function emptyPhase(formation: string, players: Player[]) {
@@ -132,6 +133,10 @@ interface AnalysisStore {
   future: Analysis[] // 다시하기 스택 — undo 한 번마다 여기로 하나씩 옮겨진다
 
   loadAnalysis: (a: Analysis) => void
+  // 로컬 초안 복구(개선 로드맵 §5.1) — loadAnalysis와 거의 같지만 isDirty를
+  // true로 남긴다. 서버에 저장된 적 없는(또는 저장 이후 더 편집된) 상태를
+  // 불러오는 것이므로 "저장됨"으로 표시하면 안 된다.
+  restoreDraft: (a: Analysis) => void
   closeAnalysis: () => void // 로고 클릭 등 "처음 화면으로" — 로드된 분석을 비운다(2026-09-07)
   setPhase: (p: PhaseType) => void
   switchPhase: (p: PhaseType) => void // 국면 탭 클릭 — isMorphing/Ghost 타이밍까지 함께 처리, 체인징 포인트 보기는 해제
@@ -163,8 +168,18 @@ interface AnalysisStore {
   removePlayer: (playerId: string) => void // 선발(현재 base 국면에 좌표가 있는 선수)은 지울 수 없다
   toggleLayer: (key: keyof LayerToggles) => void
   applyFormation: (name: string) => void // FR-06
-  applySavedMeta: (meta: { id: number; createdAt: string; updatedAt: string }) => void // 저장 성공 후 id/시각만 반영
-  applyPublicFlag: (isPublic: boolean) => void // 커뮤니티 공개 토글 성공 후 반영(TO-DO 12번 후속)
+  // 저장 성공 후 id/시각·공개 범위·공유 토큰을 반영한다. visibility/shareToken은
+  // 2026-09-18(개선 로드맵 §5.2)에 추가됐다 — 생성 직후 곧바로 "링크 공개"로
+  // 바꾸는 경우, 서버가 발급한 shareToken이 스토어에 없으면 ShareLinkButton이
+  // `/s/undefined` 링크를 만들어버리는 문제가 있었다.
+  applySavedMeta: (meta: {
+    id: number
+    createdAt: string
+    updatedAt: string
+    visibility?: Visibility
+    shareToken?: string | null
+  }) => void
+  applyVisibility: (visibility: Visibility) => void // 공개 범위 변경 성공 후 반영(개선 로드맵 §5.2)
   setPressingLineDragging: (v: boolean) => void
   undo: () => void
   redo: () => void
@@ -234,6 +249,25 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
       currentPhase: 'base',
       previousPhase: null,
       isDirty: false,
+      editingPlayerId: null,
+      selectedChangingPointId: null,
+      mergedStepIndex: null,
+      past: [],
+      future: [],
+    })
+    suppressHistory = false
+  },
+
+  restoreDraft: (a) => {
+    pendingSnapshot = null
+    if (historyTimer) clearTimeout(historyTimer)
+    clearInterval(mergedStepTimer)
+    suppressHistory = true
+    set({
+      analysis: a,
+      currentPhase: 'base',
+      previousPhase: null,
+      isDirty: true,
       editingPlayerId: null,
       selectedChangingPointId: null,
       mergedStepIndex: null,
@@ -666,13 +700,13 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
     suppressHistory = false
   },
 
-  applyPublicFlag: (isPublic) => {
+  applyVisibility: (visibility) => {
     const { analysis } = get()
     if (!analysis) return
-    // applySavedMeta와 같은 이유로 되돌리기 히스토리에 안 남긴다 — 토글은
-    // "편집"이 아니라 메타데이터 갱신이다.
+    // applySavedMeta와 같은 이유로 되돌리기 히스토리에 안 남긴다 — 공개 범위
+    // 변경은 "편집"이 아니라 메타데이터 갱신이다.
     suppressHistory = true
-    set({ analysis: { ...analysis, isPublic } })
+    set({ analysis: { ...analysis, visibility } })
     suppressHistory = false
   },
 

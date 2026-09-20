@@ -1,13 +1,15 @@
 """분석 전체에 붙는 댓글 CRUD (TO-DO 12번) + 대댓글·좋아요/싫어요(TO-DO 54).
 
-읽기는 analyses.get_analysis와 같은 이유로 로그인 여부와 무관하게 공개다 —
-공유 링크(/share/:id)를 본 누구나 댓글을 읽을 수 있어야 "커뮤니티"가 된다.
-단, 로그인한 사용자가 읽으면 각 댓글에 "내가 좋아요/싫어요를 눌렀는지"를
-같이 얹어준다(get_current_user_optional). 작성은 로그인 필수(2026-09-10
-사용자 결정 — "로그인한 사용자만, 사용자명도 입력하게"). 삭제는 작성자
-본인 또는 분석 소유자만 가능하다(같은 결정). 좋아요/싫어요도 로그인
-필수다(analyses.toggle_like와 같은 이유 — 누가 눌렀는지 식별해야 1인
-1표 제한과 "내 반응" 표시가 가능하다).
+읽기·쓰기는 crud.is_visible_to로 접근을 제한한다(2026-09-18, 개선 로드맵
+§5.2) — 소유자, 링크 공개, 커뮤니티 공개 분석의 댓글은 볼 수 있지만
+비공개 분석의 댓글은 analysis_id를 안다 해도 더 이상 읽을 수 없다. 그
+전까지는 analysis_id만 맞으면(순차 정수라 스캔 가능) 비공개 분석의 댓글도
+새고 있었다. 로그인한 사용자가 읽으면 각 댓글에 "내가 좋아요/싫어요를
+눌렀는지"를 같이 얹어준다(get_current_user_optional). 작성은 로그인
+필수(2026-09-10 사용자 결정 — "로그인한 사용자만, 사용자명도 입력하게").
+삭제는 작성자 본인 또는 분석 소유자만 가능하다(같은 결정). 좋아요/싫어요도
+로그인 필수다(analyses.toggle_like와 같은 이유 — 누가 눌렀는지 식별해야
+1인 1표 제한과 "내 반응" 표시가 가능하다).
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -29,8 +31,10 @@ def list_comments(
     user: models.User | None = Depends(auth.get_current_user_optional),
 ):
     try:
-        crud.get_analysis(db, analysis_id)
+        row = crud.get_analysis(db, analysis_id)
     except crud.AnalysisNotFound:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Analysis not found")
+    if not crud.is_visible_to(row, user.id if user else None):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Analysis not found")
     return crud.list_comments(db, analysis_id, current_user_id=user.id if user else None)
 
@@ -47,8 +51,10 @@ def create_comment(
     user: models.User = Depends(auth.get_current_user),
 ):
     try:
-        crud.get_analysis(db, analysis_id)
+        row = crud.get_analysis(db, analysis_id)
     except crud.AnalysisNotFound:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Analysis not found")
+    if not crud.is_visible_to(row, user.id):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Analysis not found")
     try:
         comment = crud.create_comment(db, analysis_id, user, payload.body, payload.parent_id)
