@@ -8,13 +8,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { CardRatio } from '@/hooks/useCardExport'
 import type { Analysis, PhaseType } from '@/types/analysis'
 
+// lib/exportImage.ts의 exportCard와 같은 이유로 문서에 붙였다 떼고, revoke를
+// 미룬다(advisor 리뷰로 발견 — Safari에서 클릭 직후 바로 revoke하면 아직
+// 시작도 안 한 다운로드가 레이스로 끊길 수 있다, 2026-09-20).
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
   a.download = filename
+  document.body.appendChild(a)
   a.click()
-  URL.revokeObjectURL(url)
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
 /**
