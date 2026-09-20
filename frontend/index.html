@@ -77,9 +77,23 @@
          교체 — 폰트 하나가 라틴·한글 전부 같은 고정폭이라 이 문제가 없다. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- crossorigin="anonymous"(2026-09-21, PNG 카드 코멘트가 컴퓨터에서만
+         잘리는 리포트 대응) — html-to-image가 카드를 foreignObject SVG로
+         직렬화해 이미지 리소스로 새로 렌더링할 때, 그 렌더링 컨텍스트는 이
+         문서에 등록된 @font-face(IBM Plex Sans KR 등)를 상속받지 못한다 —
+         원래 skipFonts:true로 이 임베딩 단계 자체를 건너뛰어서(CORS 없는
+         이 링크는 cssRules를 못 읽어 SecurityError가 났었다) 캡처된 PNG는
+         항상 OS 기본 폰트로 대체 렌더링됐다. 화면 측정(useFitFontSize)은
+         실제 웹폰트 기준인데 캡처는 OS 폴백 기준이라 폭이 어긋났고, 이
+         폴백 폭이 OS마다 달라 컴퓨터에서만 텍스트가 박스를 넘쳤다.
+         Google Fonts css2 엔드포인트는 Access-Control-Allow-Origin: *를
+         보낸다(curl로 확인) — crossorigin을 달아 CORS 모드로 가져오면
+         html-to-image가 cssRules를 읽어 실제로 폰트를 embed할 수 있다
+         (exportImage.ts의 skipFonts 제거와 함께 적용). -->
     <link
       href="https://fonts.googleapis.com/css2?family=Nanum+Gothic+Coding:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap"
       rel="stylesheet"
+      crossorigin="anonymous"
     />
   </head>
   <body>

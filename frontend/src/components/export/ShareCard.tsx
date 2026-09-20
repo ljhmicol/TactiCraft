@@ -19,12 +19,25 @@ const PHASE_LABELS: Record<PhaseType, string> = { base: '기본', attack: '공�
  * 보이게 한다 — 사용자 리포트: "...으로 끝나면 차라리 없는 게 낫다". 실제
  * DOM 높이(scrollHeight)를 재는 방식이라 html-to-image가 캡처하는 시점에는
  * 이미 알맞은 크기로 그려진 상태다(레이아웃 이펙트 → 페인트 → 캡처 순서).
+ *
+ * 2026-09-21 — 사용자 리포트: "핸드폰에서는 코멘트가 끝까지 다 보이는데
+ * 컴퓨터에서는 짤려". 원인: 이 훅의 useLayoutEffect는 마운트 시점(웹폰트
+ * "IBM Plex Sans KR" 다운로드가 아직 안 끝났을 수 있는 시점)에 딱 한 번만
+ * 크기를 재고, 이후 실제 웹폰트가 로드돼도 재계산 트리거가 없었다(의존성
+ * 배열에 폰트 로딩 여부가 없음) — 그 사이 el.scrollHeight는 그 순간의
+ * 폴백 폰트 기준으로 측정된다. exportImage.ts의 캡처 함수는 별도로
+ * document.fonts.ready를 기다린 뒤 캡처하므로, 실제 렌더링에 쓰이는 폰트는
+ * 측정 시점의 폴백 폰트와 다를 수 있다 — 이 폴백 폰트가 PC와 모바일 OS마다
+ * 달라서(시스템 기본 산세리프가 다름) 글자 폭이 달라지고, 어느 한쪽에서만
+ * 박스를 넘쳐 overflow:hidden에 잘려 보였다. document.fonts.ready가 끝난
+ * 뒤 한 번 더(항상 maxSize부터 다시) 재계산해서 실제 렌더링 폰트 기준으로
+ * 맞춘다.
  */
 function useFitFontSize(text: string, boxHeight: number, maxSize: number, minSize: number) {
   const ref = useRef<HTMLDivElement>(null)
   const [fontSize, setFontSize] = useState(maxSize)
 
-  useLayoutEffect(() => {
+  const fit = () => {
     const el = ref.current
     if (!el) return
     let size = maxSize
@@ -34,6 +47,19 @@ function useFitFontSize(text: string, boxHeight: number, maxSize: number, minSiz
       el.style.fontSize = `${size}px`
     }
     setFontSize(size)
+  }
+
+  useLayoutEffect(fit, [text, boxHeight, maxSize, minSize])
+
+  useLayoutEffect(() => {
+    let cancelled = false
+    document.fonts.ready.then(() => {
+      if (!cancelled) fit()
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text, boxHeight, maxSize, minSize])
 
   return { ref, fontSize }

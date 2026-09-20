@@ -137,14 +137,27 @@ async function compositeCanvas(
       toCanvas(node, {
         pixelRatio,
         cacheBust: true,
-        // GifExportRunner와 같은 이유(2026-09-11) — 이미 로드된 폰트를 다시
-        // embed하려다 cross-origin Google Fonts CSS에서 CORS SecurityError가
-        // 나며 느려지는 걸 막는다.
-        skipFonts: true,
+        // 2026-09-21 — 예전엔 GifExportRunner와 같은 이유로 skipFonts:true를
+        // 여기도 썼다(CORS 없는 Google Fonts CSS를 읽다 SecurityError). 그런데
+        // skipFonts로 건너뛴 건 "임베딩"뿐이 아니라 캡처된 이미지 자체가
+        // 실제 웹폰트로 렌더링될 기회였다 — html-to-image가 카드를
+        // foreignObject SVG로 직렬화해 별도 이미지 리소스로 렌더링할 때, 그
+        // 컨텍스트는 이 문서의 @font-face를 상속받지 못해 항상 OS 기본
+        // 폰트로 대체 렌더링됐다. useFitFontSize는 화면(실제 웹폰트) 기준으로
+        // 재는데 캡처는 OS 폴백 기준이라 폭이 어긋났고, 이 폴백 폭이 OS마다
+        // 달라 컴퓨터에서만 코멘트가 박스를 넘쳐 잘려 보였다. index.html의
+        // Google Fonts 링크에 crossorigin="anonymous"를 달아(엔드포인트가
+        // Access-Control-Allow-Origin: *를 보내는 것 확인) 이제 CORS 없이
+        // 읽을 수 있으므로 skipFonts를 뺀다 — 단발성 PNG 캡처(exportCard·
+        // captureThumbnail)라 GifExportRunner(프레임 39장 반복)와 달리
+        // 임베딩 비용을 감당할 수 있다. GIF 쪽은 그대로 skipFonts:true 유지.
         width,
         height,
       }),
-      20_000,
+      // 2026-09-21 — skipFonts 제거로 이 호출이 이제 웹폰트 파일도 함께
+      // 가져와 base64로 embed한다(cacheBust:true라 캐시도 안 탄다) — 느린
+      // 회선에서 여유를 두기 위해 20s에서 25s로 늘렸다.
+      25_000,
     ),
   )
 
