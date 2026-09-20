@@ -179,9 +179,15 @@ export const VersusShareCard = forwardRef<HTMLDivElement, VersusShareCardProps>(
         )}
 
         <div style={{ flex: 1, minHeight: ratio === '1:1' ? 420 : 540, display: 'flex', justifyContent: 'center' }}>
-          {/* width도 명시(2026-09-20, ShareCard.tsx와 같은 이유 — "검은 화면"
-              리포트의 실제 원인이었던 shrink-to-fit/w-full 순환 참조) */}
-          <div style={{ height: '100%', width: '100%' }}>
+          {/* ShareCard.tsx와 같은 이유(2026-09-20) — width:100%로 검은 화면은
+              고쳤지만 그러면 Pitch의 aspect-ratio가 무시돼 찌부러진다.
+              wrapper 자체에 가로 피치 비율(105:68, landscape)을
+              aspect-ratio로 주고 width는 auto(height에서 계산),
+              flex:'none'으로 눌리지 않게 한다 — Pitch.tsx의 landscape
+              className은 애초에 w-full을 빼서 aspect-ratio가 개입할 자리를
+              남겨뒀는데(TO-DO 39), 이 wrapper의 순환 참조 문제가 그 앞에서
+              가로막고 있었다. */}
+          <div style={{ height: '100%', width: 'auto', aspectRatio: '105 / 68', flex: 'none' }}>
             <Pitch orientation="landscape">
               {showChannelGrid && <ChannelGrid halfSpaces orientation="landscape" sideLabels />}
               {showPressingLine && (

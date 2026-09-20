@@ -109,9 +109,11 @@ export const SharePngCard = forwardRef<HTMLDivElement, SharePngCardProps>(functi
             justifyContent: 'center',
           }}
         >
-          {/* width도 명시(2026-09-20, ShareCard.tsx와 같은 이유 — "검은 화면"
-              리포트의 실제 원인이었던 shrink-to-fit/w-full 순환 참조) */}
-          <div style={{ height: '100%', width: '100%' }}>
+          {/* ShareCard.tsx와 같은 이유(2026-09-20) — width:100%로 검은 화면은
+              고쳤지만 그러면 Pitch의 aspect-ratio가 무시돼 찌부러진다.
+              wrapper 자체에 세로 피치 비율(68:105)을 aspect-ratio로 주고
+              width는 auto(height에서 계산), flex:'none'으로 눌리지 않게 한다. */}
+          <div style={{ height: '100%', width: 'auto', aspectRatio: '68 / 105', flex: 'none' }}>
             <Pitch>
               {layers.channelGrid && <ChannelGrid halfSpaces={layers.halfSpaces} />}
               {layers.compactness && <CompactnessBox positions={phase.positions} />}

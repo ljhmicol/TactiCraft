@@ -124,21 +124,34 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(function Sha
             justifyContent: 'center',
           }}
         >
-          {/* width도 명시한다(2026-09-20, 실기기 검은 화면 리포트 확정 원인) —
-              이 div는 width 없이 height:100%만 있었다. 부모(위 flex:1 div)는
-              카드의 column flex 안에서 align-items 기본값(stretch)으로 폭이
+          {/* 2026-09-20, 실기기 검은 화면 리포트 확정 원인 — 이 div는 원래
+              width 없이 height:100%만 있었다. 부모(위 flex:1 div)는 카드의
+              column flex 안에서 align-items 기본값(stretch)으로 폭이
               정해지지만, 이 자식은 row-flex 안의 아이템이라 폭이 "내용 기준
               shrink-to-fit"으로 계산된다 — 그런데 내용인 Pitch의 wrapper가
               또 w-full(부모의 100%)이라 서로가 서로를 기준 삼는 순환
-              참조가 된다. 화면에 실제로 그려질 때는 대부분 브라우저가 무난한
-              값으로 풀어주지만, 화면 밖(position:absolute;left:-9999px)
-              오프스크린 렌더링에서 iOS WebKit이 이 순환을 0으로 풀어버리는
-              걸 실기기 진단으로 직접 확인했다(getBoundingClientRect() width
-              가 정확히 0, height는 정상) — PNG로 내보내면 피치 영역 전체가
-              비어 카드의 어두운 배경(SHARE_CARD_COLORS.background)만
-              보였던 "검은 화면" 리포트의 실제 원인이었다. width:100%로
-              고정해 순환을 끊는다. */}
-          <div style={{ height: '100%', width: '100%' }}>
+              참조가 된다. 화면에 실제로 그려질 때는 대부분 브라우저가
+              (w-full의 100%가 미확정 부모 기준으로는 풀리지 않아 사실상
+              auto로 취급되고, 그 결과 Pitch 자신의 aspect-[68/105]가
+              대신 개입하는) 우연한 경로로 무난하게 보였지만, 화면 밖
+              (position:absolute;left:-9999px) 오프스크린 렌더링에서 iOS
+              WebKit은 이 순환을 0으로 풀어버리는 걸 실기기 진단으로 직접
+              확인했다(getBoundingClientRect() width가 정확히 0, height는
+              정상) — PNG로 내보내면 피치 영역 전체가 비어 카드의 어두운
+              배경(SHARE_CARD_COLORS.background)만 보였던 "검은 화면"
+              리포트의 실제 원인이었다.
+
+              1차 수정으로 width:100%를 강제했더니 검은 화면은 사라졌지만
+              이번엔 Pitch 자신의 h-full+w-full이 둘 다 "정해진 값"이 되며
+              aspect-[68/105]가 완전히 무시돼 피치가 컨테이너 박스 그대로
+              찌부러져 나왔다(advisor 리뷰로 확정) — width:100% 대신 이
+              wrapper 자체에 세로 방향 피치 비율(68:105)을 aspect-ratio로
+              직접 주고 width는 auto로 비운다(그래야 aspect-ratio가 height
+              에서 width를 계산한다), flex:'none'으로 flex-shrink에 의해
+              눌리는 것도 막는다 — shrink-to-fit/컨텐츠 기반 계산에 전혀
+              기대지 않으므로 엔진마다 다르게 풀릴 여지가 없다. 부모의
+              justifyContent:'center'가 다시 실제로 가운데 정렬을 담당한다. */}
+          <div style={{ height: '100%', width: 'auto', aspectRatio: '68 / 105', flex: 'none' }}>
             <Pitch>
               {layers.channelGrid && <ChannelGrid halfSpaces={layers.halfSpaces} />}
               {layers.compactness && <CompactnessBox positions={phase.positions} />}
