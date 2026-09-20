@@ -1,10 +1,11 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
+import type { RefObject } from 'react'
 
 import { GifExportRunner } from '@/components/export/GifExportRunner'
 import { ShareCard } from '@/components/export/ShareCard'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { exportCard } from '@/lib/exportImage'
+import type { CardRatio } from '@/hooks/useCardExport'
 import type { Analysis, PhaseType } from '@/types/analysis'
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -25,24 +26,34 @@ function downloadBlob(blob: Blob, filename: string) {
  * GIF는 PNG처럼 ref 하나를 한 번 캡처하는 게 아니라 프레임마다 다시
  * 렌더링→캡처해야 해서(GifExportRunner) 버튼을 누른 시점에만 그 러너를
  * 마운트하고, 다 끝나면(onDone/onError) 언마운트한다.
+ *
+ * PNG 쪽 상태(ratio·exporting·cardRef·handleExport)는 2026-09-20(개선
+ * 로드맵 §6.2)부터 이 컴포넌트가 직접 갖지 않고 `useCardExport`를 호출한
+ * `EditorPage`에서 props로 받는다 — 모바일 하단 시트(BottomActionBar)도
+ * 같은 캡처 대상을 트리거해야 하는데, `ShareCard`(아래)는 두 번 마운트하면
+ * 안 되므로 한 곳(여기)에만 마운트하고 상태만 공유한다. GIF는 로드맵
+ * 범위가 PNG만이라 이 컴포넌트에 로컬로 남겨뒀다.
  */
-export function ExportControls({ analysis, phase }: { analysis: Analysis; phase: PhaseType }) {
-  const [ratio, setRatio] = useState<'1:1' | '4:5'>('1:1')
-  const [exporting, setExporting] = useState(false)
+export function ExportControls({
+  analysis,
+  phase,
+  ratio,
+  setRatio,
+  exporting,
+  onExport,
+  cardRef,
+}: {
+  analysis: Analysis
+  phase: PhaseType
+  ratio: CardRatio
+  setRatio: (r: CardRatio) => void
+  exporting: boolean
+  onExport: () => Promise<void>
+  cardRef: RefObject<HTMLDivElement>
+}) {
   const [exportingGif, setExportingGif] = useState(false)
   const [gifRunning, setGifRunning] = useState(false)
   const [gifError, setGifError] = useState<string | null>(null)
-  const cardRef = useRef<HTMLDivElement>(null)
-
-  const handleExport = async () => {
-    if (!cardRef.current) return
-    setExporting(true)
-    try {
-      await exportCard(cardRef.current, ratio)
-    } finally {
-      setExporting(false)
-    }
-  }
 
   const handleGifExport = () => {
     setGifError(null)
@@ -66,7 +77,7 @@ export function ExportControls({ analysis, phase }: { analysis: Analysis; phase:
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
-        <Select value={ratio} onValueChange={(v) => setRatio(v as '1:1' | '4:5')}>
+        <Select value={ratio} onValueChange={(v) => setRatio(v as CardRatio)}>
           <SelectTrigger className="w-20">
             <SelectValue />
           </SelectTrigger>
@@ -75,7 +86,7 @@ export function ExportControls({ analysis, phase }: { analysis: Analysis; phase:
             <SelectItem value="4:5">4:5</SelectItem>
           </SelectContent>
         </Select>
-        <Button size="sm" onClick={handleExport} disabled={exporting}>
+        <Button size="sm" onClick={onExport} disabled={exporting}>
           {exporting ? '내보내는 중…' : 'PNG 내보내기'}
         </Button>
         <Button size="sm" variant="outline" onClick={handleGifExport} disabled={exportingGif}>

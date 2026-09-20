@@ -5,10 +5,16 @@ import { Link } from 'react-router-dom'
 import { DeleteConfirmDialog } from '@/components/analyses/DeleteConfirmDialog'
 import { GuardedLink } from '@/components/common/GuardedLink'
 import { useDeleteAnalysis } from '@/hooks/useAnalyses'
-import type { AnalysisSummary } from '@/types/analysis'
+import type { AnalysisSummary, Visibility } from '@/types/analysis'
+
+const VISIBILITY_LABELS: Record<Visibility, string> = {
+  private: '비공개',
+  link: '링크 공개',
+  community: '커뮤니티 공개',
+}
 
 /**
- * 저장 목록 테이블 — 썸네일·매치명·팀·태그·일자·수정일시·댓글·삭제
+ * 저장 목록 — 썸네일·매치명·팀·태그·일자·수정일시·댓글·삭제
  * (2단계 §11.3, 썸네일·태그는 TO-DO 7번, 댓글은 TO-DO 12번).
  *
  * 댓글(커뮤니티) 링크는 여기서 공유 페이지(/share/:id)로 보낸다 — 상단
@@ -17,6 +23,12 @@ import type { AnalysisSummary } from '@/types/analysis'
  * 라는 질문을 받고서야 이 저장 목록에 들어가는 입구가 없다는 걸 알았다
  * (2026-09-10) — 저장 목록이 "이미 있는 내 분석들"을 보는 화면이라
  * 가장 자연스러운 자리로 골랐다.
+ *
+ * 좁은 화면(`lg` 미만)에서는 `<table>`을 그대로 안 쓴다(개선 로드맵
+ * §6.2, 2026-09-20) — 예전엔 표 하나만 있어서 모바일에서 가로 스크롤이
+ * 생기거나 칸이 짓눌려 읽기 어려웠다. 같은 데이터로 카드 목록을 하나 더
+ * 만들어 `lg` 기준으로 표/카드 중 하나만 보이게 한다(BottomActionBar가
+ * 모바일 전용 UI를 가르는 것과 같은 breakpoint).
  */
 export function AnalysisList({ analyses }: { analyses: AnalysisSummary[] }) {
   const deleteMutation = useDeleteAnalysis()
@@ -28,7 +40,62 @@ export function AnalysisList({ analyses }: { analyses: AnalysisSummary[] }) {
 
   return (
     <>
-      <table className="w-full border-collapse text-sm">
+      <div className="flex flex-col gap-3 lg:hidden">
+        {analyses.map((a) => (
+          <div key={a.id} className="flex gap-3 rounded-md border border-border p-3">
+            <GuardedLink to={`/analyses/${a.id}`} className="shrink-0">
+              {a.thumbnail ? (
+                <img
+                  src={a.thumbnail}
+                  alt=""
+                  className="h-16 w-24 rounded border border-border object-cover"
+                />
+              ) : (
+                <div className="h-16 w-24 rounded border border-dashed border-border" />
+              )}
+            </GuardedLink>
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <GuardedLink to={`/analyses/${a.id}`} className="truncate font-medium text-primary">
+                {a.matchName}
+              </GuardedLink>
+              <p className="truncate text-xs text-muted-foreground">
+                {a.homeTeam} vs {a.awayTeam}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {a.matchDate} · {VISIBILITY_LABELS[a.visibility ?? 'private']}
+              </p>
+              {a.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {a.tags.map((tag) => (
+                    <span key={tag} className="rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="mt-1 flex items-center justify-between">
+                <Link
+                  to={`/share/${a.id}`}
+                  title="공유 페이지에서 댓글 보기·남기기"
+                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  <MessageCircle className="h-3.5 w-3.5" />
+                  댓글
+                </Link>
+                <button
+                  type="button"
+                  className="whitespace-nowrap rounded-sm text-xs text-destructive hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  onClick={() => setPending(a)}
+                >
+                  삭제
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <table className="hidden w-full border-collapse text-sm lg:table">
         <thead>
           <tr className="border-b border-border text-left text-muted-foreground">
             <th className="py-2 pr-4 font-medium" />

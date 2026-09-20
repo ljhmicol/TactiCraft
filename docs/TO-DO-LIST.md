@@ -28,6 +28,8 @@
 - [O] **67. Fly.io 콜드 스타트 대응** — 중 · 구현 완료, 사용자 확인 전(개선 로드맵 §5.6, P0 마지막 항목)
 - [O] **68. 성공/실패 피드백 통일(토스트)** — 대 · 구현 완료, 사용자 확인 전(개선 로드맵 §6.3, P1 첫 항목). 로드맵의 8개 항목 중 6개 구현, 1개(임시 저장 완료) 의도적 보류, 1개(저장 충돌)는 관련 기능 자체가 없어 범위 밖 — 아래 구현 항목 참조
 - [O] **69. 최초 사용자 가이드와 점진적 공개** — 중 · 구현 완료, 사용자 확인 전(개선 로드맵 §6.1, P1 두 번째 항목). 4단계 정적 가이드 + 레이어 칩 기본/고급 분리 + "고급 기능" 접이식 패널
+- [O] **71. 모바일 핵심 여정 개선** — 중 · 구현 완료, 사용자 확인 전(개선 로드맵 §6.2, P1 세 번째 항목). 모바일 PNG 내보내기가 실제로 동작하게 수정(바텀 시트) + 저장 목록 모바일 카드 레이아웃. 썸네일+저장 상태 통합은 이미 되어 있었음(확인만), 모바일 E2E 테스트는 이 저장소에 테스트 인프라 자체가 없어 범위 밖(TO-DO 65의 CI 공백과 같은 결정)
+
 ## 항목 상세
 
 ### 61. 기본 SEO(robots.txt·sitemap.xml·시맨틱 태그) 추가
@@ -147,6 +149,18 @@
   - **advisor 리뷰로 발견해 고친 실제 버그**: `<details>`가 닫혀도 내용물은 `display:none`으로 숨겨질 뿐 DOM/이펙트는 그대로 살아 있다 — 타임라인 자동재생(`setInterval`)이나 병합 시점 재생 중에 패널을 접으면, 재생을 멈출 정지 버튼만 화면에서 사라지고 재생 자체는 계속 돈다. 이걸 막으려고 자동재생 상태(`isPlaying`)를 `Timeline.tsx`의 로컬 `useState`에서 `analysisStore`의 `timelineAutoplay`로 끌어올렸다(기존 `mergedStepIndex`와 같은 패턴) — `AdvancedFeaturesPanel`이 `timelineAutoplay`나 `mergedStepIndex`가 활성 상태일 때 패널을 닫으려는 시도를 그 자리에서 되돌리고(`e.currentTarget.open = true`) 토스트로 이유를 안내한다. (단순히 시점 하나를 "선택"만 하고 패널을 닫는 경우는 문제 없다 — 국면 탭이 패널 바깥에 항상 보이고, 국면 탭을 누르면 `switchPhase`가 `selectedChangingPointId`를 같이 지워 언제든 빠져나올 수 있다.)
   - **`EditorPage.tsx` 배치**: `OnboardingGuide`는 저장 전에만, `DraftRecoveryBanner` 바로 아래. `AdvancedFeaturesPanel`은 기존 "압박 라인" FM식 프리셋 `<Select>`(대형을 실제로 밀어 올리는 편집 도구 — 이름은 비슷하지만 여기 압박 레이어 토글과는 다른 기능) 아래에 배치.
 - **검증**: 프론트 `tsc -b`(0 errors) / `npm run lint`(0 errors, 기존 경고 3개만) / `npx vitest run`(215개 전부 통과) / `npm run build` 성공. **미확인 — 브라우저에서 사람이 직접 봐야 한다**([[shell-sandbox-vs-real-browser-network]]): 새 분석에서 시작 가이드가 뜨고 닫으면 다시 안 뜨는지, 고급 기능 패널을 처음 펼쳤을 때만 설명이 보이는지, 타임라인 자동재생/병합 재생 중 패널 닫기를 시도하면 토스트가 뜨고 실제로 안 닫히는지, 오버로드 칩처럼 상대팀 유무에 따라 상태가 바뀌는 칩이 패널이 접힌 동안 바뀌어도 다음에 펼쳤을 때 올바르게 보이는지.
+
+### 71. 모바일 핵심 여정 개선
+
+- **배경**: 개선 로드맵 §6.2(P1 §6 "일상 사용성 개선" 세 번째 항목). 로드맵이 6개 항목을 지목했는데, 구현 전에 실제 코드로 하나씩 확인해보니 이미 된 것과 안 된 것이 섞여 있었다.
+  - **실제로 안 되고 있던 것(확인)**: `BottomActionBar.tsx`의 "PNG 내보내기" 버튼이 실제로는 export를 하지 않고 헤더 툴바로 스크롤만 시키고 있었다(주석에 "ShareCard를 두 번 마운트하지 않기 위한 실용적 절충"이라고 명시돼 있었음). `AnalysisList.tsx`(저장 목록)는 반응형 처리가 전혀 없는 `<table>` 하나뿐이었다.
+  - **이미 되어 있던 것(확인만)**: "저장 버튼과 썸네일 캡처 상태를 하나의 command/state로 통합한다" — `SaveButton.tsx`의 `handleSave`가 이미 썸네일 캡처와 저장을 한 함수 안에서 처리하고, 하나의 `saveState`(idle/waking/saving/retrying/done, TO-DO 67·68에서 만듦)로 버튼 라벨을 몰아서 관리하고 있었다. 추가 작업 없이 "이미 만족됨"으로 처리.
+  - **범위 밖으로 둔 것**: "생성→편집→로그인→저장→공유 모바일 E2E 테스트 추가" — 이 저장소엔 Playwright 같은 E2E 테스트 인프라 자체가 없다(vitest 단위 테스트뿐). 새로 들이는 건 CI 연동 여부까지 같이 걸리는 별도 인프라 결정이라(TO-DO 65가 이미 "CI 연동은 아직 없음"으로 남겨둔 공백과 같은 사안), 이번 스코프에 묶지 않고 따로 논의할 항목으로 남긴다.
+- **구현**:
+  - **모바일 PNG 내보내기 실제 동작**: `ExportControls.tsx`가 갖고 있던 PNG 쪽 상태(`ratio`·`exporting`·`cardRef`·`handleExport`)를 새 훅 `hooks/useCardExport.ts`로 뽑아 `EditorPage.tsx`가 한 번만 호출하고, `ExportControls`(데스크톱 툴바)와 `BottomActionBar`(모바일 하단 바)에 props로 내려준다 — 캡처 대상 `ShareCard`(화면 밖 `position:absolute`)는 여전히 `ExportControls` 한 곳에만 마운트되므로 이중 마운트 문제는 그대로 피한다. `BottomActionBar`는 이제 "PNG 내보내기"를 누르면 Radix Dialog로 만든 바텀 시트(비율 1:1/4:5 선택 + "PNG 생성" 버튼)가 뜨고, 같은 `handleExport`를 호출해 실제로 파일을 내려받는다.
+  - **advisor 리뷰로 발견해 고친 실제 버그**: 바텀 시트의 `handleGenerate`가 처음엔 `await onExport()` 뒤 바로 시트를 닫았는데, `handleExport`는 실패를 삼키지 않고 그대로 던지는 함수라(`finally`로 `exporting`만 되돌림) — export가 실패하면(`html-to-image`가 CORS로 실패할 수 있다는 건 TO-DO 33에서 이미 한 번 실제로 겪은 사례) `setSheetOpen(false)`가 아예 실행되지 않아 시트가 안 닫히고 아무 설명도 없이 멈춘 것처럼 보이는 상태가 됐다. `try/catch/finally`로 감싸 실패 시 토스트 안내 후 시트를 닫도록 고쳤다 — 데스크톱 툴바 버튼은 원래도 실패 시 그냥 라벨만 되돌아가고 에러 안내가 없었는데(PNG 쪽엔 원래 없던 에러 경로), 이번에 모바일 쪽만이라도 토스트로 채웠다.
+  - **저장 목록 모바일 카드 레이아웃**: `AnalysisList.tsx`에 카드형 목록(`lg` 미만에서만 보임, `BottomActionBar`와 같은 breakpoint)을 추가 — 썸네일·매치명·홈팀 vs 원정팀·일자·공개 상태(`VISIBILITY_LABELS`, `VisibilitySelect.tsx`의 라벨과 동일)·태그·댓글 링크·삭제 버튼을 한 카드에 담는다. 기존 `<table>`은 `lg` 이상에서만 보이게 `hidden lg:table`로 바꿨을 뿐 그대로 남겼다 — 데이터·삭제 다이얼로그 상태(`pending`)는 두 레이아웃이 공유한다.
+- **검증**: 프론트 `tsc -b`(0 errors) / `npm run lint`(0 errors, 기존 경고 3개만) / `npx vitest run`(215개 전부 통과, 회귀 없음) / `npm run build` 성공. **미확인 — 브라우저(가능하면 실기기)에서 사람이 직접 봐야 한다**([[shell-sandbox-vs-real-browser-network]]): 모바일 폭에서 "PNG 내보내기"를 누르면 바텀 시트가 뜨고 비율을 고른 뒤 "PNG 생성"으로 실제 파일이 다운로드되는지, 일부러 실패시켰을 때(예: 네트워크 끊고) 시트가 닫히고 토스트가 뜨는지, 시트 하단 여백이 실기기 홈 인디케이터 세이프 에리어를 가리지 않는지(advisor가 짚은 지점), 저장 목록이 좁은 화면에서 카드로, 넓은 화면에서 표로 올바르게 전환되는지.
 
 ## 기각 기록
 

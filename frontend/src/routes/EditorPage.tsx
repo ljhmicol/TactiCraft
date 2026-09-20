@@ -35,6 +35,7 @@ import { PlayerNode } from '@/components/pitch/PlayerNode'
 import { PressingLine } from '@/components/pitch/PressingLine'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useCardExport } from '@/hooks/useCardExport'
 import { useDraftAutosave } from '@/hooks/useDraftAutosave'
 import { pressingLineLevel, type PressingLineLevel } from '@/lib/compactness'
 import { FORMATION_NAMES } from '@/lib/formations'
@@ -91,6 +92,12 @@ export function EditorPage() {
   // 화살표 자체는 stopPropagation으로 해제를 막는다.
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null)
   useDraftAutosave()
+  // PNG 카드 내보내기 상태(개선 로드맵 §6.2, 2026-09-20) — 데스크톱 툴바
+  // (ExportControls)와 모바일 하단 시트(BottomActionBar)가 같은 캡처 대상을
+  // 공유해야 해서 여기서 한 번만 호출한다(useCardExport 도크스트링 참조).
+  // `analysis`가 없을 때도(아래 조기 반환) 훅 호출 순서를 지키려고 이
+  // 조기 반환보다 앞에 둔다.
+  const cardExport = useCardExport()
 
   if (!analysis) {
     return (
@@ -190,7 +197,15 @@ export function EditorPage() {
           <DuplicateButton analysis={analysis} />
           <ShareLinkButton analysis={analysis} />
           <VisibilitySelect analysis={analysis} />
-          <ExportControls analysis={analysis} phase={currentPhase} />
+          <ExportControls
+            analysis={analysis}
+            phase={currentPhase}
+            ratio={cardExport.ratio}
+            setRatio={cardExport.setRatio}
+            exporting={cardExport.exporting}
+            onExport={cardExport.handleExport}
+            cardRef={cardExport.cardRef}
+          />
         </div>
       </div>
 
@@ -385,7 +400,13 @@ export function EditorPage() {
         </div>
       </div>
 
-      <BottomActionBar analysis={analysis} />
+      <BottomActionBar
+        analysis={analysis}
+        ratio={cardExport.ratio}
+        setRatio={cardExport.setRatio}
+        exporting={cardExport.exporting}
+        onExport={cardExport.handleExport}
+      />
       <PlayerEditDialog />
     </div>
   )
