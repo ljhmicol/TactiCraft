@@ -36,6 +36,12 @@ class User(Base):
     # 채운다(curved/carry와 같은 이유) — DB에는 nullable로 두고 기존 계정은
     # 이메일 앞부분으로 백필한다. 새 가입은 UserRegister가 항상 요구한다.
     username = Column(String, unique=True)
+    # 회원 관리(2026-09-20, 관리자 요청 "회원들이 가입하면 관리를 해야할 것
+    # 같은데") — 운영자가 문제 계정의 로그인만 차단한다(콘텐츠는 그대로 둔다,
+    # 사용자가 명시적으로 고른 최소 범위). is_admin과 달리 이건 DB 컬럼이다 —
+    # 운영자 지정과 달리 "누구를 정지했는지"는 배포마다 바뀌면 안 되는
+    # 영구적인 기록이라 환경변수로 관리할 수 없다.
+    is_suspended = Column(Boolean, nullable=False, default=False)
 
     @property
     def is_admin(self) -> bool:

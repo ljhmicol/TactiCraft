@@ -59,7 +59,9 @@ uvicorn main:app --reload          # 백엔드 (8000)
 
 **테스트(2026-09-20, TO-DO 65번 신설)**: 프론트는 `cd frontend && npx vitest run`, 백엔드는 `cd backend && pytest`(테스트 전용 의존성은 `backend/requirements-dev.txt`에 따로 있음 — `pip install -r requirements-dev.txt`로 설치, 배포 이미지엔 안 들어감). 백엔드 테스트는 `conftest.py`가 실제 개발 DB(`data/tacticore.db`)와 완전히 분리된 임시 파일을 매번 새로 써서 안전합니다. CI 연동은 아직 없습니다(`.github/workflows/fly-deploy.yml`은 `FLY_API_TOKEN` 미설정으로 애초에 비활성 — [[deployment-flyio]] 참조).
 
-**운영자 계정은 DB 플래그가 아니라 `ADMIN_EMAILS` 환경변수로 지정합니다(2026-09-20, TO-DO 66번, 개선 로드맵 §5.5).** 신고 처리 화면(`/admin/reports`)·API(`/api/moderation/reports`)가 이 값에 있는 이메일만 통과시킵니다 — 설정 안 하면 아무도 운영자가 아닙니다. 설정 방법은 `docs/6단계_운영_매뉴얼.md` §2.6 참조. 로컬(`backend/.env`)과 배포(`flyctl secrets`) 양쪽 다 `ljh.micol@gmail.com`으로 설정 완료했습니다(2026-09-20).
+**운영자 계정은 DB 플래그가 아니라 `ADMIN_EMAILS` 환경변수로 지정합니다(2026-09-20, TO-DO 66번, 개선 로드맵 §5.5).** 신고 처리 화면(`/admin/reports`)·API(`/api/moderation/reports`)와 회원 관리 화면(`/admin/users`)·API(`/api/admin/users`, TO-DO 70번)가 이 값에 있는 이메일만 통과시킵니다 — 설정 안 하면 아무도 운영자가 아닙니다. 설정 방법은 `docs/6단계_운영_매뉴얼.md` §2.6 참조. 로컬(`backend/.env`)과 배포(`flyctl secrets`) 양쪽 다 `ljh.micol@gmail.com`으로 설정 완료했습니다(2026-09-20).
+
+**회원 "정지"는 로그인 차단만 합니다(2026-09-20, TO-DO 70번, `models.User.is_suspended`).** 정지된 계정이 이미 올린 분석·댓글은 그대로 남습니다 — 콘텐츠를 숨기거나 지우는 건 신고 처리(TO-DO 66번)의 몫입니다. 운영자는 `ADMIN_EMAILS`에 등록된 계정끼리 서로 정지할 수 없습니다(운영자가 여럿일 때 서로를 잠그는 걸 막기 위해).
 
 **저장/목록 계열 UI는 헬스체크 실패만으로 영구 비활성화되면 안 됩니다(2026-09-20, TO-DO 67번, 개선 로드맵 §5.6).** Fly.io는 `min_machines_running = 0`이라 콜드 스타트가 있는데(TO-DO 59), 헬스체크(`useServerHealth`)가 이를 오인하지 않도록 타임아웃·재시도를 넉넉히 뒀습니다 — 그래도 `isServerUp`/`isChecking`을 새 UI의 `disabled` 조건에 그대로 넣지 마세요(예전 `SaveButton`이 이 실수로 콜드 스타트 중 저장 자체가 안 됐던 버그입니다). 인증 체크(`useCurrentUser`)도 401이 아닌 실패는 재시도하도록 같이 고쳐져 있습니다 — 둘 중 하나만 고치면 다른 쪽이 같은 자리에서 다시 막습니다.
 

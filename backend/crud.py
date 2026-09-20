@@ -693,3 +693,53 @@ def get_like_info(db: Session, analysis_id: int, user_id: Optional[int]) -> tupl
             is not None
         )
     return count, liked
+
+
+# 회원 관리(2026-09-20, 관리자 요청). "정지"는 로그인 차단만 한다(사용자가
+# 명시적으로 고른 범위) — 이미 올린 분석/댓글은 그대로 둔다. 문제 콘텐츠
+# 자체를 숨기거나 지우는 건 이미 있는 신고 처리(routers/moderation.py)의
+# 몫이라 여기서 새로 건드리지 않는다.
+def list_users_with_counts(db: Session) -> List[dict]:
+    rows = (
+        db.query(models.User, func.count(models.Analysis.id))
+        .outerjoin(models.Analysis, models.Analysis.user_id == models.User.id)
+        .group_by(models.User.id)
+        .order_by(models.User.created_at.desc())
+        .all()
+    )
+    return [
+        {
+            "id": user.id,
+            "email": user.email,
+            "username": user.username,
+            "created_at": user.created_at,
+            "is_suspended": bool(user.is_suspended),
+            "analysis_count": count,
+        }
+        for user, count in rows
+    ]
+
+
+class SelfSuspendError(Exception):
+    """운영자 계정은 정지할 수 없다 — 자기 자신뿐 아니라 ADMIN_EMAILS에
+    등록된 다른 운영자도 포함이다(advisor 리뷰로 발견: "본인만" 막으면
+    운영자가 여럿일 때 서로를 정지해 잠글 수 있고, 자기 자신만 막아도
+    테스트용으로 쓰던 다른 운영자 계정을 정지한 뒤 ADMIN_EMAILS에서 그
+    이메일을 빼면 되돌릴 방법이 없어진다). 실수로 막아버리면
+    ADMIN_EMAILS를 다시 설정하기 전까진 이 기능 자체에 접근할 방법이 없어진다."""
+
+
+def set_user_suspended(db: Session, admin: models.User, user_id: int, suspended: bool) -> Optional[models.User]:
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if suspended and user and user.is_admin:
+        raise SelfSuspendError()
+    if not user:
+        return None
+    user.is_suspended = suspended
+    if suspended:
+        # 이미 로그인된 세션이 있다면 즉시 끊는다 — 안 그러면 최대 30일(세션
+        # 만료 기한)까지는 정지해도 계속 쓸 수 있다.
+        db.query(models.Session).filter(models.Session.user_id == user_id).delete()
+    db.commit()
+    db.refresh(user)
+    return user

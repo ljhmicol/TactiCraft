@@ -14,6 +14,7 @@ import schemas
 from config import PROJECT_ROOT, settings
 from database import Base, engine, get_db
 from routers import (
+    admin_users as admin_users_router,
     analyses,
     auth as auth_router,
     comments as comments_router,
@@ -54,6 +55,7 @@ _ensure_column("analyses", "visibility", "TEXT NOT NULL DEFAULT 'private'")
 _ensure_column("analyses", "share_token", "TEXT")
 _ensure_column("sessions", "expires_at", "TEXT")
 _ensure_column("sessions", "last_used_at", "TEXT")
+_ensure_column("users", "is_suspended", "BOOLEAN DEFAULT 0")
 
 
 def _backfill_usernames() -> None:
@@ -178,6 +180,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(admin_users_router.router)
 app.include_router(analyses.router)
 app.include_router(auth_router.router)
 app.include_router(comments_router.router)

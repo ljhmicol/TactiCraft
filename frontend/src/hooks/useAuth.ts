@@ -18,7 +18,13 @@ const ME_KEY = ['auth', 'me']
  * 에러가 곧 "로그아웃 상태"라 재시도하지 않는다 — 대부분의 방문이 비로그인
  * 상태라, 여기서 재시도하면 익명 방문자 전원이 매번 불필요한 지연을 겪는다.
  *
- * 401이 **아닌** 실패(개선 로드맵 §5.6, 2026-09-20 정정)는 재시도한다 —
+ * 403(정지된 계정, 2026-09-20 회원 관리)도 재시도하지 않는다 — 콜드
+ * 스타트처럼 다시 시도한다고 나아질 상태가 아니라 계정 자체가 막힌
+ * 것이라, 401과 마찬가지로 곧바로 "로그아웃 상태"로 정착시킨다(advisor
+ * 리뷰로 발견 — 그냥 두면 이 상태도 콜드 스타트로 오인해 몇 초 동안
+ * 재시도하다가 뒤늦게 로그인 필요 화면으로 정착한다).
+ *
+ * 401·403이 **아닌** 실패(개선 로드맵 §5.6, 2026-09-20 정정)는 재시도한다 —
  * Fly.io 콜드 스타트(TO-DO 59) 중 이 요청이 일시적으로 실패하면 로그인한
  * 사용자도 `isLoggedIn`이 false로 굳어버렸다. SaveButton이 `!isLoggedIn`
  * 이면 "로그인이 필요합니다"로 저장 버튼을 막는데, 실제로는 로그인 상태고
@@ -30,7 +36,7 @@ export function useCurrentUser() {
     queryKey: ME_KEY,
     queryFn: fetchCurrentUser,
     retry: (failureCount, error) => {
-      if (error instanceof ApiError && error.status === 401) return false
+      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) return false
       return failureCount < 2
     },
     retryDelay: (attemptIndex) => Math.min(1500 * 2 ** attemptIndex, 6000),

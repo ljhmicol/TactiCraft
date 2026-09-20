@@ -8,6 +8,7 @@ import { useCurrentUser, useLogout } from '@/hooks/useAuth'
 import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning'
 import { cn } from '@/lib/utils'
 import { AdminReportsPage } from '@/routes/AdminReportsPage'
+import { AdminUsersPage } from '@/routes/AdminUsersPage'
 import { AnalysesPage } from '@/routes/AnalysesPage'
 import { AnalysisDetailPage } from '@/routes/AnalysisDetailPage'
 import { CommunityPage } from '@/routes/CommunityPage'
@@ -53,9 +54,14 @@ function AuthNav() {
       {/* 운영자 전용(개선 로드맵 §5.5, 2026-09-20) — 실제 권한 경계는 서버에
        * 있다(AdminReportsPage 참조), 이 조건은 화면 정리용일 뿐이다. */}
       {user?.isAdmin && (
-        <Link to="/admin/reports" className="shrink-0 whitespace-nowrap text-sm text-muted-foreground hover:text-foreground">
-          신고함
-        </Link>
+        <>
+          <Link to="/admin/reports" className="shrink-0 whitespace-nowrap text-sm text-muted-foreground hover:text-foreground">
+            신고함
+          </Link>
+          <Link to="/admin/users" className="shrink-0 whitespace-nowrap text-sm text-muted-foreground hover:text-foreground">
+            회원 관리
+          </Link>
+        </>
       )}
       <Link to="/profile" className="max-w-[40vw] truncate text-sm text-muted-foreground hover:text-foreground" title="내 정보">
         {user?.email}
@@ -178,6 +184,7 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/admin/reports" element={<AdminReportsPage />} />
+          <Route path="/admin/users" element={<AdminUsersPage />} />
         </Routes>
         {/* 라우트 밖(BrowserRouter 안, Routes 밖)에 둬서 페이지 전환에도
          * 살아남는다 — 개선 로드맵 §6.3. */}

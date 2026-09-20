@@ -84,6 +84,10 @@ def login(payload: schemas.UserLogin, response: Response, db: DbSession = Depend
     user = db.query(models.User).filter(models.User.email == payload.email).first()
     if not user or not auth.verify_password(payload.password, user.password_hash):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다")
+    # 비밀번호는 맞았으니 401(자격 증명 오류)과는 구분해 403으로 알린다
+    # (2026-09-20, 회원 관리 — 로그인 차단이 "정지"의 전부다).
+    if user.is_suspended:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "정지된 계정입니다")
 
     token = auth.create_session(db, user.id)
     _set_session_cookie(response, token)

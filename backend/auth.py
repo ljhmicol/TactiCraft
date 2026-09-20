@@ -112,6 +112,11 @@ def get_current_user(request: Request, db: DbSession = Depends(get_db)) -> model
     user = db.query(models.User).filter(models.User.id == session.user_id).first()
     if not user:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "로그인이 필요합니다")
+    # 정지된 계정(2026-09-20, 회원 관리)은 정지 시점에 세션을 지우므로
+    # 보통 여기까지 오지 않지만, 방어적으로 한 번 더 막아둔다 — 401(로그인
+    # 필요) 대신 403으로 구분해 프론트가 "정지됨"을 따로 안내할 수 있게 한다.
+    if user.is_suspended:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "정지된 계정입니다")
     return user
 
 
@@ -129,7 +134,13 @@ def get_current_user_optional(request: Request, db: DbSession = Depends(get_db))
     session = _find_valid_session(db, token)
     if not session:
         return None
-    return db.query(models.User).filter(models.User.id == session.user_id).first()
+    user = db.query(models.User).filter(models.User.id == session.user_id).first()
+    # get_current_user와 같은 이유(정지된 계정은 로그인 상태로 치지 않는다,
+    # 2026-09-20 회원 관리) — 이 함수의 계약은 "비로그인이면 None"이므로
+    # 여기서도 예외 대신 None을 돌려준다(advisor 리뷰로 발견한 비대칭).
+    if user and user.is_suspended:
+        return None
+    return user
 
 
 def require_admin(user: models.User = Depends(get_current_user)) -> models.User:

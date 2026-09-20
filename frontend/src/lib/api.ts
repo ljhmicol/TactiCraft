@@ -264,6 +264,31 @@ export function resolveReport(reportId: number): Promise<Report> {
   return apiFetch(`/moderation/reports/${reportId}/resolve`, { method: 'POST' })
 }
 
+// 회원 관리(2026-09-20, 관리자 요청). "정지"는 로그인 차단만 한다 — 이미
+// 올린 콘텐츠는 그대로 둔다(사용자가 명시적으로 고른 범위, routers/
+// admin_users.py 참조). 신고 처리와는 별개 화면이라 Report와 섞지 않는다.
+export interface AdminUser {
+  id: number
+  email: string
+  username: string | null
+  createdAt: string
+  isSuspended: boolean
+  analysisCount: number
+}
+
+/** 운영자 전용(서버가 403으로 강제) — 전체 회원 목록 + 저장한 분석 개수. */
+export function fetchAdminUsers(): Promise<AdminUser[]> {
+  return apiFetch('/admin/users')
+}
+
+export function suspendUser(userId: number): Promise<AdminUser> {
+  return apiFetch(`/admin/users/${userId}/suspend`, { method: 'POST' })
+}
+
+export function unsuspendUser(userId: number): Promise<AdminUser> {
+  return apiFetch(`/admin/users/${userId}/unsuspend`, { method: 'POST' })
+}
+
 /**
  * 앱 진입 시 1회, 저장 실패 시 재확인한다 (3단계 §2.1). 타임아웃 8초(개선
  * 로드맵 §5.6, 2026-09-20 정정) — 원래 2초였는데, Fly.io는

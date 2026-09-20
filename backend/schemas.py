@@ -347,6 +347,20 @@ class UserOut(BaseModel):
     is_admin: bool = False
 
 
+# 회원 관리(2026-09-20, 관리자 요청) — 운영자 전용 회원 목록. UserOut과
+# 분리한 이유는 이 스키마가 일반 사용자에겐 절대 안 나가야 할 필드
+# (is_suspended, analysis_count처럼 다른 회원의 활동량)를 담기 때문이다.
+class AdminUserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    email: str
+    username: Optional[str] = None
+    created_at: str
+    is_suspended: bool = False
+    analysis_count: int = 0
+
+
 # 댓글(TO-DO 12번) + 대댓글·좋아요/싫어요(TO-DO 54, 2026-09-16). 작성은
 # 로그인 필수, 삭제는 작성자 본인 또는 분석 소유자만(라우터에서 확인).
 class CommentIn(BaseModel):
