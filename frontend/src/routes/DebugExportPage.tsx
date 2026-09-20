@@ -104,7 +104,7 @@ export function DebugExportPage() {
   const phase = analysis.phases.base
 
   return (
-    <div style={{ padding: 20, fontFamily: 'monospace', fontSize: 13, color: '#111' }}>
+    <div style={{ padding: 20, fontFamily: 'monospace', fontSize: 13, color: '#111', background: '#fff', minHeight: '100vh' }}>
       <h1 style={{ fontSize: 18, marginBottom: 8 }}>전술판 내보내기 진단 (임시)</h1>
       <p style={{ marginBottom: 12 }}>
         아래 피치가 눈에 정상적으로 보이는지 먼저 확인해주세요. 그다음 "진단 실행"을 누르고, 아래 로그
