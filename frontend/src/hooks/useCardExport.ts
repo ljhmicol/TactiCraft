@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 
+import { toast } from '@/hooks/use-toast'
 import { exportCard } from '@/lib/exportImage'
 
 export type CardRatio = '1:1' | '4:5'
@@ -26,7 +27,16 @@ export function useCardExport() {
     if (!cardRef.current) return
     setExporting(true)
     try {
-      await exportCard(cardRef.current, ratio)
+      // 실패를 여기서 삼키고 토스트로 원인을 보여준다(2026-09-20, "다운로드
+      // 자체가 안 된다" 재발 대응) — 예전엔 그대로 던져서 ExportControls
+      // (데스크톱 툴바)의 onClick={onExport}가 catch 없이 그냥 실패하면
+      // unhandled rejection만 남고 화면엔 아무 표시도 없었다. 실기기
+      // Safari는 콘솔을 볼 수 없으니 에러 메시지 자체가 유일한 진단 수단이다.
+      const blob = await exportCard(cardRef.current, ratio)
+      toast({ description: `PNG 생성 완료 (${Math.round(blob.size / 1024)}KB)` })
+    } catch (e) {
+      const detail = e instanceof Error ? `${e.name}: ${e.message}` : String(e)
+      toast({ variant: 'destructive', description: `PNG 내보내기에 실패했습니다. ${detail}` })
     } finally {
       setExporting(false)
     }

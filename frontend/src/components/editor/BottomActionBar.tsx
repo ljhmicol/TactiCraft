@@ -3,7 +3,6 @@ import { useState } from 'react'
 
 import { SaveButton } from '@/components/editor/SaveButton'
 import { Button } from '@/components/ui/button'
-import { toast } from '@/hooks/use-toast'
 import type { CardRatio } from '@/hooks/useCardExport'
 import { cn } from '@/lib/utils'
 import type { Analysis } from '@/types/analysis'
@@ -35,20 +34,13 @@ export function BottomActionBar({
   const [sheetOpen, setSheetOpen] = useState(false)
 
   const handleGenerate = async () => {
-    // onExport(useCardExport.handleExport)는 실패를 삼키지 않고 그대로
-    // 던진다(finally로 exporting만 되돌린다) — 데스크톱에서는 이 버튼이
-    // 항상 보이는 툴바에 있어서 실패해도 버튼이 원래 라벨로 돌아오는 걸로
-    // 충분했지만, 여기는 모달이라 catch 없이 await만 하면 실패 시
-    // setSheetOpen(false)가 실행되지 않아 시트가 안 닫히고 아무 설명도 없이
-    // 멈춘 것처럼 보인다(advisor 리뷰로 발견). PNG 실패 자체가 원래
-    // 안내가 없던 경로였으므로 여기서 토스트도 같이 추가한다.
-    try {
-      await onExport()
-    } catch {
-      toast({ variant: 'destructive', description: 'PNG 내보내기에 실패했습니다.' })
-    } finally {
-      setSheetOpen(false)
-    }
+    // onExport(useCardExport.handleExport)는 이제 실패를 내부에서 삼키고
+    // 토스트로 원인을 보여준다(2026-09-20) — 여기선 성공/실패와 무관하게
+    // 시트만 닫으면 된다. (예전엔 onExport가 그대로 던져서 여기 catch 없이
+    // await만 하면 시트가 안 닫히는 버그가 있었다 — advisor 리뷰로 발견,
+    // 지금은 onExport 자체가 안 던지므로 이 문제가 구조적으로 없다.)
+    await onExport()
+    setSheetOpen(false)
   }
 
   return (

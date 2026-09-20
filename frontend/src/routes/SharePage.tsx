@@ -127,7 +127,12 @@ function ShareView({
     if (!cardRef.current) return
     setExporting(true)
     try {
-      await exportCard(cardRef.current, ratio)
+      const blob = await exportCard(cardRef.current, ratio)
+      toast({ description: `PNG 생성 완료 (${Math.round(blob.size / 1024)}KB)` })
+    } catch (e) {
+      // 2026-09-20 — 실패가 조용히 사라지지 않도록(useCardExport.ts와 같은 이유)
+      const detail = e instanceof Error ? `${e.name}: ${e.message}` : String(e)
+      toast({ variant: 'destructive', description: `PNG 내보내기에 실패했습니다. ${detail}` })
     } finally {
       setExporting(false)
     }

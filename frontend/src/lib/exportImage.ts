@@ -3,6 +3,21 @@ import { toBlob, toPng } from 'html-to-image'
 import { rasterizeSvg } from '@/lib/rasterizeSvg'
 import { useAnalysisStore } from '@/store/analysisStore'
 
+/**
+ * 어느 단계에서 실패했는지 메시지에 남기는 에러(2026-09-20, "다운로드 자체가
+ * 안 된다" 재발 대응) — 지금까지 실패가 전부 조용히 사라져서(콘솔 접근이
+ * 없는 실기기 Safari라 더더욱) 사용자 리포트만으로는 캡처 단계 실패인지,
+ * toBlob 자체가 멈춘 건지, 성공했는데 다운로드만 안 된 건지 구분할 수
+ * 없었다 — 최소한 토스트에 단계 이름과 원인이 그대로 보이게 한다.
+ */
+class CaptureStageError extends Error {
+  constructor(stage: string, detail: string, cause?: unknown) {
+    const causeMsg = cause instanceof Error ? `${cause.name}: ${cause.message}` : cause ? String(cause) : ''
+    super(`[${stage}] ${detail}${causeMsg ? ` — ${causeMsg}` : ''}`)
+    this.name = 'CaptureStageError'
+  }
+}
+
 /** isMorphing이 false가 될 때까지 대기한다 (4단계 §5.3) — 전환 중간 프레임이 찍히는 것을 막는다. */
 function waitForMorphing(): Promise<void> {
   return new Promise((resolve) => {
@@ -34,6 +49,13 @@ function waitForMorphing(): Promise<void> {
  * 원본 `node`(라이브 React 트리의 일부)는 절대 건드리지 않는다 — 복제본에서만
  * svg를 img로 바꿔서, 라이브 컴포넌트의 상태·레이아웃 이펙트(예: ShareCard의
  * useFitFontSize)와 전혀 간섭하지 않는다.
+ *
+ * 실제 내보내기 대상(ShareCard)은 진단 페이지의 테스트용 피치와 달리
+ * `position:absolute; left:-99999px`로 화면 밖에 마운트돼 있다(중복 마운트를
+ * 피하려는 기존 설계) — 이 상태의 자손 svg에서 getBoundingClientRect()가
+ * WebKit에서 0×0을 돌려줄 가능성을 배제할 수 없다(진단 페이지는 화면 안에
+ * 보이는 작은 피치라 이 경로를 검증하지 못했다). 그래서 실패 시 어떤 rect
+ * 값을 읽었는지가 에러 메시지에 그대로 남도록 한다.
  */
 async function prepareCaptureClone(
   node: HTMLElement,
@@ -52,7 +74,13 @@ async function prepareCaptureClone(
     const rect = liveSvg.getBoundingClientRect()
     const width = Math.max(1, Math.round(rect.width))
     const height = Math.max(1, Math.round(rect.height))
-    const dataUrl = await rasterizeSvg(liveSvg, width, height, pixelRatio)
+    let dataUrl: string
+    try {
+      dataUrl = await rasterizeSvg(liveSvg, width, height, pixelRatio)
+    } catch (e) {
+      clone.remove()
+      throw new CaptureStageError('rasterizeSvg', `svg#${i} rect=${rect.width.toFixed(0)}x${rect.height.toFixed(0)}`, e)
+    }
     const img = document.createElement('img')
     img.src = dataUrl
     img.width = width
@@ -71,7 +99,21 @@ async function prepareCaptureClone(
   return { target: clone, cleanup: () => clone.remove() }
 }
 
-export async function exportCard(node: HTMLElement, ratio: '1:1' | '4:5'): Promise<void> {
+/** toBlob/toPng가 응답 없이 멈추면(구 rAF 이슈 등) 영원히 스피너만 도는 대신 명시적으로 실패시킨다. */
+function withTimeout<T>(stage: string, p: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new CaptureStageError(stage, `${ms}ms 안에 응답 없음(타임아웃)`)), ms)
+    p.then((v) => {
+      clearTimeout(timer)
+      resolve(v)
+    }).catch((e) => {
+      clearTimeout(timer)
+      reject(e instanceof CaptureStageError ? e : new CaptureStageError(stage, '', e))
+    })
+  })
+}
+
+export async function exportCard(node: HTMLElement, ratio: '1:1' | '4:5'): Promise<Blob> {
   await waitForMorphing()
   await document.fonts.ready // 웹폰트 로드 전에 캡처하면 폴백 폰트로 찍힌다
 
@@ -84,20 +126,24 @@ export async function exportCard(node: HTMLElement, ratio: '1:1' | '4:5'): Promi
     // 정정, 2026-09-20 실기기 Safari 리포트 대응) — data: URL을 <a download>에
     // 그대로 넣으면 Safari(특히 iOS)에서 "다운로드/보기" 액션시트까지는 뜨지만
     // 실제 파일 저장으로 이어지지 않는 경우가 많다(잘 알려진 제약).
-    blob = await toBlob(target, {
-      pixelRatio,
-      cacheBust: true,
-      // GifExportRunner와 같은 이유(2026-09-11) — 이미 로드된 폰트를 다시
-      // embed하려다 cross-origin Google Fonts CSS에서 CORS SecurityError가
-      // 나며 느려지는 걸 막는다.
-      skipFonts: true,
-      width: 1080,
-      height: ratio === '1:1' ? 1080 : 1350,
-    })
+    blob = await withTimeout(
+      'toBlob',
+      toBlob(target, {
+        pixelRatio,
+        cacheBust: true,
+        // GifExportRunner와 같은 이유(2026-09-11) — 이미 로드된 폰트를 다시
+        // embed하려다 cross-origin Google Fonts CSS에서 CORS SecurityError가
+        // 나며 느려지는 걸 막는다.
+        skipFonts: true,
+        width: 1080,
+        height: ratio === '1:1' ? 1080 : 1350,
+      }),
+      20_000,
+    )
   } finally {
     cleanup()
   }
-  if (!blob) throw new Error('PNG 캡처에 실패했습니다.')
+  if (!blob) throw new CaptureStageError('toBlob', '결과 blob이 null')
 
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -111,6 +157,8 @@ export async function exportCard(node: HTMLElement, ratio: '1:1' | '4:5'): Promi
   a.click()
   a.remove()
   setTimeout(() => URL.revokeObjectURL(url), 60_000)
+
+  return blob
 }
 
 /**
@@ -123,7 +171,7 @@ export async function captureThumbnail(node: HTMLElement, width: number, height:
   const pixelRatio = 2
   const { target, cleanup } = await prepareCaptureClone(node, pixelRatio)
   try {
-    return await toPng(target, { pixelRatio, cacheBust: true, skipFonts: true, width, height })
+    return await withTimeout('toPng', toPng(target, { pixelRatio, cacheBust: true, skipFonts: true, width, height }), 20_000)
   } finally {
     cleanup()
   }
