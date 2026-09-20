@@ -129,6 +129,11 @@ interface AnalysisStore {
   // 재생되면 null로 돌아가 이 체인징 포인트 자체(마지막 스텝 좌표 + 전체
   // 화살표 모음)를 보여준다 — steps가 없는 보통 시점에서는 항상 null(2026-09-09).
   mergedStepIndex: number | null
+  // 타임라인 자동재생 on/off — 예전엔 Timeline 컴포넌트의 로컬 state였지만,
+  // 고급 기능 패널(개선 로드맵 §6.1, 2026-09-20)이 Timeline을 접어 숨길 수
+  // 있게 되면서 store로 끌어올렸다: 패널이 닫혀 재생 정지 버튼이 안 보이는
+  // 동안에도 재생이 계속 도는 걸 막으려면, 패널 쪽에서도 이 값을 읽어야 한다.
+  timelineAutoplay: boolean
   past: Analysis[] // 되돌리기 스택 (TO-DO 27번) — 오래된 것이 배열 앞쪽
   future: Analysis[] // 다시하기 스택 — undo 한 번마다 여기로 하나씩 옮겨진다
 
@@ -162,6 +167,7 @@ interface AnalysisStore {
   moveChangingPoint: (id: string, direction: 'left' | 'right') => void // 타임라인 순서 바꾸기
   mergeChangingPoints: (ids: string[]) => void // 2개 이상의 시점을 하나로 합친다(TO-DO 9번 후속) — 명장면은 여러 시점을 모아 하나의 장면으로도 보고 싶다는 요청
   selectChangingPoint: (id: string | null) => void // null이면 다시 국면 탭 보기로
+  setTimelineAutoplay: (v: boolean) => void
   setMatchInfo: (patch: Partial<MatchInfo>) => void
   updatePlayer: (playerId: string, patch: Partial<Omit<Player, 'id'>>) => void
   addPlayer: () => void // 벤치 선수 추가 — 항상 배열 끝에 붙인다 (선발 인덱스 0~10 보존, TO-DO 14)
@@ -236,6 +242,7 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
   isPressingLineDragging: false,
   selectedChangingPointId: null,
   mergedStepIndex: null,
+  timelineAutoplay: false,
   past: [],
   future: [],
 
@@ -252,6 +259,7 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
       editingPlayerId: null,
       selectedChangingPointId: null,
       mergedStepIndex: null,
+      timelineAutoplay: false,
       past: [],
       future: [],
     })
@@ -271,6 +279,7 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
       editingPlayerId: null,
       selectedChangingPointId: null,
       mergedStepIndex: null,
+      timelineAutoplay: false,
       past: [],
       future: [],
     })
@@ -293,6 +302,7 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
       isPressingLineDragging: false,
       selectedChangingPointId: null,
       mergedStepIndex: null,
+      timelineAutoplay: false,
       past: [],
       future: [],
     })
@@ -615,6 +625,8 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
     set({ selectedChangingPointId: id, isMorphing: true, mergedStepIndex: null })
     morphTimer = setTimeout(() => set({ isMorphing: false }), PHASE_TRANSITION_MS)
   },
+
+  setTimelineAutoplay: (v) => set({ timelineAutoplay: v }),
 
   setSummary: (text) => {
     const { analysis } = get()

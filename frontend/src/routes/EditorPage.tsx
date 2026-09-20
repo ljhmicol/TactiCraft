@@ -3,7 +3,9 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 import { PitchFieldBackdrop } from '@/components/decor/PitchFieldBackdrop'
+import { AdvancedFeaturesPanel } from '@/components/editor/AdvancedFeaturesPanel'
 import { BottomActionBar } from '@/components/editor/BottomActionBar'
+import { OnboardingGuide } from '@/components/editor/OnboardingGuide'
 import { RecentAnalyses } from '@/components/editor/RecentAnalyses'
 import { StartScreenPitchShowcase } from '@/components/editor/StartScreenPitchShowcase'
 import { CommentPanel } from '@/components/editor/CommentPanel'
@@ -17,7 +19,6 @@ import { PlayerEditDialog } from '@/components/editor/PlayerEditDialog'
 import { PlayerForm } from '@/components/editor/PlayerForm'
 import { SaveButton } from '@/components/editor/SaveButton'
 import { ShareLinkButton } from '@/components/editor/ShareLinkButton'
-import { Timeline } from '@/components/editor/Timeline'
 import { ToolPalette } from '@/components/editor/ToolPalette'
 import { UndoRedoButtons } from '@/components/editor/UndoRedoButtons'
 import { VisibilitySelect } from '@/components/editor/VisibilitySelect'
@@ -171,6 +172,9 @@ export function EditorPage() {
   return (
     <div className="flex flex-col gap-4 p-6 pb-24 lg:pb-6">
       <DraftRecoveryBanner />
+      {/* 저장 전(신규) 분석에서만 보인다(개선 로드맵 §6.1) — OnboardingGuide
+       * 자체 조건 참조. */}
+      {!analysis.id && <OnboardingGuide />}
       <div
         id="export-toolbar"
         className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4"
@@ -195,7 +199,6 @@ export function EditorPage() {
           <div className="sticky top-0 z-10 w-full max-w-md bg-background py-2">
             <PhaseTabs />
           </div>
-          <Timeline />
           <div className="flex w-full max-w-md justify-end">
             <UndoRedoButtons />
           </div>
@@ -261,7 +264,7 @@ export function EditorPage() {
             </Pitch>
           </div>
           <div className="flex w-full max-w-md flex-wrap items-center justify-between gap-3">
-            <LayerToggleChips hasOpponent={hasOpponent} />
+            <LayerToggleChips hasOpponent={hasOpponent} variant="basic" />
             <div className="flex items-center gap-2">
               {/* 상대 포메이션을 고르면 그 모양을 하프라인 기준 대칭으로 즉시 배치한다
                   (TO-DO 4번) — "상대팀 추가" 버튼(자팀과 동일한 배치)과 별개로,
@@ -332,6 +335,9 @@ export function EditorPage() {
               </SelectContent>
             </Select>
           </div>
+          {/* 고급 기능(개선 로드맵 §6.1) — 타임라인·압박·콤팩트니스·오버로드를
+           * 기본 닫힘으로 묶었다. AdvancedFeaturesPanel.tsx 참조. */}
+          <AdvancedFeaturesPanel hasOpponent={hasOpponent} />
         </div>
 
         <div className="w-full lg:order-first">

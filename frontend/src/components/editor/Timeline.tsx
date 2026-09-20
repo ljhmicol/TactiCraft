@@ -49,6 +49,11 @@ export function Timeline() {
   // 않게 한다(2026-09-09, isPlaying과 같은 패턴).
   const mergedStepIndex = useAnalysisStore((s) => s.mergedStepIndex)
   const isReplaying = mergedStepIndex !== null
+  // 재생 on/off는 store에 있다(2026-09-20, 고급 기능 패널이 이 컴포넌트를
+  // 접어 숨길 수 있게 되면서 — 패널 쪽에서도 "재생 중"을 알아야 접기를
+  // 막을 수 있다. analysisStore.ts의 timelineAutoplay 주석 참조).
+  const isPlaying = useAnalysisStore((s) => s.timelineAutoplay)
+  const setIsPlaying = useAnalysisStore((s) => s.setTimelineAutoplay)
 
   const selected = changingPoints.find((cp) => cp.id === selectedChangingPointId) ?? null
   const selectedIndex = selected ? changingPoints.findIndex((cp) => cp.id === selected.id) : -1
@@ -66,7 +71,6 @@ export function Timeline() {
   // 타임라인 자동재생 — 실제 경기에서 패스가 이어지듯 시점을 순서대로(배열
   // 순서 = order_index) 넘긴다. PhaseTabs의 국면 자동재생과 같은 패턴:
   // 재생 중엔 처음으로 되감지 않고 "지금 선택된 곳에서 한 칸씩" 전진한다.
-  const [isPlaying, setIsPlaying] = useState(false)
 
   useEffect(() => {
     if (!isPlaying) return
@@ -90,7 +94,7 @@ export function Timeline() {
   // 재생 중 시점이 1개 이하로 줄면(삭제 또는 다른 분석 로드) 자동으로 정지한다.
   useEffect(() => {
     if (isPlaying && changingPoints.length <= 1) setIsPlaying(false)
-  }, [isPlaying, changingPoints.length])
+  }, [isPlaying, changingPoints.length, setIsPlaying])
 
   // 시점 병합 — "명장면은 여러 시점을 모아 하나의 장면으로 만드는 것"이라는
   // 요청(2026-09-09)으로 추가. 병합 모드에서는 점/칩을 눌러도 보기 선택이 아니라
@@ -167,7 +171,7 @@ export function Timeline() {
           {changingPoints.length > 1 && !mergeMode && (
             <button
               type="button"
-              onClick={() => setIsPlaying((v) => !v)}
+              onClick={() => setIsPlaying(!isPlaying)}
               className={cn(
                 'whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                 isPlaying ? 'bg-accent text-accent-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground',
