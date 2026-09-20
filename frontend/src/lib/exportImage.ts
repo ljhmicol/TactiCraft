@@ -43,44 +43,51 @@ function withTimeout<T>(stage: string, p: Promise<T>, ms: number): Promise<T> {
   })
 }
 
+interface PitchInfo {
+  liveSvg: SVGSVGElement
+  left: number
+  top: number
+  width: number
+  height: number
+}
+
 /**
- * PNG 캡처 파이프라인 전면 재작성(2026-09-20) — 지금까지의 모든 시도
- * (rAF 제거, 피치 svg 사전 래스터화 + html-to-image에 통째로 넘기기,
- * decode/레이아웃 플러시/프레임 대기 추가)가 실기기(아이폰·아이패드
- * Safari, 안드로이드 Chrome 전부)에서 **피치 영역이 완전히 빈 채로**
- * 나오는 걸 막지 못했다 — 사용자 확인으로 선수 마커까지 전혀 안 보이는
- * 것까지 확정(카드의 다른 텍스트·테두리는 항상 정상 캡처됐다). 카드
- * 배경색이 진한 남색(#0F172A, lib/theme.ts SHARE_CARD_COLORS.background)
- * 이라 "피치가 안 보임"과 "검은 화면"은 사실 같은 증상이었다.
+ * PNG 캡처 파이프라인 3번째 재작성(2026-09-20) — 근거가 된 실기기 데이터:
  *
- * 원인으로 좁힌 가설: html-to-image는 캡처 대상을
- * `<svg><foreignObject>(HTML 통째로)</foreignObject></svg>`로 합성한 뒤
- * 그 합성 결과를 `new Image()`로 불러와(=SVG를 "이미지 리소스"로 로드)
- * 캔버스에 그린다. 그 안에 또 리소스를 불러와야 하는 요소(중첩된
- * `<svg>`든, `data:` URL `<img>`든)가 있으면, "이미지로 쓰이는 SVG는
- * 추가 리소스를 로드할 수 없다"는 스펙상의 제약에 걸려 그 서브트리 전체가
- * 비는 것으로 보인다 — 어떤 형태로 넣어도(살아있는 svg, 미리 래스터화한
- * img) 매번 같은 자리만 비었던 것과 정확히 들어맞는다.
+ * 1) 카드 배경이 진한 남색이라 "피치가 안 보임"과 "검은 화면"은 같은
+ *    증상이었다(SHARE_CARD_COLORS.background).
+ * 2) 피치를 html-to-image에 통째로 넘기면(살아있는 svg든, 미리 래스터화한
+ *    img든) 선수 마커까지 포함해 그 서브트리 전체가 항상 비었다 — "이미지로
+ *    쓰이는 SVG는 foreignObject 안에서 추가 리소스를 로드할 수 없다"는
+ *    제약으로 추정하고, 카드를 복제해 피치 자리를 빈 자리표시자로 바꾼
+ *    "텍스트 전용" 클론만 html-to-image로 캡처하고 피치는
+ *    rasterizeSvg(순수 svg→canvas, foreignObject를 거치지 않음)로 따로
+ *    래스터화해 ctx.drawImage로 직접 합성하는 방식으로 바꿨다(prepareTextOnlyClone).
+ * 3) 그런데 이 "텍스트 전용" 캡처가 실기기에서 매번 완전히 빈 캔버스를
+ *    냈다(크기는 요청한 2160x2160으로 정상, 제목 영역 불투명 픽셀 0개 —
+ *    진단으로 직접 확인) — "카드 텍스트는 항상 정상 캡처됐다"는 이전
+ *    가정은 사실 `toBlob(node)`를 라이브 노드에 직접 호출하던 시절의
+ *    증거였지, `toCanvas(clone)`을 방금 만든 detached 복제본에 호출하는
+ *    지금 경로에서는 한 번도 실기기로 검증된 적이 없었다(advisor 리뷰로
+ *    확인).
  *
- * 그래서 접근을 바꾼다: html-to-image에는 **피치를 아예 안 준다.** 카드를
- * 복제해 피치 자리를 빈 자리표시자로 바꾼 "텍스트 전용" 버전만
- * html-to-image로 캡처하고(이 경로는 처음부터 지금까지 한 번도 실패한
- * 적이 없다), 피치는 이미 실기기에서 검증된 `rasterizeSvg`(순수 svg→
- * canvas, foreignObject를 전혀 거치지 않음)로 따로 래스터화한 뒤, 두
- * 캔버스를 우리가 직접 `ctx.drawImage`로 합성한다. `drawImage`는 이미
- * 디코드가 끝난 네이티브 이미지 객체를 그리는 것이라 "이미지로 쓰이는
- * SVG 안에서 리소스 로드" 제약과 아예 무관하다.
+ * 그래서 복제본을 아예 쓰지 않는다: 라이브 카드 노드 안의 피치 svg를
+ * "그 자리에서" 잠깐 빈 자리표시자로 바꿔치기하고, 텍스트 캡처가 실제로
+ * 한 번도 실패한 적 없는 경로(라이브 노드에 직접 toCanvas 호출)로 캡처한
+ * 다음, finally에서 반드시 원래 svg로 되돌린다. React가 이 서브트리를
+ * 소유하고 있으므로 교체 창을 최대한 짧게 유지하고, 복구 시점에 자리표시자가
+ * 이미 DOM에서 사라졌으면(예: 그 사이 다른 상태 변화로 리렌더링) 저장해둔
+ * 부모·다음형제 정보로 직접 다시 끼워 넣는다 — 이 복구가 실패하면 사용자의
+ * 실제 편집 화면에서 피치가 사라진 채로 남는, 캡처 실패보다 훨씬 나쁜
+ * 상태가 되기 때문에 반드시 보장해야 한다.
  */
-async function prepareTextOnlyClone(
+async function withPitchesSwappedOut<T>(
   node: HTMLElement,
-): Promise<{
-  clone: HTMLElement
-  cleanup: () => void
-  pitches: Array<{ liveSvg: SVGSVGElement; left: number; top: number; width: number; height: number }>
-}> {
+  fn: () => Promise<T>,
+): Promise<{ result: T; pitches: PitchInfo[] }> {
   const cardRect = node.getBoundingClientRect()
   const liveSvgs = Array.from(node.querySelectorAll('svg'))
-  const pitches = liveSvgs.map((liveSvg) => {
+  const pitches: PitchInfo[] = liveSvgs.map((liveSvg) => {
     const rect = liveSvg.getBoundingClientRect()
     return {
       liveSvg,
@@ -91,26 +98,31 @@ async function prepareTextOnlyClone(
     }
   })
 
-  const clone = node.cloneNode(true) as HTMLElement
-  const clonedSvgs = Array.from(clone.querySelectorAll('svg'))
-  for (let i = 0; i < clonedSvgs.length; i++) {
-    const clonedSvg = clonedSvgs[i]
-    const p = pitches[i]
-    // 자리표시자는 순수 <div>일 뿐, 리소스를 더 불러올 일이 없다 — 다른
-    // 카드 레이아웃(flex 등)이 피치 공간을 기준으로 배치돼 있을 수 있어
-    // 크기만 그대로 보존한다.
+  const swaps = pitches.map((p) => {
+    const parent = p.liveSvg.parentElement
+    const nextSibling = p.liveSvg.nextSibling
     const placeholder = document.createElement('div')
     placeholder.style.width = `${p.width}px`
     placeholder.style.height = `${p.height}px`
-    clonedSvg.replaceWith(placeholder)
+    p.liveSvg.replaceWith(placeholder)
+    return { liveSvg: p.liveSvg, placeholder, parent, nextSibling }
+  })
+
+  try {
+    const result = await fn()
+    return { result, pitches }
+  } finally {
+    for (const s of swaps) {
+      if (s.placeholder.isConnected) {
+        s.placeholder.replaceWith(s.liveSvg)
+      } else if (s.parent) {
+        // 자리표시자가 그 사이 DOM에서 사라졌다면(예: 다른 상태 변화로
+        // 리렌더링) 저장해둔 위치 정보로 직접 복구한다 — 실패하면 사용자의
+        // 실제 편집 화면에서 피치가 사라진 채로 남는다.
+        s.parent.insertBefore(s.liveSvg, s.nextSibling)
+      }
+    }
   }
-
-  clone.style.position = 'absolute'
-  clone.style.left = '-99999px'
-  clone.style.top = '0'
-  document.body.appendChild(clone)
-
-  return { clone, cleanup: () => clone.remove(), pitches }
 }
 
 async function compositeCanvas(
@@ -119,13 +131,10 @@ async function compositeCanvas(
   height: number,
   pixelRatio: number,
 ): Promise<HTMLCanvasElement> {
-  const { clone, cleanup, pitches } = await prepareTextOnlyClone(node)
-
-  let baseCanvas: HTMLCanvasElement
-  try {
-    baseCanvas = await withTimeout(
+  const { result: baseCanvas, pitches } = await withPitchesSwappedOut(node, () =>
+    withTimeout(
       'toCanvas',
-      toCanvas(clone, {
+      toCanvas(node, {
         pixelRatio,
         cacheBust: true,
         // GifExportRunner와 같은 이유(2026-09-11) — 이미 로드된 폰트를 다시
@@ -136,20 +145,11 @@ async function compositeCanvas(
         height,
       }),
       20_000,
-    )
-  } finally {
-    cleanup()
-  }
+    ),
+  )
 
-  // 2026-09-20 — 검은 화면은 고쳤는데(피치는 보임) 이번엔 "피치만 보이고
-  // 텍스트는 안 보임"으로 반전된 리포트가 왔다. 격리 테스트(Chromium에서
-  // prepareTextOnlyClone을 그대로 재현)로 클론의 레이아웃 수치(카드
-  // 1080x1080, 텍스트 div들 전부 정상 크기·좌표)는 완전히 정상임을
-  // 순수 레이아웃 읽기로 확인했다 — 즉 레이아웃 문제가 아니다. 남은 유력
-  // 후보는 toCanvas가 실제로 반환한 캔버스 크기가 요청한 값과 다른
-  // 경우(el.getBoundingClientRect() 기반이 아니라 다른 기준으로 캔버스를
-  // 만들었다면, 피치 draw 좌표만 안 맞고 텍스트 쪽은 캔버스 밖으로 밀려날
-  // 수 있다) — 이 값도 조용히 넘어가지 않고 실제 수치를 그대로 노출한다.
+  // 2026-09-20 — 캔버스 크기가 요청값과 다르면 피치 draw 좌표만 안 맞고
+  // 텍스트 쪽은 캔버스 밖으로 밀려날 수 있다 — 조용히 넘어가지 않는다.
   const expectedW = Math.round(width * pixelRatio)
   const expectedH = Math.round(height * pixelRatio)
   if (Math.abs(baseCanvas.width - expectedW) > 2 || Math.abs(baseCanvas.height - expectedH) > 2) {
@@ -162,13 +162,10 @@ async function compositeCanvas(
   const ctx = baseCanvas.getContext('2d')
   if (!ctx) throw new CaptureStageError('compositeCanvas', '캔버스 컨텍스트를 만들지 못했습니다')
 
-  // 2026-09-20 — 캔버스 크기는 정상인데도 "피치만 보이고 텍스트는 안 보임"이
-  // 재현돼(사용자 확인, 153KB 성공 토스트) — toCanvas가 올바른 크기의
-  // 캔버스를 반환하되 그 안이 사실상 비어 있을 가능성(전에 자동화 탭에서
-  // 직접 재현했던 "크기는 맞는데 전부 투명" 실패 모드와 동일한 증상)을
-  // 확인한다. 카드 제목 영역(패딩 64px, 폰트 48px 굵게 — 픽셀레이쇼 2배
-  // 기준 대략 y 128~456, x 128~1900)에서 불투명 픽셀 수를 세어, 텍스트가
-  // 실제로 그려졌는지 조용히 넘어가지 않고 확인한다.
+  // 2026-09-20 — 크기는 맞는데 내용이 비어 있는 실패 모드(자동화 탭에서
+  // 먼저 재현했고, 이후 실기기에서도 같은 증상으로 확인됨)를 다시 조용히
+  // 지나치지 않는다. 라이브 노드 직접 캡처로 바꾼 뒤에도 재발하는지는
+  // 이 값으로 판단한다.
   const titleBand = ctx.getImageData(128, 128, Math.min(1800, baseCanvas.width - 128), 200)
   let titleNonTransparent = 0
   for (let i = 3; i < titleBand.data.length; i += 4) {
@@ -183,12 +180,6 @@ async function compositeCanvas(
 
   for (let i = 0; i < pitches.length; i++) {
     const p = pitches[i]
-    // 2026-09-20 — 검은 화면(피치 전체 미표시)이 새 합성 방식으로도 재현돼,
-    // 남은 유력 용의자는 "off-screen(left:-9999px) 상태의 svg에서
-    // getBoundingClientRect()가 0×0을 돌려줘 이 자리 자체를 통째로
-    // 건너뛴다"는 것 — 예전엔 이 가능성을 코드 주석으로만 적어두고 실제로
-    // 확인한 적이 없었다. 0×0이면 조용히 넘어가지 않고 정확한 수치를
-    // 에러로 그대로 노출해 다음 실기기 테스트에서 바로 확인한다.
     if (p.width <= 0 || p.height <= 0) {
       throw new CaptureStageError(
         'compositeCanvas',
@@ -247,8 +238,13 @@ export async function exportCard(node: HTMLElement, ratio: '1:1' | '4:5'): Promi
  * 목록 미리보기용 썸네일(TO-DO 7번) — exportCard와 달리 다운로드하지 않고
  * data URL 문자열만 돌려준다. 저장 뮤테이션이 이 값을 페이로드에 실어
  * 백엔드로 보낸다.
+ *
+ * exportCard와 마찬가지로 waitForMorphing을 거친다(2026-09-20 추가) —
+ * 저장 시점에 다른 상태 변화가 겹칠 수 있는 경로라, 라이브 DOM을 잠깐
+ * 바꿔치기하는 withPitchesSwappedOut의 교체 창이 더 위험해질 수 있다.
  */
 export async function captureThumbnail(node: HTMLElement, width: number, height: number): Promise<string> {
+  await waitForMorphing()
   await document.fonts.ready
   const canvas = await compositeCanvas(node, width, height, 2)
   return canvas.toDataURL('image/png')
