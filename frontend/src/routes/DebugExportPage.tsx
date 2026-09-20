@@ -155,15 +155,60 @@ export function DebugExportPage() {
       document.body.appendChild(clone)
       appendCaptureLog('5. 복제본을 화면 밖에 붙임')
 
+      // toBlob이 실제로 멈추는지, 아니면 그냥 느린 건지 구분하려고 타임아웃과
+      // 경쟁시킨다(2026-09-20, Chromium에서도 응답이 안 와 추가) — 어느 쪽이든
+      // 다음 단계(더 단순한 노드로 재시도)로 넘어가 원인을 좁힌다.
+      const withTimeout = async <T,>(label: string, p: Promise<T>, ms: number): Promise<T | 'timeout'> => {
+        let timer: ReturnType<typeof setTimeout>
+        const timeout = new Promise<'timeout'>((resolve) => {
+          timer = setTimeout(() => resolve('timeout'), ms)
+        })
+        const result = await Promise.race([p, timeout])
+        clearTimeout(timer!)
+        appendCaptureLog(`   [${label}] ${result === 'timeout' ? `${ms}ms 안에 응답 없음(타임아웃)` : '응답 옴'}`)
+        return result
+      }
+
       try {
-        const blob = await toBlob(clone, { pixelRatio: 2, cacheBust: true, skipFonts: true, width, height })
-        if (!blob) {
-          appendCaptureLog('6. toBlob이 null을 반환함 — 캡처 실패')
-        } else {
-          appendCaptureLog(`6. toBlob 성공 — 파일 크기 ${blob.size}바이트`)
-          const url = URL.createObjectURL(blob)
-          setCapturedImageUrl(url)
+        const result = await withTimeout(
+          '복제본 전체(옵션 포함)',
+          toBlob(clone, { pixelRatio: 2, cacheBust: true, skipFonts: true, width, height }),
+          8000,
+        )
+        if (result === 'timeout') {
+          appendCaptureLog('6. 1차 시도 타임아웃 — 더 단순한 조건으로 재시도합니다.')
+
+          const result2 = await withTimeout('복제본 전체(옵션 없이)', toBlob(clone), 8000)
+          if (result2 !== 'timeout' && result2) {
+            appendCaptureLog(`6b. 옵션 없이는 성공 — 파일 크기 ${result2.size}바이트 (원인은 옵션 쪽)`)
+            setCapturedImageUrl(URL.createObjectURL(result2))
+          } else {
+            const minimal = document.createElement('div')
+            minimal.style.width = `${width}px`
+            minimal.style.height = `${height}px`
+            const minimalImg = document.createElement('img')
+            minimalImg.src = dataUrl
+            minimalImg.style.width = '100%'
+            minimalImg.style.height = '100%'
+            minimal.appendChild(minimalImg)
+            minimal.style.position = 'absolute'
+            minimal.style.left = '-99999px'
+            document.body.appendChild(minimal)
+            const result3 = await withTimeout('img 하나뿐인 최소 div', toBlob(minimal), 8000)
+            minimal.remove()
+            if (result3 !== 'timeout' && result3) {
+              appendCaptureLog(`6c. 최소 구성은 성공 — 파일 크기 ${result3.size}바이트 (원인은 카드 구조 쪽)`)
+              setCapturedImageUrl(URL.createObjectURL(result3))
+            } else {
+              appendCaptureLog('6c. 최소 구성도 타임아웃 — toBlob 자체가 이 페이지에서 멈추는 것으로 보임')
+            }
+          }
+        } else if (result) {
+          appendCaptureLog(`6. toBlob 성공 — 파일 크기 ${result.size}바이트`)
+          setCapturedImageUrl(URL.createObjectURL(result))
           appendCaptureLog('7. 아래에 캡처된 이미지를 띄웠습니다 — 피치가 보이는지 확인해주세요.')
+        } else {
+          appendCaptureLog('6. toBlob이 null을 반환함 — 캡처 실패')
         }
       } finally {
         clone.remove()
