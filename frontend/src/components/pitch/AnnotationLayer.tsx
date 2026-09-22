@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 
 import {
@@ -217,6 +217,7 @@ function PassChainBall({
   orientation: 'portrait' | 'landscape'
   durationScale: number
 }) {
+  const prefersReducedMotion = useReducedMotion()
   const ballRadius = orientation === 'landscape' ? BALL_RADIUS_LANDSCAPE : BALL_RADIUS_PORTRAIT
   const points = chainSamplePoints(chain)
   // 드리블(carry)로 시작하는 체인은 기다리지 않는다 — 공을 몰고 가는 선수
@@ -260,8 +261,10 @@ function PassChainBall({
               // loop=false(기본)면 딱 한 번만 재생하고 도착점에 멈춘다 — 위
               // 함수 doc 참고. loop=true면 도착점에서 잠깐 머물다 처음부터
               // 다시 흐른다(repeatType 기본값 'loop' — PlayerNode의 run
-              // 반복과 같은 패턴, 역재생 없이 매번 처음부터).
-              ...(loop ? { repeat: Infinity, repeatDelay: BALL_LOOP_DELAY } : {}),
+              // 반복과 같은 패턴, 역재생 없이 매번 처음부터). prefers-reduced
+              // -motion(2026-09-22, 개선 로드맵 §6.4)이면 loop=true여도 반복은
+              // 끄고 한 번만 재생한다.
+              ...(loop && !prefersReducedMotion ? { repeat: Infinity, repeatDelay: BALL_LOOP_DELAY } : {}),
             }
           : { duration: 0 }
       }

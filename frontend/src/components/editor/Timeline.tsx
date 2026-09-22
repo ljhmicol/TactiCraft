@@ -372,6 +372,7 @@ export function Timeline() {
             disabled={isPlaying || isReplaying || selectedIndex <= 0}
             onClick={() => moveChangingPoint(selected.id, 'left')}
             title="왼쪽으로 이동"
+            aria-label="시점을 왼쪽으로 이동"
             className="rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-30"
           >
             <ChevronLeft className="h-3.5 w-3.5" />
@@ -381,6 +382,7 @@ export function Timeline() {
             disabled={isPlaying || isReplaying || selectedIndex < 0 || selectedIndex >= changingPoints.length - 1}
             onClick={() => moveChangingPoint(selected.id, 'right')}
             title="오른쪽으로 이동"
+            aria-label="시점을 오른쪽으로 이동"
             className="rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-30"
           >
             <ChevronRight className="h-3.5 w-3.5" />
@@ -390,6 +392,7 @@ export function Timeline() {
             disabled={isPlaying || isReplaying}
             onClick={() => removeChangingPoint(selected.id)}
             title="이 시점 삭제"
+            aria-label="이 시점 삭제"
             className="rounded-md p-1 text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-30"
           >
             <X className="h-3.5 w-3.5" />

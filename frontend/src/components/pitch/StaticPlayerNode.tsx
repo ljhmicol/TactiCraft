@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 
 import { travelTimes } from '@/lib/annotations'
@@ -83,6 +83,7 @@ export function StaticPlayerNode({
   animated = true,
   highlighted = false,
 }: StaticPlayerNodeProps) {
+  const prefersReducedMotion = useReducedMotion()
   const info = positionInfoAt(formation, index)
   const isGK = info?.line === 'GK'
   const team = VERSUS_TEAM_COLORS[variant]
@@ -112,6 +113,8 @@ export function StaticPlayerNode({
   const active = animated && runArmed && !!runPoints
   // runPoints는 원본(세로) 좌표계로 온다 — landscape면 각 점을 개별 transpose한다.
   const pPoints = active ? (landscape ? runPoints!.map(transposePoint) : runPoints!) : null
+  // prefers-reduced-motion(2026-09-22, 개선 로드맵 §6.4) — PlayerNode.tsx와
+  // 같은 이유로 무한 반복만 뺀다(정보 전달용 이동 자체는 한 번 유지).
   const runTransition = active
     ? {
         duration: RUN_LOOP_DURATION,
@@ -119,8 +122,7 @@ export function StaticPlayerNode({
         ease: 'easeInOut' as const,
         // 왕복(부드러운 역재생) 대신 매 반복을 처음부터 다시 재생 — PlayerNode와
         // 같은 이유(repeatType 기본값 'loop'가 이 동작).
-        repeat: Infinity,
-        repeatDelay: RUN_LOOP_DELAY,
+        ...(prefersReducedMotion ? {} : { repeat: Infinity, repeatDelay: RUN_LOOP_DELAY }),
       }
     : null
   const activeTransition = runTransition ?? TRANSITION
@@ -146,7 +148,13 @@ export function StaticPlayerNode({
         // 깜빡여") — 꺼졌을 때도 똑같이 3칸짜리 배열([0,0,0])을 줘서 배열
         // ↔배열로만 바뀌게 하면(값만 0으로) 이 문제가 없다.
         animate={{ cx, cy, opacity: highlighted ? [0.5, 1, 0.5] : [0, 0, 0] }}
-        transition={{ cx: activeTransition, cy: activeTransition, opacity: { duration: 1.3, repeat: Infinity, ease: 'easeInOut' } }}
+        transition={{
+          cx: activeTransition,
+          cy: activeTransition,
+          // prefers-reduced-motion — 계속 깜빡이는 대신 한 번만 재생하고
+          // 마지막 값(0.5, 은은한 하이라이트)에서 멈춘다.
+          opacity: { duration: 1.3, ease: 'easeInOut', ...(prefersReducedMotion ? {} : { repeat: Infinity }) },
+        }}
         rx={RADIUS.rx * 1.7}
         ry={RADIUS.ry * 1.7}
         fill="none"

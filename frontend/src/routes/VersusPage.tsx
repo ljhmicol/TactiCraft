@@ -369,6 +369,7 @@ export function VersusPage() {
                 setAutoPlaying(false)
                 setTransitionT(Number(e.target.value))
               }}
+              aria-label="공수 전환 미리보기 진행률"
               className="w-full accent-primary disabled:opacity-60"
             />
             <div className="flex justify-between text-xs text-muted-foreground">

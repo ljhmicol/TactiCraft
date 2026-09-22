@@ -15,6 +15,7 @@ import { CommunityPage } from '@/routes/CommunityPage'
 import { EditorPage } from '@/routes/EditorPage'
 import { LoginPage } from '@/routes/LoginPage'
 import { NewAnalysisPage } from '@/routes/NewAnalysisPage'
+import { NotFoundPage } from '@/routes/NotFoundPage'
 import { ProfilePage } from '@/routes/ProfilePage'
 import { RegisterPage } from '@/routes/RegisterPage'
 import { SharePage, SharedLinkPage } from '@/routes/SharePage'
@@ -185,6 +186,7 @@ function App() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/admin/reports" element={<AdminReportsPage />} />
           <Route path="/admin/users" element={<AdminUsersPage />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
         {/* 라우트 밖(BrowserRouter 안, Routes 밖)에 둬서 페이지 전환에도
          * 살아남는다 — 개선 로드맵 §6.3. */}

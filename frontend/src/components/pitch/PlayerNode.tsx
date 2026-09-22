@@ -1,4 +1,4 @@
-import { motion, type PanInfo } from 'framer-motion'
+import { motion, useReducedMotion, type PanInfo } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 
 import { ANNOTATION_LINK_EPS, annotationSamplePoints, travelTimes } from '@/lib/annotations'
@@ -85,6 +85,7 @@ const RUN_LOOP_DELAY = 0.5 // 전진 끝점에서 리셋 전까지 머무는 시
  */
 export function PlayerNode({ player, position }: PlayerNodeProps) {
   const svgRef = usePitchSvg()
+  const prefersReducedMotion = useReducedMotion()
   const movePlayer = useAnalysisStore((s) => s.movePlayer)
   const setEditingPlayer = useAnalysisStore((s) => s.setEditingPlayer)
   const isEditing = useAnalysisStore((s) => s.editingPlayerId === player.id)
@@ -150,13 +151,17 @@ export function PlayerNode({ player, position }: PlayerNodeProps) {
   const active = runArmed && runPoints && !instant
   // 왕복(부드러운 역재생) 대신 매 반복을 처음부터 다시 재생 — repeatType
   // 기본값 'loop'가 이 동작이다("전진하고 다시 깜빡해서 돌아왔다가 다시 전진").
+  // prefers-reduced-motion(2026-09-22, 개선 로드맵 §6.4) — 반복 자체를
+  // 없애지 않고 무한 반복(repeat: Infinity)만 뺀다. 이 애니메이션은 "이
+  // 선수가 어디로 움직이는지"를 보여주는 정보 전달용이라, 한 번 재생은
+  // 유지하는 쪽이 완전히 정지시키는 것보다 낫다 — 계속 반복되는 움직임만
+  // 전정기관 문제를 유발할 수 있다는 reduced-motion의 취지에 맞춘다.
   const runTransition = active
     ? {
         duration: RUN_LOOP_DURATION,
         times: travelTimes(runPoints!),
         ease: 'easeInOut' as const,
-        repeat: Infinity,
-        repeatDelay: RUN_LOOP_DELAY,
+        ...(prefersReducedMotion ? {} : { repeat: Infinity, repeatDelay: RUN_LOOP_DELAY }),
       }
     : null
   const activeTransition = instant ? { duration: 0 } : (runTransition ?? transition)

@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 
 import { ANNOTATION_LINK_EPS, annotationSamplePoints, travelTimes } from '@/lib/annotations'
@@ -35,6 +35,7 @@ const RUN_LOOP_DELAY = 0.5
  * 분석을 보여준다).
  */
 export function SharePlayerNode({ player, position, formation, index, runAnnotations }: SharePlayerNodeProps) {
+  const prefersReducedMotion = useReducedMotion()
   const transition = { duration: 0.6, ease: [0.4, 0, 0.2, 1] as const }
   const info = positionInfoAt(formation, index)
   const lineColor = info ? POSITION_LINE_COLORS[info.line] : null
@@ -65,13 +66,13 @@ export function SharePlayerNode({ player, position, formation, index, runAnnotat
   }, [runMatchId])
 
   const active = runArmed && runPoints
+  // prefers-reduced-motion(2026-09-22, 개선 로드맵 §6.4) — 무한 반복만 뺀다.
   const runTransition = active
     ? {
         duration: RUN_LOOP_DURATION,
         times: travelTimes(runPoints!),
         ease: 'easeInOut' as const,
-        repeat: Infinity,
-        repeatDelay: RUN_LOOP_DELAY,
+        ...(prefersReducedMotion ? {} : { repeat: Infinity, repeatDelay: RUN_LOOP_DELAY }),
       }
     : null
   const activeTransition = runTransition ?? transition

@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 
 import { transposePoint, transposeRect } from '@/lib/coords'
 import type { MatchupHighlight } from '@/lib/matchup'
@@ -35,6 +35,7 @@ export function MatchupOverloadLayer({
   showNumbers = true,
   highlight = null,
 }: MatchupOverloadLayerProps) {
+  const prefersReducedMotion = useReducedMotion()
   const landscape = orientation === 'landscape'
   // 글자 가로 비율 보정(TO-DO 39) — StaticPlayerNode와 같은 이유·같은 방식.
   const textScaleX = landscape ? LANDSCAPE_TEXT_X_SCALE : 1
@@ -77,7 +78,9 @@ export function MatchupOverloadLayer({
                   strokeWidth={1.2}
                   initial={{ opacity: 0.5 }}
                   animate={{ opacity: [0.5, 1, 0.5] }}
-                  transition={{ duration: 1.3, repeat: Infinity, ease: 'easeInOut' }}
+                  // prefers-reduced-motion(2026-09-22, 개선 로드맵 §6.4) —
+                  // 계속 깜빡이는 대신 한 번만 재생하고 멈춘다.
+                  transition={{ duration: 1.3, ease: 'easeInOut', ...(prefersReducedMotion ? {} : { repeat: Infinity }) }}
                 />
               )}
               {showNumbers && (
