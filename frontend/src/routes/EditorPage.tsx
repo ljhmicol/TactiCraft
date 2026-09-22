@@ -15,6 +15,7 @@ import { LayerToggleChips } from '@/components/editor/LayerToggleChips'
 import { MatchInfoForm } from '@/components/editor/MatchInfoForm'
 import { TagInput } from '@/components/editor/TagInput'
 import { PhaseTabs } from '@/components/editor/PhaseTabs'
+import { Timeline } from '@/components/editor/Timeline'
 import { PlayerEditDialog } from '@/components/editor/PlayerEditDialog'
 import { PlayerForm } from '@/components/editor/PlayerForm'
 import { SaveButton } from '@/components/editor/SaveButton'
@@ -350,8 +351,14 @@ export function EditorPage() {
               </SelectContent>
             </Select>
           </div>
-          {/* 고급 기능(개선 로드맵 §6.1) — 타임라인·압박·콤팩트니스·오버로드를
-           * 기본 닫힘으로 묶었다. AdvancedFeaturesPanel.tsx 참조. */}
+          {/* 타임라인(매치 체인징 포인트)은 2026-09-20에 "고급 기능" 패널
+              안으로 접혀 들어갔다가, 2026-09-22 "타임라인만 예전처럼 항상
+              펼쳐진 상태로" 요청으로 다시 꺼냈다 — 접힌 걸 못 알아채고
+              "타임라인이 안 보인다"는 리포트로 이어졌다. 압박·콤팩트니스·
+              오버로드만 AdvancedFeaturesPanel에 남는다. */}
+          <Timeline />
+          {/* 고급 기능(개선 로드맵 §6.1) — 압박·콤팩트니스·오버로드를 기본
+           * 닫힘으로 묶었다. AdvancedFeaturesPanel.tsx 참조. */}
           <AdvancedFeaturesPanel hasOpponent={hasOpponent} />
         </div>
 
