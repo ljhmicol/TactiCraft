@@ -3,7 +3,6 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 import { PitchFieldBackdrop } from '@/components/decor/PitchFieldBackdrop'
-import { AdvancedFeaturesPanel } from '@/components/editor/AdvancedFeaturesPanel'
 import { BottomActionBar } from '@/components/editor/BottomActionBar'
 import { OnboardingGuide } from '@/components/editor/OnboardingGuide'
 import { RecentAnalyses } from '@/components/editor/RecentAnalyses'
@@ -215,6 +214,7 @@ export function EditorPage() {
           <div className="sticky top-0 z-10 w-full max-w-md bg-background py-2">
             <PhaseTabs />
           </div>
+          <Timeline />
           <div className="flex w-full max-w-md justify-end">
             <UndoRedoButtons />
           </div>
@@ -280,7 +280,7 @@ export function EditorPage() {
             </Pitch>
           </div>
           <div className="flex w-full max-w-md flex-wrap items-center justify-between gap-3">
-            <LayerToggleChips hasOpponent={hasOpponent} variant="basic" />
+            <LayerToggleChips hasOpponent={hasOpponent} />
             <div className="flex items-center gap-2">
               {/* 상대 포메이션을 고르면 그 모양을 하프라인 기준 대칭으로 즉시 배치한다
                   (TO-DO 4번) — "상대팀 추가" 버튼(자팀과 동일한 배치)과 별개로,
@@ -351,15 +351,6 @@ export function EditorPage() {
               </SelectContent>
             </Select>
           </div>
-          {/* 타임라인(매치 체인징 포인트)은 2026-09-20에 "고급 기능" 패널
-              안으로 접혀 들어갔다가, 2026-09-22 "타임라인만 예전처럼 항상
-              펼쳐진 상태로" 요청으로 다시 꺼냈다 — 접힌 걸 못 알아채고
-              "타임라인이 안 보인다"는 리포트로 이어졌다. 압박·콤팩트니스·
-              오버로드만 AdvancedFeaturesPanel에 남는다. */}
-          <Timeline />
-          {/* 고급 기능(개선 로드맵 §6.1) — 압박·콤팩트니스·오버로드를 기본
-           * 닫힘으로 묶었다. AdvancedFeaturesPanel.tsx 참조. */}
-          <AdvancedFeaturesPanel hasOpponent={hasOpponent} />
         </div>
 
         <div className="w-full lg:order-first">
