@@ -10,6 +10,7 @@ import { StartScreenPitchShowcase } from '@/components/editor/StartScreenPitchSh
 import { CommentPanel } from '@/components/editor/CommentPanel'
 import { DraftRecoveryBanner } from '@/components/editor/DraftRecoveryBanner'
 import { DuplicateButton } from '@/components/editor/DuplicateButton'
+import { LiveRegion } from '@/components/common/LiveRegion'
 import { LayerToggleChips } from '@/components/editor/LayerToggleChips'
 import { MatchInfoForm } from '@/components/editor/MatchInfoForm'
 import { TagInput } from '@/components/editor/TagInput'
@@ -178,6 +179,7 @@ export function EditorPage() {
 
   return (
     <div className="flex flex-col gap-4 p-6 pb-24 lg:pb-6">
+      <LiveRegion />
       <DraftRecoveryBanner />
       {/* 저장 전(신규) 분석에서만 보인다(개선 로드맵 §6.1) — OnboardingGuide
        * 자체 조건 참조. */}

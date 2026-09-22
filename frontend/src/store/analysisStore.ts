@@ -134,6 +134,13 @@ interface AnalysisStore {
   // 있게 되면서 store로 끌어올렸다: 패널이 닫혀 재생 정지 버튼이 안 보이는
   // 동안에도 재생이 계속 도는 걸 막으려면, 패널 쪽에서도 이 값을 읽어야 한다.
   timelineAutoplay: boolean
+  // 키보드로 선수/상대 노드를 옮겼을 때 스크린리더에 알릴 문구(개선 로드맵
+  // §6.4, 2026-09-22) — aria-label 자체에 좌표를 넣으면 화살표를 누를 때마다
+  // 이름까지 포함한 긴 라벨 전체가 다시 낭독돼 시끄럽다. 그래서 노드의
+  // aria-label은 "이름 + 역할"처럼 안 바뀌는 값으로 고정해두고, 이동
+  // 결과("OOO, x 52.0 y 40.5로 이동")만 이 필드에 짧게 담아 화면 밖
+  // aria-live 영역(LiveRegion.tsx, EditorPage에 한 번 마운트)이 읽게 한다.
+  a11yAnnouncement: string
   past: Analysis[] // 되돌리기 스택 (TO-DO 27번) — 오래된 것이 배열 앞쪽
   future: Analysis[] // 다시하기 스택 — undo 한 번마다 여기로 하나씩 옮겨진다
 
@@ -168,6 +175,7 @@ interface AnalysisStore {
   mergeChangingPoints: (ids: string[]) => void // 2개 이상의 시점을 하나로 합친다(TO-DO 9번 후속) — 명장면은 여러 시점을 모아 하나의 장면으로도 보고 싶다는 요청
   selectChangingPoint: (id: string | null) => void // null이면 다시 국면 탭 보기로
   setTimelineAutoplay: (v: boolean) => void
+  announce: (message: string) => void // 스크린리더 aria-live 공지(개선 로드맵 §6.4) — a11yAnnouncement 참조
   setMatchInfo: (patch: Partial<MatchInfo>) => void
   updatePlayer: (playerId: string, patch: Partial<Omit<Player, 'id'>>) => void
   addPlayer: () => void // 벤치 선수 추가 — 항상 배열 끝에 붙인다 (선발 인덱스 0~10 보존, TO-DO 14)
@@ -243,6 +251,7 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
   selectedChangingPointId: null,
   mergedStepIndex: null,
   timelineAutoplay: false,
+  a11yAnnouncement: '',
   past: [],
   future: [],
 
@@ -627,6 +636,7 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
   },
 
   setTimelineAutoplay: (v) => set({ timelineAutoplay: v }),
+  announce: (message) => set({ a11yAnnouncement: message }),
 
   setSummary: (text) => {
     const { analysis } = get()

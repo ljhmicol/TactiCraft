@@ -103,7 +103,21 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(function Sha
   const { ref: bodyRef, fontSize: bodyFontSize } = useFitFontSize(bodyText, bodyBoxHeight, 32, 16)
 
   return (
-    <div style={{ position: 'absolute', left: -9999, top: 0 }}>
+    // aria-hidden+inert(개선 로드맵 §6.4, 2026-09-22) — 이 카드는 PNG 캡처용
+    // 화면 밖(-9999px) 렌더 노드일 뿐인데, 안의 PlayerNode/OpponentNode가
+    // 실제 상호작용 컴포넌트라 키보드 포커스(tabIndex)까지 그대로 따라온다.
+    // inert 없이는 Tab으로 여기까지 들어와 화면에 안 보이는 복제 노드를
+    // 조작하게 된다 — 실제 선수와 같은 store를 쓰므로 안 보이는 채로
+    // 진짜 위치가 바뀌는 혼란까지 생긴다. inert는 JSX prop으로 넘기면 이 React
+    // 버전(react-dom 18.3)이 속성을 렌더링하지 않아(실측 확인) DOM 프로퍼티로
+    // 직접 대입한다.
+    <div
+      style={{ position: 'absolute', left: -9999, top: 0 }}
+      aria-hidden="true"
+      ref={(el) => {
+        if (el) el.inert = true
+      }}
+    >
       <div
         ref={ref}
         style={{

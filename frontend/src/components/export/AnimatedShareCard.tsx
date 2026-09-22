@@ -83,7 +83,16 @@ export const AnimatedShareCard = forwardRef<HTMLDivElement, AnimatedShareCardPro
   )
 
   return (
-    <div style={{ position: 'absolute', left: -9999, top: 0 }}>
+    // aria-hidden+inert(개선 로드맵 §6.4, 2026-09-22) — ShareCard.tsx 주석 참조.
+    // inert는 JSX prop이 아니라 DOM 프로퍼티 직접 대입으로 켠다(react-dom
+    // 18.3이 JSX prop으로는 렌더링하지 않음, ShareCard.tsx 참조).
+    <div
+      style={{ position: 'absolute', left: -9999, top: 0 }}
+      aria-hidden="true"
+      ref={(el) => {
+        if (el) el.inert = true
+      }}
+    >
       <div
         ref={ref}
         style={{

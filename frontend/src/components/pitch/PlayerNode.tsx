@@ -1,5 +1,6 @@
 import { motion, useReducedMotion, type PanInfo } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
+import type { KeyboardEvent } from 'react'
 
 import { ANNOTATION_LINK_EPS, annotationSamplePoints, travelTimes } from '@/lib/annotations'
 import { clampCoord, pagePointToPitch } from '@/lib/coords'
@@ -26,6 +27,11 @@ const OWN_RADIUS = circularRadius(PLAYER_COLORS.own.radius)
 const SELECT_RING_RADIUS = circularRadius(PLAYER_COLORS.own.radius + 0.7)
 const RUN_LOOP_DURATION = 0.9 // 오버랩 구간 전진에 걸리는 시간(초)
 const RUN_LOOP_DELAY = 0.5 // 전진 끝점에서 리셋 전까지 머무는 시간(초)
+// 키보드 이동(개선 로드맵 §6.4, 2026-09-22) — 좌표계는 0~100(대략 1유닛 ≈
+// 1m, 2단계 §3 좌표계 참조). 방향키는 세밀한 조정(1유닛), Shift+방향키는
+// 한 번에 크게 옮길 때(5유닛) 쓴다.
+const KEYBOARD_STEP_FINE = 1
+const KEYBOARD_STEP_COARSE = 5
 
 /**
  * key는 항상 player.id여야 한다 (배열 인덱스 금지) — 2단계 §8, 4단계 §5.1.
@@ -87,6 +93,7 @@ export function PlayerNode({ player, position }: PlayerNodeProps) {
   const svgRef = usePitchSvg()
   const prefersReducedMotion = useReducedMotion()
   const movePlayer = useAnalysisStore((s) => s.movePlayer)
+  const announce = useAnalysisStore((s) => s.announce)
   const setEditingPlayer = useAnalysisStore((s) => s.setEditingPlayer)
   const isEditing = useAnalysisStore((s) => s.editingPlayerId === player.id)
   const index = useAnalysisStore((s) => s.analysis?.players.findIndex((p) => p.id === player.id) ?? -1)
@@ -109,6 +116,12 @@ export function PlayerNode({ player, position }: PlayerNodeProps) {
     )
   })
   const [dragging, setDragging] = useState(false)
+  // 키보드 포커스 표시(개선 로드맵 §6.4) — 이 얇은 SVG 링을 편집 다이얼로그가
+  // 열려 있을 때뿐 아니라 Tab으로 포커스가 왔을 때도 보여준다. 마우스
+  // 클릭으로 포커스가 와도 똑같이 표시되지만(진짜 :focus-visible과 달리
+  // 입력 방식을 구분하지 않음), 어차피 클릭은 곧장 onTap으로 편집
+  // 다이얼로그를 열어 isEditing이 true가 되므로 실사용에서 차이가 없다.
+  const [focused, setFocused] = useState(false)
   const instant = dragging || isPressingLineDragging
   const transition = instant ? { duration: 0 } : { duration: 0.6, ease: [0.4, 0, 0.2, 1] as const }
   const info = formation ? positionInfoAt(formation, index) : null
@@ -174,15 +187,45 @@ export function PlayerNode({ player, position }: PlayerNodeProps) {
     movePlayer(player.id, clampCoord(next.x), clampCoord(next.y))
   }
 
+  // 키보드 이동 + 편집(개선 로드맵 §6.4). Enter/Space는 onTap과 같은 동작
+  // (편집 다이얼로그 열기) — 마우스로 클릭하는 것과 똑같이 취급한다.
+  const displayName = player.name || `${player.number}번`
+  const handleKeyDown = (e: KeyboardEvent<SVGGElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      setEditingPlayer(player.id)
+      return
+    }
+    const step = e.shiftKey ? KEYBOARD_STEP_COARSE : KEYBOARD_STEP_FINE
+    let dx = 0
+    let dy = 0
+    if (e.key === 'ArrowUp') dy = -step
+    else if (e.key === 'ArrowDown') dy = step
+    else if (e.key === 'ArrowLeft') dx = -step
+    else if (e.key === 'ArrowRight') dx = step
+    else return
+    e.preventDefault()
+    const nx = clampCoord(position.x + dx)
+    const ny = clampCoord(position.y + dy)
+    movePlayer(player.id, nx, ny)
+    announce(`${displayName}, x ${nx.toFixed(1)}, y ${ny.toFixed(1)}로 이동`)
+  }
+
   return (
     <motion.g
+      tabIndex={0}
+      role="button"
+      aria-label={`${displayName}${topLabel ? ` (${topLabel})` : ''} 선수. 방향키로 이동, Shift+방향키로 크게 이동, Enter로 정보 편집.`}
+      onKeyDown={handleKeyDown}
       onPanStart={() => setDragging(true)}
       onPan={handlePan}
       onPanEnd={() => setDragging(false)}
       onTap={() => setEditingPlayer(player.id)}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
       style={{ cursor: 'grab', touchAction: 'none', outline: 'none' }}
     >
-      {isEditing && (
+      {(isEditing || focused) && (
         <motion.ellipse
           initial={{ cx: position.x, cy: position.y }}
           animate={{ cx, cy }}
