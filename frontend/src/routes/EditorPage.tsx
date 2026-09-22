@@ -11,6 +11,7 @@ import { CommentPanel } from '@/components/editor/CommentPanel'
 import { DraftRecoveryBanner } from '@/components/editor/DraftRecoveryBanner'
 import { DuplicateButton } from '@/components/editor/DuplicateButton'
 import { LiveRegion } from '@/components/common/LiveRegion'
+import { KeyboardShortcutsHelp } from '@/components/editor/KeyboardShortcutsHelp'
 import { LayerToggleChips } from '@/components/editor/LayerToggleChips'
 import { MatchInfoForm } from '@/components/editor/MatchInfoForm'
 import { TagInput } from '@/components/editor/TagInput'
@@ -217,7 +218,8 @@ export function EditorPage() {
             <PhaseTabs />
           </div>
           <Timeline />
-          <div className="flex w-full max-w-md justify-end">
+          <div className="flex w-full max-w-md items-center justify-end gap-2">
+            <KeyboardShortcutsHelp />
             <UndoRedoButtons />
           </div>
           <ToolPalette />
