@@ -67,9 +67,11 @@ export function PressingLine({
   const y = pressingLineY ?? autoPressingLine(positions)
   const landscape = orientation === 'landscape'
   const line = landscape ? { x1: 100 - y, y1: 0, x2: 100 - y, y2: 100 } : { x1: 0, y1: y, x2: 100, y2: y }
-  // 세로 모드는 라인이 항상 우측(x=98)에 붙어 end 정렬만 쓰면 되지만, 가로
-  // 모드는 라인이 화면 어느 쪽 끝에나 올 수 있어(공수 교대) 화면 밖으로
-  // 잘리지 않도록 라인 위치에 따라 정렬을 바꾼다.
+  // 세로 모드는 라인이 항상 우측 끝(x=100)을 지나므로 그 바로 밖(피치 필드
+  // 경계 밖 여백)에 라벨을 둔다(2026-09-23, "압박라인 텍스트를 피치에 두지
+  // 말고 피치 밖, 라인 바로 옆으로") — 필드 안쪽에 있으면 선수 노드·화살표와
+  // 겹쳐 읽기 어려웠다. 가로 모드는 라인이 화면 어느 쪽 끝에나 올 수 있어
+  // (공수 교대) 화면 밖으로 잘리지 않도록 라인 위치에 따라 정렬을 바꾼다.
   const landscapeX = 100 - y
   const label = landscape
     ? landscapeX < 12
@@ -77,7 +79,7 @@ export function PressingLine({
       : landscapeX > 88
         ? { x: landscapeX - 1.5, y: 3, anchor: 'end' as const }
         : { x: landscapeX, y: 3, anchor: 'middle' as const }
-    : { x: 98, y: y - 1.2, anchor: 'end' as const }
+    : { x: 101, y: y - 0.7, anchor: 'start' as const }
   // 글자 가로 비율 보정(TO-DO 39) — StaticPlayerNode와 같은 이유·같은 방식.
   const textScaleX = landscape ? LANDSCAPE_TEXT_X_SCALE : 1
 
@@ -113,7 +115,7 @@ export function PressingLine({
           textAnchor={label.anchor}
           style={{ fontFamily: PITCH_TEXT_FONT_FAMILY }}
         >
-          압박 라인 {pressingLineLevel(labelY ?? y)}
+          압박 라인(수비 라인) {pressingLineLevel(labelY ?? y)}
         </text>
       </g>
     </g>

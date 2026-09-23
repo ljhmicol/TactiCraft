@@ -3,12 +3,14 @@ import { useEffect, useMemo, useState } from 'react'
 
 import {
   ANNOTATION_STYLES,
+  ARRIVAL_GAP,
   arrowGeometry,
   arrowMidpoint,
   buildPassChains,
   chainBallDuration,
   chainSamplePoints,
   curvedArrowGeometry,
+  shortenTowards,
   travelTimes,
 } from '@/lib/annotations'
 import { PITCH_TEXT_FONT_FAMILY, PLAYER_COLORS } from '@/lib/theme'
@@ -108,13 +110,20 @@ export function AnnotationLayer({
     <g>
       {annotations.map((ann) => {
         const style = ANNOTATION_STYLES[ann.type]
-        const curvedGeo = ann.curved ? curvedArrowGeometry(ann.from, ann.to) : null
-        const straightGeo = curvedGeo ? null : arrowGeometry(ann.from, ann.to)
+        // 도착점을 ARRIVAL_GAP만큼 앞당겨서 계산한다 — 화살표는 거의 항상
+        // 선수 노드를 향하는데, 정확한 to 지점까지 그리면 화살촉이 선수
+        // 원 안으로 파고들어 레이어 순서와 무관하게 가려진다(2026-09-22,
+        // "선수 노드를 가리잖아. O<- 이렇게 화살표가 잘 보이게"). 이 파일
+        // 상단 ARRIVAL_GAP 주석 참고.
+        const arrivalTo = shortenTowards(ann.from, ann.to, ARRIVAL_GAP)
+        const curvedGeo = ann.curved ? curvedArrowGeometry(ann.from, arrivalTo) : null
+        const straightGeo = curvedGeo ? null : arrowGeometry(ann.from, arrivalTo)
         const head = curvedGeo ? curvedGeo.head : straightGeo!.head
         const selected = interactive?.selectedId === ann.id
         return (
           <g key={ann.id} className={interactive ? 'cursor-pointer' : undefined}>
-            {/* 클릭 판정용 투명 굵은 선 — 곡선도 대충 직선으로 잡아도 클릭 판정엔 충분하다 */}
+            {/* 클릭 판정용 투명 굵은 선 — 원래(짧아지지 않은) to까지 쓴다. 곡선도
+                대충 직선으로 잡아도 클릭 판정엔 충분하다. */}
             {interactive && (
               <line
                 x1={ann.from.x}
@@ -135,7 +144,7 @@ export function AnnotationLayer({
                 d={curvedGeo.path}
                 fill="none"
                 stroke={style.stroke}
-                strokeWidth={selected ? 0.7 : 0.5}
+                strokeWidth={selected ? 0.6 : 0.42}
                 strokeLinecap="round"
                 strokeDasharray={style.dashed ? '1.6 1.2' : undefined}
                 opacity={0.95}
@@ -148,7 +157,7 @@ export function AnnotationLayer({
                 x2={straightGeo!.shaftEnd.x}
                 y2={straightGeo!.shaftEnd.y}
                 stroke={style.stroke}
-                strokeWidth={selected ? 0.7 : 0.5}
+                strokeWidth={selected ? 0.6 : 0.42}
                 strokeLinecap="round"
                 strokeDasharray={style.dashed ? '1.6 1.2' : undefined}
                 opacity={0.95}
@@ -263,8 +272,17 @@ function PassChainBall({
               // 다시 흐른다(repeatType 기본값 'loop' — PlayerNode의 run
               // 반복과 같은 패턴, 역재생 없이 매번 처음부터). prefers-reduced
               // -motion(2026-09-22, 개선 로드맵 §6.4)이면 loop=true여도 반복은
-              // 끄고 한 번만 재생한다.
-              ...(loop && !prefersReducedMotion ? { repeat: Infinity, repeatDelay: BALL_LOOP_DELAY } : {}),
+              // 끄고 한 번만 재생한다. carried(드리블 시작 체인)는 loop=true라도
+              // 항상 제외한다(2026-09-22, 편집기에서 loop 재활성화 — "선수는
+              // 한 번만 모프하고 멈추는데 공만 계속 왕복"했던 2026-09-10 버그가
+              // carry 체인 한정이었어서, 그 조건에서만 예외로 1회 재생을 유지한다).
+              // repeatDelay도 durationScale만큼 늘려야 이동 구간과 쉬는 구간의
+              // 체감 비율이 일정하게 유지된다(2026-09-22, "속도가 너무 빠르다" —
+              // scale만 이동에 걸고 대기는 고정이면 scale을 올릴수록 오히려
+              // "쉴 새 없이 바쁘다"는 인상이 짙어진다).
+              ...(loop && !carried && !prefersReducedMotion
+                ? { repeat: Infinity, repeatDelay: BALL_LOOP_DELAY * durationScale }
+                : {}),
             }
           : { duration: 0 }
       }

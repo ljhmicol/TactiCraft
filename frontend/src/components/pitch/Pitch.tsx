@@ -116,7 +116,12 @@ export function Pitch({ children, orientation = 'portrait' }: PitchProps) {
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
           className="h-full w-full"
-          style={{ background: PITCH_COLORS.background }}
+          // overflow visible(2026-09-23, "압박라인 텍스트를 피치에 두지 말고
+          // 피치 밖, 라인 바로 옆으로") — PressingLine의 라벨이 viewBox
+          // 오른쪽 경계(x=100)를 살짝 넘어가서 필드 바깥 여백에 그려진다.
+          // 기본 SVG overflow는 hidden이라 이게 없으면 그 부분이 잘린다.
+          // 기존에 0~100 안에서만 그리던 다른 레이어는 영향이 없다.
+          style={{ background: PITCH_COLORS.background, overflow: 'visible' }}
         >
           <g
             fill="none"

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   ANNOTATION_MIN_LENGTH,
+  ARRIVAL_GAP,
   arrowGeometry,
   BALL_SEGMENT_DURATION,
   buildPassChains,
@@ -9,6 +10,7 @@ import {
   chainBallDuration,
   chainSamplePoints,
   curvedArrowGeometry,
+  shortenTowards,
   travelTimes,
 } from '@/lib/annotations'
 import { analysisSchema, annotationSchema } from '@/lib/schema'
@@ -50,6 +52,30 @@ describe('arrowGeometry', () => {
 
   it('최소 길이 기준은 실수 클릭 수준으로 잡혀 있다', () => {
     expect(ANNOTATION_MIN_LENGTH).toBeLessThan(4)
+  })
+})
+
+describe('shortenTowards', () => {
+  it('gap만큼 to를 from 방향으로 당긴다(수평)', () => {
+    const from = { x: 0, y: 50 }
+    const to = { x: 20, y: 50 }
+    const p = shortenTowards(from, to, 5)
+    expect(p.x).toBeCloseTo(15)
+    expect(p.y).toBeCloseTo(50)
+  })
+
+  it('y축 거리는 균일 축척(K)으로 재서, 짧아진 거리가 실제로 gap과 같다', () => {
+    const from = { x: 50, y: 0 }
+    const to = { x: 50, y: 40 }
+    const p = shortenTowards(from, to, ARRIVAL_GAP)
+    const remaining = Math.hypot(p.x - from.x, (p.y - from.y) * K)
+    expect(remaining).toBeCloseTo(Math.hypot(to.x - from.x, (to.y - from.y) * K) - ARRIVAL_GAP)
+  })
+
+  it('거리가 gap 이하면 to를 그대로 반환한다(음수/0 길이 방지)', () => {
+    const from = { x: 50, y: 50 }
+    const to = { x: 51, y: 50 }
+    expect(shortenTowards(from, to, ARRIVAL_GAP)).toEqual(to)
   })
 })
 

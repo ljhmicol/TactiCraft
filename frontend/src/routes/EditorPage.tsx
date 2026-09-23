@@ -263,6 +263,18 @@ export function EditorPage() {
               <AnnotationLayer
                 annotations={phase.annotations}
                 animated={!isSettledMergeSummary}
+                // 패스 공이 도착 후 멈추지 않고 계속 흐른다(2026-09-22,
+                // "패스가 한번만 왔다갔다 하지말고 계속 움직이면 좋겠어") —
+                // 드리블(carry) 체인은 AnnotationLayer 내부에서 여전히
+                // 예외로 1회만 재생하고, 병합 요약 프레임은 animated=false라
+                // 애초에 공 자체가 없어 loop 값과 무관하다.
+                loop
+                // BALL_SEGMENT_DURATION(0.55초) 자체는 1회성 재생(다른 화면 전부)의
+                // 속도라 손대지 않고, 반복 재생에서만 1.8배 느리게 — "속도가 너무
+                // 빠르다"(2026-09-22) 피드백 대응. 처음 loop를 켰을 때 기본
+                // 속도(1배)로 계속 반복되니 도착하자마자 바로 되돌아가는 것처럼
+                // 정신없어 보였다.
+                ballDurationScale={1.8}
                 interactive={{
                   selectedId: selectedAnnotationId,
                   onSelect: setSelectedAnnotationId,

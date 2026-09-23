@@ -18,8 +18,15 @@ export interface ArrowGeometry {
   head: [Point, Point, Point]
 }
 
+// 기본 헤드 크기 2.4/1.9 → 3.2/2.6 → 2.6/2.1(2026-09-22). 화살촉이 선수
+// 원 안으로 파고들어 가려지는 게 진짜 원인이었고 그건 도착점을 선수 원
+// 앞에서 멈추는 것으로 해결했다(ARRIVAL_GAP, shortenTowards 참고) — 그
+// 다음엔 "화살표 크기만 좀 더 작게" 요청으로 3.2/2.6에서 다시 줄였다.
+// run 화살표에도 같이 적용된다(전용 값을 따로 두지 않음 — 둘 다 같은
+// 피치 스케일 안에서 비슷한 크기가 자연스럽다).
+
 /** 균일 축척 공간에서 계산한 화살표 형상을 반환한다. */
-export function arrowGeometry(from: Point, to: Point, headLength = 2.4, headWidth = 1.9): ArrowGeometry {
+export function arrowGeometry(from: Point, to: Point, headLength = 2.6, headWidth = 2.1): ArrowGeometry {
   // 균일 공간으로 올린다 (x는 그대로, y는 K배)
   const fx = from.x
   const fy = from.y * K
@@ -72,7 +79,7 @@ const CURVE_BOW_RATIO = 0.16 // 현(직선 거리) 대비 바깥으로 부풀리
  * 밀어야 한다(대수적으로 유도됨) — arrowGeometry와 같은 균일 축척(K) 공간
  * 에서 계산해야 화면 비율 왜곡 없이 대칭으로 부풀어 보인다.
  */
-export function curvedArrowGeometry(from: Point, to: Point, headLength = 2.4, headWidth = 1.9): CurvedArrowGeometry {
+export function curvedArrowGeometry(from: Point, to: Point, headLength = 2.6, headWidth = 2.1): CurvedArrowGeometry {
   const fx = from.x
   const fy = from.y * K
   const tx = to.x
@@ -119,6 +126,26 @@ export function curvedArrowGeometry(from: Point, to: Point, headLength = 2.4, he
     control,
     head: [to, back(-headLength, half), back(-headLength, -half)],
   }
+}
+
+// 화살표는 거의 항상 선수 노드를 향한다 — 정확한 to 지점까지 그리면 화살촉이
+// 선수 원(반지름 own 2.6/opponent 2.2, lib/theme.ts) 안으로 파고든다. 레이어
+// 순서를 바꿔 화살표를 선수 노드 위로 올려도 봤지만 "선수 노드를 가린다"는
+// 반응이었다(2026-09-22) — 이 값만큼 도착점을 선 방향으로 당겨서, 화살표가
+// 어느 쪽이 위에 그려지든 선수 원 앞에서 자연스럽게 멈추게 한다(둘 중 큰
+// 반지름보다 살짝 여유를 둔다). 화살표가 선수가 아닌 빈 공간을 가리키는
+// 드문 경우엔 도착점이 이만큼 짧아져 보이지만, 시각적으로 무시할 수준이다.
+export const ARRIVAL_GAP = 3
+
+/** to를 from 방향에서 gap만큼 당긴 지점 — 균일 축척(K) 공간에서 거리를 재야
+ * x/y 스케일이 다른 피치에서도 실제로 gap만큼 당겨진다. */
+export function shortenTowards(from: Point, to: Point, gap: number): Point {
+  const dx = to.x - from.x
+  const dy = (to.y - from.y) * K
+  const len = Math.hypot(dx, dy)
+  if (len <= gap) return to // 이미 gap보다 가까우면 더 줄이지 않는다(음수/0 길이 방지)
+  const t = (len - gap) / len
+  return { x: from.x + dx * t, y: from.y + (to.y - from.y) * t }
 }
 
 /**
