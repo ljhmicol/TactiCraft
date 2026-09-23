@@ -3,6 +3,7 @@ import { forwardRef } from 'react'
 import { Pitch } from '@/components/pitch/Pitch'
 import { PrintOpponentNode } from '@/components/pitch/PrintOpponentNode'
 import { SharePlayerNode } from '@/components/pitch/SharePlayerNode'
+import { SHARE_CARD_COLORS } from '@/lib/theme'
 import type { Analysis } from '@/types/analysis'
 
 export const THUMBNAIL_WIDTH = 160
@@ -33,7 +34,18 @@ export const ThumbnailCard = forwardRef<HTMLDivElement, { analysis: Analysis }>(
         if (el) el.inert = true
       }}
     >
-      <div ref={ref} style={{ width: THUMBNAIL_WIDTH, height: THUMBNAIL_HEIGHT }}>
+      {/* exportImage.ts의 compositeCanvas는 svg(피치)를 잠깐 placeholder로
+          바꿔치기한 상태에서 "카드에 SVG 말고도 불투명한 내용이 있는지"를
+          검증한다(ShareCard의 제목 텍스트 영역을 노리고 만든 안전장치) —
+          이 카드는 제목 없이 피치 하나뿐이라 배경색이 없으면 그 순간
+          완전히 투명해져 매번 이 검증에 걸려 조용히 실패했다(2026-09-23,
+          "저장 목록에 미리보기가 없다" 리포트로 발견). 화면에는 안 보이는
+          캡처 전용 노드라 색 자체는 뭐든 상관없다 — 검증을 통과시키는 게
+          목적이라 다른 카드와 같은 배경색을 그대로 쓴다. */}
+      <div
+        ref={ref}
+        style={{ width: THUMBNAIL_WIDTH, height: THUMBNAIL_HEIGHT, background: SHARE_CARD_COLORS.background }}
+      >
         <Pitch>
           {phase.opponentPositions?.map((pos, i) => <PrintOpponentNode key={i} position={pos} />)}
           {analysis.players.map((player, index) => {
