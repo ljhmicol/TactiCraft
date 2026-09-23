@@ -79,7 +79,7 @@ export function PressingLine({
       : landscapeX > 88
         ? { x: landscapeX - 1.5, y: 3, anchor: 'end' as const }
         : { x: landscapeX, y: 3, anchor: 'middle' as const }
-    : { x: 101, y: y - 0.7, anchor: 'start' as const }
+    : { x: 101, y, anchor: 'start' as const }
   // 글자 가로 비율 보정(TO-DO 39) — StaticPlayerNode와 같은 이유·같은 방식.
   const textScaleX = landscape ? LANDSCAPE_TEXT_X_SCALE : 1
 
@@ -113,6 +113,11 @@ export function PressingLine({
           fill={LAYER_COLORS.pressingLine.color}
           fontSize={2}
           textAnchor={label.anchor}
+          // 세로 중앙 정렬(2026-09-23, "텍스트 중간 부분이 라인이랑 동일하게
+          // 있으면 좋겠어") — y를 수동 보정값(y - 0.7 등)으로 맞추면 폰트가
+          // 바뀔 때마다 다시 손봐야 하지만, dominantBaseline="central"은
+          // 텍스트 상자의 실제 수직 중심을 baseline 계산 없이 y좌표에 맞춘다.
+          dominantBaseline="central"
           style={{ fontFamily: PITCH_TEXT_FONT_FAMILY }}
         >
           압박 라인(수비 라인) {pressingLineLevel(labelY ?? y)}

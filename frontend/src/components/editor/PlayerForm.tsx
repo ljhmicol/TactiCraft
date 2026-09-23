@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -27,11 +29,24 @@ export function PlayerForm({ player, index }: { player: Player; index: number })
     Boolean(s.analysis?.phases.base.positions.some((p) => p.playerId === player.id)),
   )
 
-  const handleNumberChange = (raw: string) => {
-    const n = Number(raw)
-    if (raw === '' || Number.isNaN(n)) return
+  // 등번호는 타이핑 중간값(빈 문자열 등)을 그대로 반영하지 않고, 확정
+  // 시점(Enter·blur)에만 store에 쓴다(2026-09-23, "9에서 안 지워지고 19를
+  // 치니까 99가 됐어") — 이전엔 매 keystroke마다 즉시 clamp해서 store에
+  // 썼는데, 지우면(raw==='') clamp 전에 바로 되돌아가 버려 "지워지지 않는"
+  // 것처럼 보였고, 그 상태에서 계속 타이핑하니 값이 꼬였다. 로컬 문자열
+  // state로 자유롭게 편집하게 하고, 확정될 때만 유효성 검사·clamp한다.
+  const [numberInput, setNumberInput] = useState(String(player.number))
+  useEffect(() => setNumberInput(String(player.number)), [player.number])
+
+  const commitNumber = () => {
+    const n = Number(numberInput)
+    if (numberInput.trim() === '' || Number.isNaN(n)) {
+      setNumberInput(String(player.number)) // 유효하지 않으면 원래 값으로 되돌린다
+      return
+    }
     const clamped = Math.min(99, Math.max(1, Math.trunc(n)))
     updatePlayer(player.id, { number: clamped })
+    setNumberInput(String(clamped))
   }
 
   const info = isStarter && formation ? positionInfoAt(formation, index) : null
@@ -39,18 +54,32 @@ export function PlayerForm({ player, index }: { player: Player; index: number })
 
   return (
     <div className="space-y-1 rounded-md border border-transparent p-1 hover:border-border">
-      <div className="grid grid-cols-[3rem_1fr_auto] items-end gap-2">
+      <div className="grid grid-cols-[3.5rem_1fr_auto] items-end gap-2">
         <div>
           <Label htmlFor={`number-${player.id}`} className="text-xs text-muted-foreground">
             #{index + 1}
           </Label>
+          {/* 두 자릿수 등번호(20, 22 등)가 잘려 "2"로만 보이던 문제(2026-09-23)
+              — 3rem 칸에 기본 px-3 패딩 + 네이티브 number 스피너까지 들어가니
+              실제 숫자가 앉을 자리가 한 글자도 안 남았다. 패딩을 줄이고
+              스피너를 없애 그 공간을 숫자에 돌려준다(min/max로 이미 범위를
+              막고 있어 스피너 없이 타이핑만으로도 충분하다). 칸 자체도
+              3rem→3.5rem으로 살짝 넓혔다. */}
           <Input
             id={`number-${player.id}`}
             type="number"
             min={1}
             max={99}
-            value={player.number}
-            onChange={(e) => handleNumberChange(e.target.value)}
+            value={numberInput}
+            onChange={(e) => setNumberInput(e.target.value)}
+            onBlur={commitNumber}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter') return
+              e.preventDefault()
+              commitNumber()
+              e.currentTarget.blur()
+            }}
+            className="px-2 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
         </div>
         <div>

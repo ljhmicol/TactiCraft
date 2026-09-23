@@ -66,7 +66,9 @@ export function OpponentNode({ slot, position }: OpponentNodeProps) {
       role="button"
       aria-label={`상대 선수 ${slot + 1}. 방향키로 이동, Shift+방향키로 크게 이동.`}
       onKeyDown={handleKeyDown}
-      onFocus={() => setFocused(true)}
+      // :focus-visible로 걸러야 한다 — PlayerNode.tsx와 같은 이유(드래그만
+      // 해도 브라우저가 포커스를 줘서 링이 눌어붙는 문제, 2026-09-23).
+      onFocus={(e) => setFocused(e.currentTarget.matches(':focus-visible'))}
       onBlur={() => setFocused(false)}
       onPanStart={() => setDragging(true)}
       onPan={handlePan}

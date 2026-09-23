@@ -1,5 +1,5 @@
 import { motion, useReducedMotion, type PanInfo } from 'framer-motion'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 
 import { ANNOTATION_LINK_EPS, annotationSamplePoints, travelTimes } from '@/lib/annotations'
@@ -42,9 +42,11 @@ const KEYBOARD_STEP_COARSE = 5
  * 좌표계가 아니라 렌더링된 CSS 픽셀 기준으로 적용되어(이 프로젝트처럼
  * viewBox와 실제 렌더 크기가 다른 경우) 화면 밖으로 어긋난다.
  *
- * onTap은 드래그(pan) 없이 짧게 누른 경우에만 발생한다 — 선수 클릭 편집
- * 다이얼로그(TO-DO 13번)의 입력점. 그리기 모드에서는 DrawOverlay가 입력을
- * 가로채 여기까지 오지 않는다.
+ * onTap은 선수 클릭 편집 다이얼로그(TO-DO 13번)의 입력점 — 드래그 없이
+ * 짧게 누른 경우에만 열려야 한다. Framer Motion 자체가 이걸 "pan 없이
+ * 짧게 누른 경우에만 onTap 발생"으로 보장한다고 문서화하지만 실사용에서는
+ * 드래그로 옮긴 직후에도 onTap이 같이 발동했다(didDragRef 참고). 그리기
+ * 모드에서는 DrawOverlay가 입력을 가로채 여기까지 오지 않는다.
  *
  * 노드 색은 포지션 라인별로 칠한다(2026-09-01 사용자 요청 — GK 노랑/DF 파랑/
  * MF 초록/FW 빨강). 라인·포지션 코드는 포메이션 이름과 players 순서에서
@@ -117,10 +119,9 @@ export function PlayerNode({ player, position }: PlayerNodeProps) {
   })
   const [dragging, setDragging] = useState(false)
   // 키보드 포커스 표시(개선 로드맵 §6.4) — 이 얇은 SVG 링을 편집 다이얼로그가
-  // 열려 있을 때뿐 아니라 Tab으로 포커스가 왔을 때도 보여준다. 마우스
-  // 클릭으로 포커스가 와도 똑같이 표시되지만(진짜 :focus-visible과 달리
-  // 입력 방식을 구분하지 않음), 어차피 클릭은 곧장 onTap으로 편집
-  // 다이얼로그를 열어 isEditing이 true가 되므로 실사용에서 차이가 없다.
+  // 열려 있을 때뿐 아니라 Tab으로 포커스가 왔을 때도 보여준다. onFocus에서
+  // :focus-visible을 확인해 드래그·클릭 같은 포인터 상호작용으로 온 포커스는
+  // 걸러낸다(2026-09-23 — 안 걸렀더니 드래그 후에도 링이 눌어붙어 있었다).
   const [focused, setFocused] = useState(false)
   const instant = dragging || isPressingLineDragging
   const transition = instant ? { duration: 0 } : { duration: 0.6, ease: [0.4, 0, 0.2, 1] as const }
@@ -181,8 +182,19 @@ export function PlayerNode({ player, position }: PlayerNodeProps) {
   const cx = active ? runPoints!.map((p) => p.x) : position.x
   const cy = active ? runPoints!.map((p) => p.y) : position.y
 
+  // Framer Motion 문서상 "onTap은 pan 없이 짧게 누른 경우에만 발생"하지만,
+  // 실사용에서는 드래그로 선수를 옮긴 직후에도 onTap이 같이 발동해 편집
+  // 다이얼로그가 열려버렸다(2026-09-23, "드래그해서 위치만 옮기고 싶은데
+  // 계속 선수 수정으로 넘어가") — 드래그 끝에 포인터가 살짝 멈췄다 떨어지면
+  // Framer가 그 마지막 순간을 별개의 탭으로 잡는 것으로 보인다. state가
+  // 아니라 ref로 추적하는 이유: onPanEnd가 onTap보다 먼저 실행되면
+  // setDragging(false)이 이미 반영돼 state로는 구분이 안 된다 — ref는
+  // 리렌더를 기다리지 않고 즉시 반영된다.
+  const didDragRef = useRef(false)
+
   const handlePan = (_: PointerEvent | MouseEvent | TouchEvent, info: PanInfo) => {
     if (!svgRef.current) return
+    didDragRef.current = true
     const next = pagePointToPitch(svgRef.current, info.point.x, info.point.y)
     movePlayer(player.id, clampCoord(next.x), clampCoord(next.y))
   }
@@ -217,11 +229,27 @@ export function PlayerNode({ player, position }: PlayerNodeProps) {
       role="button"
       aria-label={`${displayName}${topLabel ? ` (${topLabel})` : ''} 선수. 방향키로 이동, Shift+방향키로 크게 이동, Enter로 정보 편집.`}
       onKeyDown={handleKeyDown}
-      onPanStart={() => setDragging(true)}
+      onPanStart={() => {
+        didDragRef.current = false
+        setDragging(true)
+      }}
       onPan={handlePan}
       onPanEnd={() => setDragging(false)}
-      onTap={() => setEditingPlayer(player.id)}
-      onFocus={() => setFocused(true)}
+      onTap={() => {
+        if (didDragRef.current) {
+          didDragRef.current = false
+          return
+        }
+        setEditingPlayer(player.id)
+      }}
+      // :focus-visible로 걸러야 한다(2026-09-23, "드래그 하고도 선수 노드
+      // 주변에 초록색 동그란 원이 남는다") — pan 제스처가 있는 motion.g는
+      // Framer Motion이 자동으로 tabIndex를 붙이는데, 그 결과 마우스로
+      // 드래그만 해도 브라우저가 이 g에 포커스를 줘서(키보드로 온 게 아닌데도)
+      // focused가 true로 눌어붙었다. :focus-visible은 브라우저가 "이 포커스가
+      // 키보드 등 비-포인터 상호작용에서 왔는지"를 이미 판정해 주므로, 여기서
+      // 입력 방식을 직접 추적할 필요가 없다.
+      onFocus={(e) => setFocused(e.currentTarget.matches(':focus-visible'))}
       onBlur={() => setFocused(false)}
       style={{ cursor: 'grab', touchAction: 'none', outline: 'none' }}
     >

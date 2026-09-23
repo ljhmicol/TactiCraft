@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,14 +34,33 @@ export function PlayerEditDialog() {
   const index = analysis?.players.findIndex((p) => p.id === editingPlayerId) ?? -1
   const info = analysis && index >= 0 ? positionInfoAt(analysis.formation, index) : null
 
+  // 등번호는 확정 시점(Enter·blur)에만 store에 쓴다(2026-09-23, PlayerForm.tsx와
+  // 같은 이유 — "9에서 안 지워지고 19를 치니까 99가 됐어"). 훅은 아래
+  // `if (!player) return null`보다 먼저 와야 한다(조기 반환이 있어도 매
+  // 렌더마다 훅 호출 순서가 같아야 하는 규칙).
+  const [numberInput, setNumberInput] = useState(String(player?.number ?? 1))
+  useEffect(() => {
+    // player.number 값이 바뀔 때만 동기화한다 — player 객체는 다른 필드
+    // (이름·메모 등) 변경만으로도 analysis가 통째로 새로 만들어지며 매번
+    // 새 참조가 되므로, player 자체를 deps에 넣으면 다른 필드를 고칠 때마다
+    // 지금 타이핑 중인 등번호 입력이 저장된 값으로 덮어써진다.
+    if (player) setNumberInput(String(player.number))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [player?.number])
+
   if (!player) return null
 
   const roleOptions = roleOptionsFor(info)
 
-  const handleNumberChange = (raw: string) => {
-    const n = Number(raw)
-    if (raw === '' || Number.isNaN(n)) return
-    updatePlayer(player.id, { number: Math.min(99, Math.max(1, Math.trunc(n))) })
+  const commitNumber = () => {
+    const n = Number(numberInput)
+    if (numberInput.trim() === '' || Number.isNaN(n)) {
+      setNumberInput(String(player.number))
+      return
+    }
+    const clamped = Math.min(99, Math.max(1, Math.trunc(n)))
+    updatePlayer(player.id, { number: clamped })
+    setNumberInput(String(clamped))
   }
 
   return (
@@ -64,13 +85,24 @@ export function PlayerEditDialog() {
               <Label htmlFor={`edit-number-${player.id}`} className="text-xs text-muted-foreground">
                 등번호
               </Label>
+              {/* 스피너 제거(2026-09-23, PlayerForm.tsx와 같은 이유) — 이 칸은
+                  4rem으로 넉넉해 실제로 잘린 적은 없지만, 두 자릿수+스피너
+                  조합의 여유가 크지 않아 예방적으로 맞춘다. */}
               <Input
                 id={`edit-number-${player.id}`}
                 type="number"
                 min={1}
                 max={99}
-                value={player.number}
-                onChange={(e) => handleNumberChange(e.target.value)}
+                value={numberInput}
+                onChange={(e) => setNumberInput(e.target.value)}
+                onBlur={commitNumber}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter') return
+                  e.preventDefault()
+                  commitNumber()
+                  e.currentTarget.blur()
+                }}
+                className="[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               />
             </div>
             <div>
