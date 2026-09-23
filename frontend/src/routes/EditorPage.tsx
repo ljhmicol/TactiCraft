@@ -425,6 +425,8 @@ export function EditorPage() {
         setRatio={cardExport.setRatio}
         exporting={cardExport.exporting}
         onExport={cardExport.handleExport}
+        multiPhaseExporting={multiPhaseExport.exporting}
+        onMultiPhaseExport={multiPhaseExport.handleExport}
       />
       <PlayerEditDialog />
     </div>

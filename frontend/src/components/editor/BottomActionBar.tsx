@@ -17,6 +17,11 @@ import type { Analysis } from '@/types/analysis'
  * ExportControls·여기 둘 다에 같은 상태(ratio·cardRef·handleExport)를
  * 내려주므로, ShareCard는 여전히 ExportControls 한 곳에만 마운트된 채로
  * 이 바텀 시트에서도 같은 캡처를 트리거할 수 있다.
+ *
+ * 범위 선택(현재 국면/3국면 한번에)은 ExportControls와 같은 이유로
+ * 추가했다(2026-09-23) — 3국면 카드도 `EditorPage`의 `useMultiPhaseExport`
+ * 한 곳에서만 마운트되므로(ExportControls 쪽), 여기서는 상태와 트리거
+ * 함수만 받는다.
  */
 export function BottomActionBar({
   analysis,
@@ -24,22 +29,27 @@ export function BottomActionBar({
   setRatio,
   exporting,
   onExport,
+  multiPhaseExporting,
+  onMultiPhaseExport,
 }: {
   analysis: Analysis
   ratio: CardRatio
   setRatio: (r: CardRatio) => void
   exporting: boolean
   onExport: () => Promise<void>
+  multiPhaseExporting: boolean
+  onMultiPhaseExport: () => Promise<void>
 }) {
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [scope, setScope] = useState<'current' | 'all'>('current')
+
+  const generating = scope === 'current' ? exporting : multiPhaseExporting
 
   const handleGenerate = async () => {
-    // onExport(useCardExport.handleExport)는 이제 실패를 내부에서 삼키고
-    // 토스트로 원인을 보여준다(2026-09-20) — 여기선 성공/실패와 무관하게
-    // 시트만 닫으면 된다. (예전엔 onExport가 그대로 던져서 여기 catch 없이
-    // await만 하면 시트가 안 닫히는 버그가 있었다 — advisor 리뷰로 발견,
-    // 지금은 onExport 자체가 안 던지므로 이 문제가 구조적으로 없다.)
-    await onExport()
+    // onExport/onMultiPhaseExport는 실패를 내부에서 삼키고 토스트로 원인을
+    // 보여준다(2026-09-20) — 여기선 성공/실패와 무관하게 시트만 닫으면 된다.
+    if (scope === 'current') await onExport()
+    else await onMultiPhaseExport()
     setSheetOpen(false)
   }
 
@@ -59,25 +69,47 @@ export function BottomActionBar({
             <DialogPrimitive.Title className="mb-3 text-sm font-semibold text-foreground">
               PNG로 내보내기
             </DialogPrimitive.Title>
-            <div className="mb-3 flex items-center gap-2">
-              {(['1:1', '4:5'] as const).map((r) => (
+            <div className="mb-3 grid grid-cols-2 gap-2">
+              {([
+                { value: 'current' as const, label: '현재 국면' },
+                { value: 'all' as const, label: '3국면 한번에' },
+              ]).map((opt) => (
                 <button
-                  key={r}
+                  key={opt.value}
                   type="button"
-                  onClick={() => setRatio(r)}
+                  onClick={() => setScope(opt.value)}
                   className={cn(
-                    'flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-                    ratio === r
+                    'rounded-md border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                    scope === opt.value
                       ? 'border-primary bg-accent text-accent-foreground'
                       : 'border-border text-muted-foreground hover:text-foreground',
                   )}
                 >
-                  {r}
+                  {opt.label}
                 </button>
               ))}
             </div>
-            <Button className="w-full" onClick={handleGenerate} disabled={exporting}>
-              {exporting ? '내보내는 중…' : 'PNG 생성'}
+            {scope === 'current' && (
+              <div className="mb-3 flex items-center gap-2">
+                {(['1:1', '4:5'] as const).map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setRatio(r)}
+                    className={cn(
+                      'flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                      ratio === r
+                        ? 'border-primary bg-accent text-accent-foreground'
+                        : 'border-border text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            )}
+            <Button className="w-full" onClick={handleGenerate} disabled={generating}>
+              {generating ? '내보내는 중…' : 'PNG 생성'}
             </Button>
           </DialogPrimitive.Content>
         </DialogPrimitive.Portal>
