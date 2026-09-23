@@ -248,6 +248,34 @@ export async function exportCard(node: HTMLElement, ratio: '1:1' | '4:5'): Promi
 }
 
 /**
+ * 기본·공격·수비 3국면을 한 장으로 이어붙인 카드(MultiPhaseShareCard) 전용
+ * 내보내기(2026-09-23) — exportCard와 달리 비율 선택이 없고 카드 자체
+ * 고정 크기(width/height 인자)를 그대로 쓴다. compositeCanvas가 이미 카드
+ * 노드 안의 <svg> 전부를 순회해 각각 rasterizeSvg로 합성하도록 설계돼 있어
+ * (`pitches: PitchInfo[]`), 국면 3개(=svg 3개)가 있어도 그대로 재사용된다.
+ */
+export async function exportMultiPhaseCard(node: HTMLElement, width: number, height: number): Promise<Blob> {
+  await waitForMorphing()
+  await document.fonts.ready
+
+  const canvas = await compositeCanvas(node, width, height, 2)
+
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
+  if (!blob) throw new CaptureStageError('toBlob', '결과 blob이 null')
+
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `tacticore_all_${Date.now()}.png`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+
+  return blob
+}
+
+/**
  * 목록 미리보기용 썸네일(TO-DO 7번) — exportCard와 달리 다운로드하지 않고
  * data URL 문자열만 돌려준다. 저장 뮤테이션이 이 값을 페이로드에 실어
  * 백엔드로 보낸다.

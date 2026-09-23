@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { RefObject } from 'react'
 
 import { GifExportRunner } from '@/components/export/GifExportRunner'
+import { MultiPhaseShareCard } from '@/components/export/MultiPhaseShareCard'
 import { ShareCard } from '@/components/export/ShareCard'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -47,6 +48,9 @@ export function ExportControls({
   exporting,
   onExport,
   cardRef,
+  multiPhaseExporting,
+  onMultiPhaseExport,
+  multiPhaseCardRef,
 }: {
   analysis: Analysis
   phase: PhaseType
@@ -55,6 +59,9 @@ export function ExportControls({
   exporting: boolean
   onExport: () => Promise<void>
   cardRef: RefObject<HTMLDivElement>
+  multiPhaseExporting: boolean
+  onMultiPhaseExport: () => Promise<void>
+  multiPhaseCardRef: RefObject<HTMLDivElement>
 }) {
   const [exportingGif, setExportingGif] = useState(false)
   const [gifRunning, setGifRunning] = useState(false)
@@ -97,10 +104,14 @@ export function ExportControls({
         <Button size="sm" variant="outline" onClick={handleGifExport} disabled={exportingGif}>
           {exportingGif ? 'GIF 만드는 중…' : 'GIF 내보내기'}
         </Button>
+        <Button size="sm" variant="outline" onClick={onMultiPhaseExport} disabled={multiPhaseExporting}>
+          {multiPhaseExporting ? '내보내는 중…' : '3국면 한번에 PNG'}
+        </Button>
       </div>
       {gifError && <p className="rounded-md bg-destructive/10 p-2 text-xs text-destructive">{gifError}</p>}
 
       <ShareCard ref={cardRef} analysis={analysis} phase={phase} ratio={ratio} />
+      <MultiPhaseShareCard ref={multiPhaseCardRef} analysis={analysis} />
       {gifRunning && <GifExportRunner analysis={analysis} onDone={handleGifDone} onError={handleGifError} />}
     </div>
   )

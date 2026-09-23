@@ -38,6 +38,7 @@ import { PressingLine } from '@/components/pitch/PressingLine'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useCardExport } from '@/hooks/useCardExport'
+import { useMultiPhaseExport } from '@/hooks/useMultiPhaseExport'
 import { useDraftAutosave } from '@/hooks/useDraftAutosave'
 import { pressingLineLevel, type PressingLineLevel } from '@/lib/compactness'
 import { FORMATION_NAMES } from '@/lib/formations'
@@ -100,6 +101,7 @@ export function EditorPage() {
   // `analysis`가 없을 때도(아래 조기 반환) 훅 호출 순서를 지키려고 이
   // 조기 반환보다 앞에 둔다.
   const cardExport = useCardExport()
+  const multiPhaseExport = useMultiPhaseExport()
 
   if (!analysis) {
     return (
@@ -208,6 +210,9 @@ export function EditorPage() {
             exporting={cardExport.exporting}
             onExport={cardExport.handleExport}
             cardRef={cardExport.cardRef}
+            multiPhaseExporting={multiPhaseExport.exporting}
+            onMultiPhaseExport={multiPhaseExport.handleExport}
+            multiPhaseCardRef={multiPhaseExport.cardRef}
           />
         </div>
       </div>
