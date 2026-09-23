@@ -101,6 +101,7 @@ export const TACTICAL_ROLES: Record<PositionGroup, TacticalRole[]> = {
   WM: [
     { id: 'wide-mf', label: '와이드 미드필더', blurb: '측면 폭을 지키며 공수 균형을 맞춘다' },
     { id: 'winger-style-mf', label: '윙어형 미드필더', blurb: '터치라인 끝까지 벌려 크로스 위주로 공격한다' },
+    { id: 'wide-playmaker', label: '와이드 플레이메이커', blurb: '측면에서 볼을 소유해 상대 풀백을 유인한 뒤 정확한 패스로 공격을 조립한다' },
   ],
   W: [
     { id: 'inverted-winger', label: '인버티드 윙어', blurb: '반대발 윙어로 안쪽으로 잘라 들어와 슈팅·패스를 노린다' },
@@ -109,6 +110,7 @@ export const TACTICAL_ROLES: Record<PositionGroup, TacticalRole[]> = {
   ],
   ST: [
     { id: 'target-forward', label: '타겟 포워드', blurb: '공중볼 연계와 포스트플레이로 동료를 살린다' },
+    { id: 'advanced-forward', label: '전진형 포워드', blurb: '최전방 라인에 머물다 수비 뒷공간을 침투해 마무리를 노린다' },
     { id: 'deep-lying-forward', label: '딥라잉 포워드', blurb: '내려와 볼을 받아 연계하고 동료의 침투를 유도한다' },
     { id: 'poacher', label: '폭스 인 더 박스', blurb: '박스 안 침투와 마무리에 집중한다' },
     { id: 'pressing-forward', label: '프레싱 포워드', blurb: '최전방에서부터 강하게 압박을 시작한다' },
