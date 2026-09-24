@@ -236,7 +236,12 @@ function ShareView({
           {layers.compactness && <CompactnessBox positions={phase.positions} />}
           {layers.pressingLine && <PressingLine positions={phase.positions} pressingLineY={phase.pressingLineY} />}
           {layers.overload && hasOpponent && <OverloadLayer phase={phase} />}
-          <AnnotationLayer annotations={phase.annotations} />
+          {/* EditorPage와 같은 이유(2026-09-22, "속도가 너무 빠르다")로 반복
+              재생 + 1.8배 느리게 — 공유 링크는 그 수정이 빠져 있어 패스 공이
+              editor보다 눈에 띄게 빨라 보였다(2026-09-24 리포트로 발견).
+              드리블(carry) 체인은 AnnotationLayer 내부에서 loop여도 여전히
+              1회만 재생하는 예외가 그대로 적용된다. */}
+          <AnnotationLayer annotations={phase.annotations} loop ballDurationScale={1.8} />
           {phase.opponentPositions?.map((pos, i) => <PrintOpponentNode key={i} position={pos} />)}
           {analysis.players.map((player, index) => {
             const pos = phase.positions.find((p) => p.playerId === player.id)
