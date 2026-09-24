@@ -130,7 +130,12 @@ export const SharePngCard = forwardRef<HTMLDivElement, SharePngCardProps>(functi
                 <PressingLine positions={phase.positions} pressingLineY={phase.pressingLineY} />
               )}
               {layers.overload && hasOpponent && <OverloadLayer phase={phase} />}
-              <AnnotationLayer annotations={phase.annotations} />
+              {/* animated=false(2026-09-24, "화살표 중간에서 멈춘거로 나와") —
+                  ShareCard.tsx와 같은 이유. 공유 링크는 시점을 클릭하자마자
+                  바로 다운로드를 누르는 경우가 많아, 오프스크린 카드가 오래
+                  떠 있는 편집기보다 패스 공의 1회성 애니메이션이 경로 중간에
+                  캡처될 확률이 훨씬 높았다. */}
+              <AnnotationLayer annotations={phase.annotations} animated={false} />
               {phase.opponentPositions?.map((pos, i) => (
                 <PrintOpponentNode key={i} position={pos} />
               ))}

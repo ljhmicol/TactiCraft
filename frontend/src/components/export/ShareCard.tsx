@@ -199,7 +199,14 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(function Sha
                 <PressingLine positions={phase.positions} pressingLineY={phase.pressingLineY} />
               )}
               {layers.overload && hasOpponent && <OverloadLayer phase={phase} />}
-              <AnnotationLayer annotations={phase.annotations} />
+              {/* animated=false(2026-09-24, "화살표 중간에서 멈춘거로 나와") —
+                  이 카드는 오프스크린에 오래 떠 있다가 캡처될 때가 많아서
+                  패스 공의 1회성 세그먼트 애니메이션이 우연히 끝나 있는
+                  경우가 잦았지만, 보장된 동작은 아니었다. 정적 캡처는
+                  애니메이션 진행 여부와 무관하게 항상 완성된 화살표만
+                  보여야 하므로 공 자체를 그리지 않는다(animated=false면
+                  화살표 선·화살촉은 그대로 그려지고 패스 공만 생략된다). */}
+              <AnnotationLayer annotations={phase.annotations} animated={false} />
               {phase.opponentPositions?.map((pos, i) => (
                 <OpponentNode key={i} slot={i} position={pos} />
               ))}

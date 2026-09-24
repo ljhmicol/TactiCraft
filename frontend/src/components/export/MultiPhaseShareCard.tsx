@@ -104,7 +104,10 @@ export const MultiPhaseShareCard = forwardRef<HTMLDivElement, MultiPhaseShareCar
                       {layers.pressingLine && (
                         <PressingLine positions={phase.positions} pressingLineY={phase.pressingLineY} />
                       )}
-                      <AnnotationLayer annotations={phase.annotations} />
+                      {/* animated=false(2026-09-24) — ShareCard.tsx와 같은 이유,
+                          정적 캡처는 패스 공 애니메이션 진행 여부와 무관하게
+                          항상 완성된 화살표만 보여야 한다. */}
+                      <AnnotationLayer annotations={phase.annotations} animated={false} />
                       {phase.opponentPositions?.map((pos, i) => (
                         <OpponentNode key={i} slot={i} position={pos} />
                       ))}
