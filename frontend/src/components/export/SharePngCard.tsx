@@ -8,6 +8,7 @@ import { Pitch } from '@/components/pitch/Pitch'
 import { PressingLine } from '@/components/pitch/PressingLine'
 import { PrintOpponentNode } from '@/components/pitch/PrintOpponentNode'
 import { SharePlayerNode } from '@/components/pitch/SharePlayerNode'
+import { BODY_BOX_HEIGHT_BY_RATIO, CARD_HEIGHT_BY_RATIO, PITCH_MIN_HEIGHT_BY_RATIO, type CardRatio } from '@/lib/cardRatio'
 import { SHARE_CARD_COLORS } from '@/lib/theme'
 import type { Analysis, Annotation, LayerToggles, PhaseData } from '@/types/analysis'
 
@@ -39,7 +40,7 @@ interface SharePngCardProps {
   bodyText: string
   runAnnotations?: Annotation[]
   layers: LayerToggles
-  ratio: '1:1' | '4:5'
+  ratio: CardRatio
 }
 
 /**
@@ -55,10 +56,10 @@ export const SharePngCard = forwardRef<HTMLDivElement, SharePngCardProps>(functi
   ref,
 ) {
   const hasOpponent = Boolean(phase.opponentPositions && phase.opponentPositions.length > 0)
-  const cardHeight = ratio === '1:1' ? 1080 : 1350
+  const cardHeight = CARD_HEIGHT_BY_RATIO[ratio]
   const bench = analysis.players.filter((p) => !phase.positions.some((pos) => pos.playerId === p.id))
   const bodyText = rawBodyText.length > 500 ? `${rawBodyText.slice(0, 499).trimEnd()}…` : rawBodyText
-  const bodyBoxHeight = ratio === '1:1' ? (bench.length > 0 ? 170 : 210) : bench.length > 0 ? 220 : 270
+  const bodyBoxHeight = bench.length > 0 ? BODY_BOX_HEIGHT_BY_RATIO[ratio].withBench : BODY_BOX_HEIGHT_BY_RATIO[ratio].noBench
   const { ref: bodyRef, fontSize: bodyFontSize } = useFitFontSize(bodyText, bodyBoxHeight, 32, 16)
 
   return (
@@ -113,7 +114,7 @@ export const SharePngCard = forwardRef<HTMLDivElement, SharePngCardProps>(functi
         <div
           style={{
             flex: 1,
-            minHeight: ratio === '1:1' ? 380 : 460,
+            minHeight: PITCH_MIN_HEIGHT_BY_RATIO[ratio],
             display: 'flex',
             justifyContent: 'center',
           }}

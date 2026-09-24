@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react'
 
 import { toast } from '@/hooks/use-toast'
+import type { CardRatio } from '@/lib/cardRatio'
 import { exportCard } from '@/lib/exportImage'
 
-export type CardRatio = '1:1' | '4:5'
+export type { CardRatio } from '@/lib/cardRatio'
 
 /**
  * PNG 카드 내보내기 상태 한 벌(비율·캡처 대상 ref·진행 상태) — 개선

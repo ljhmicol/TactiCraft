@@ -159,6 +159,7 @@ export function ExportControls({
                     <SelectContent>
                       <SelectItem value="1:1">1:1</SelectItem>
                       <SelectItem value="4:5">4:5</SelectItem>
+                      <SelectItem value="9:16">9:16</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

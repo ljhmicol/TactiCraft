@@ -20,6 +20,7 @@ import { useCurrentUser } from '@/hooks/useAuth'
 import { useToggleLike } from '@/hooks/useCommunity'
 import { useReportAnalysis } from '@/hooks/useModeration'
 import { toast } from '@/hooks/use-toast'
+import type { CardRatio } from '@/lib/cardRatio'
 import { exportCard } from '@/lib/exportImage'
 import { cn } from '@/lib/utils'
 import type { Analysis, LayerToggles, PhaseData, PhaseType } from '@/types/analysis'
@@ -103,7 +104,7 @@ function ShareView({
     overload: false,
     ghostView: false,
   })
-  const [ratio, setRatio] = useState<'1:1' | '4:5'>('1:1')
+  const [ratio, setRatio] = useState<CardRatio>('1:1')
   const [exporting, setExporting] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
 
@@ -163,13 +164,14 @@ function ShareView({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Select value={ratio} onValueChange={(v) => setRatio(v as '1:1' | '4:5')}>
+          <Select value={ratio} onValueChange={(v) => setRatio(v as CardRatio)}>
             <SelectTrigger className="w-20">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="1:1">1:1</SelectItem>
               <SelectItem value="4:5">4:5</SelectItem>
+              <SelectItem value="9:16">9:16</SelectItem>
             </SelectContent>
           </Select>
           <Button size="sm" onClick={handleExport} disabled={exporting}>

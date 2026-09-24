@@ -1,5 +1,6 @@
 import { toCanvas } from 'html-to-image'
 
+import { CARD_HEIGHT_BY_RATIO, CARD_WIDTH, type CardRatio } from '@/lib/cardRatio'
 import { rasterizeSvg } from '@/lib/rasterizeSvg'
 import { useAnalysisStore } from '@/store/analysisStore'
 
@@ -218,11 +219,11 @@ async function compositeCanvas(
   return baseCanvas
 }
 
-export async function exportCard(node: HTMLElement, ratio: '1:1' | '4:5'): Promise<Blob> {
+export async function exportCard(node: HTMLElement, ratio: CardRatio): Promise<Blob> {
   await waitForMorphing()
   await document.fonts.ready // 웹폰트 로드 전에 캡처하면 폴백 폰트로 찍힌다
 
-  const canvas = await compositeCanvas(node, 1080, ratio === '1:1' ? 1080 : 1350, 2)
+  const canvas = await compositeCanvas(node, CARD_WIDTH, CARD_HEIGHT_BY_RATIO[ratio], 2)
 
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
   if (!blob) throw new CaptureStageError('toBlob', '결과 blob이 null')

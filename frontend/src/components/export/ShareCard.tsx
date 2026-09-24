@@ -8,6 +8,7 @@ import { OverloadLayer } from '@/components/pitch/OverloadLayer'
 import { Pitch } from '@/components/pitch/Pitch'
 import { PlayerNode } from '@/components/pitch/PlayerNode'
 import { PressingLine } from '@/components/pitch/PressingLine'
+import { BODY_BOX_HEIGHT_BY_RATIO, CARD_HEIGHT_BY_RATIO, PITCH_MIN_HEIGHT_BY_RATIO, type CardRatio } from '@/lib/cardRatio'
 import { SHARE_CARD_COLORS } from '@/lib/theme'
 import { useAnalysisStore } from '@/store/analysisStore'
 import type { Analysis, PhaseType } from '@/types/analysis'
@@ -68,7 +69,7 @@ function useFitFontSize(text: string, boxHeight: number, maxSize: number, minSiz
 interface ShareCardProps {
   analysis: Analysis
   phase: PhaseType
-  ratio: '1:1' | '4:5'
+  ratio: CardRatio
 }
 
 /**
@@ -88,7 +89,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(function Sha
   const layers = useAnalysisStore((s) => s.layers)
   const phase = analysis.phases[phaseType]
   const hasOpponent = Boolean(phase.opponentPositions && phase.opponentPositions.length > 0)
-  const cardHeight = ratio === '1:1' ? 1080 : 1350
+  const cardHeight = CARD_HEIGHT_BY_RATIO[ratio]
   const bench = analysis.players.filter((p) => !phase.positions.some((pos) => pos.playerId === p.id))
   // 국면별로 다른 텍스트를 그대로 보여준다 — 기본 국면은 종합 평가, 공격·수비는
   // 그 국면 자체의 코멘트(2026-09-02 사용자 결정). 원본 텍스트는 절대 줄이지
@@ -99,7 +100,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(function Sha
   // 긴 입력에 대비해 500자에서 한 번은 잘라낸다 — 지금 있는 국면 코멘트 중
   // 가장 긴 것도 이 한도 안에 들어온다.
   const bodyText = rawBodyText.length > 500 ? `${rawBodyText.slice(0, 499).trimEnd()}…` : rawBodyText
-  const bodyBoxHeight = ratio === '1:1' ? (bench.length > 0 ? 170 : 210) : bench.length > 0 ? 220 : 270
+  const bodyBoxHeight = bench.length > 0 ? BODY_BOX_HEIGHT_BY_RATIO[ratio].withBench : BODY_BOX_HEIGHT_BY_RATIO[ratio].noBench
   const { ref: bodyRef, fontSize: bodyFontSize } = useFitFontSize(bodyText, bodyBoxHeight, 32, 16)
 
   return (
@@ -159,7 +160,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(function Sha
         <div
           style={{
             flex: 1,
-            minHeight: ratio === '1:1' ? 380 : 460,
+            minHeight: PITCH_MIN_HEIGHT_BY_RATIO[ratio],
             display: 'flex',
             justifyContent: 'center',
           }}

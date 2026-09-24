@@ -91,7 +91,7 @@ export function BottomActionBar({
             </div>
             {scope === 'current' && (
               <div className="mb-3 flex items-center gap-2">
-                {(['1:1', '4:5'] as const).map((r) => (
+                {(['1:1', '4:5', '9:16'] as const).map((r) => (
                   <button
                     key={r}
                     type="button"
