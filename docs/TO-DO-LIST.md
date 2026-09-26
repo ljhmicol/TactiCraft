@@ -60,7 +60,8 @@
 - **프론트**: `lib/api.ts`에 타입+함수 추가, `hooks/useRosterTemplates.ts`(react-query, `useAnalyses.ts`와 같은 패턴). `components/editor/SaveRosterTemplateButton.tsx`(에디터 툴바에 "내 팀 저장" 버튼 — 지금 `analysis.players`를 이름만 스냅샷으로 저장). `components/editor/RosterTemplatePicker.tsx`(`/new`의 새 섹션 "내 팀으로 시작하기" — 템플릿을 고르면 그 아래 기존 `FormationPicker`가 펼쳐지고, 포메이션까지 고르면 `lib/rosterTemplate.ts`의 `applyRosterTemplate`이 템플릿 선수 명단을 `createEmptyAnalysis`가 만든 빈 분석의 앞 11자리에 이름·등번호·역할만 덮어쓴다(좌표·id는 그대로) — 11명 넘는 선수는 감독 프리셋의 벤치와 같은 방식으로 `players`에만 추가하고 `positions`에는 안 넣는다.
 - **검증**: 백엔드 `pytest`(58개 전부 통과, 신규 4개 포함) / 프론트 `tsc --noEmit`(0 errors)/`eslint`(0 errors)/`npx vitest run`(235개 통과, `rosterTemplate.test.ts` 신규 3개 포함).
 - **버그 하나 발견해 같이 고침**: 74번 작업 때 `schemas.py`를 편집하며 `AnalyticsSummaryOut`의 `recent_user_views` 필드가 실수로 그 아래 새로 추가한 `RosterTemplateSummary` 쪽으로 잘려 붙었던 것을 이번 백엔드 테스트 실행 중 발견(`ResponseValidationError`) — 두 클래스 다 원래 자리로 필드를 되돌려 수정. `python -m pytest` 전체 재통과로 확인.
-- **남은 일**: 실배포 사이트에서 직접 확인 필요(에디터 "내 팀 저장" → `/new`에서 불러오기 → 포메이션 선택까지). 확인되면 `[C]`로 바꿔 `TO-DO-ARCHIVE.md`로 이동.
+- **실배포 검증**: tacticraft.fly.dev에서 실제 저장된 분석(이정효 베스트 11, 수원삼성)을 열어 "내 팀 저장" → 이름 확인 다이얼로그 → 저장 → `/new`의 "내 팀으로 시작하기"에 "수원삼성 블루윙즈 · 선수 20명 · 2026-09-26 저장"으로 뜸 → 클릭하면 포메이션 그리드가 펼쳐짐 → 4-4-2 선택 → 에디터에 실제 선수 이름·등번호가 그 포메이션 좌표에 정확히 올라간 새 분석으로 진입하는 것까지 전 과정을 화면으로 확인.
+- **남은 일**: 없음. 사용자 본인 확인 대기 — 확인되면 `[C]`로 바꿔 `TO-DO-ARCHIVE.md`로 이동.
 
 ## 기각 기록
 
