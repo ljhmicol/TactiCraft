@@ -16,6 +16,7 @@ from database import Base, engine, get_db
 from routers import (
     admin_users as admin_users_router,
     analyses,
+    analytics as analytics_router,
     auth as auth_router,
     comments as comments_router,
     community as community_router,
@@ -182,6 +183,7 @@ app.add_middleware(
 
 app.include_router(admin_users_router.router)
 app.include_router(analyses.router)
+app.include_router(analytics_router.router)
 app.include_router(auth_router.router)
 app.include_router(comments_router.router)
 app.include_router(community_router.router)

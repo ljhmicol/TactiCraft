@@ -4,9 +4,11 @@ import { BrowserRouter, Link, NavLink, Route, Routes } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
 import { Toaster } from '@/components/ui/toaster'
+import { usePageviewTracking } from '@/hooks/useAnalytics'
 import { useCurrentUser, useLogout } from '@/hooks/useAuth'
 import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning'
 import { cn } from '@/lib/utils'
+import { AdminAnalyticsPage } from '@/routes/AdminAnalyticsPage'
 import { AdminReportsPage } from '@/routes/AdminReportsPage'
 import { AdminUsersPage } from '@/routes/AdminUsersPage'
 import { AnalysesPage } from '@/routes/AnalysesPage'
@@ -62,6 +64,9 @@ function AuthNav() {
           <Link to="/admin/users" className="shrink-0 whitespace-nowrap text-sm text-muted-foreground hover:text-foreground">
             회원 관리
           </Link>
+          <Link to="/admin/analytics" className="shrink-0 whitespace-nowrap text-sm text-muted-foreground hover:text-foreground">
+            방문자 통계
+          </Link>
         </>
       )}
       <Link to="/profile" className="max-w-[40vw] truncate text-sm text-muted-foreground hover:text-foreground" title="내 정보">
@@ -96,6 +101,14 @@ function NavItem({ to, children, end }: { to: string; children: string; end?: bo
       {children}
     </NavLink>
   )
+}
+
+/** 화면에 아무것도 그리지 않고 라우트 변화만 기록한다(2026-09-26, 방문자
+ * 통계) — useLocation은 BrowserRouter 안에서만 호출할 수 있어 App 자신이
+ * 아니라 Routes와 나란히 둔 이 컴포넌트에서 호출한다. */
+function PageviewTracker() {
+  usePageviewTracking()
+  return null
 }
 
 function App() {
@@ -186,11 +199,13 @@ function App() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/admin/reports" element={<AdminReportsPage />} />
           <Route path="/admin/users" element={<AdminUsersPage />} />
+          <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
         {/* 라우트 밖(BrowserRouter 안, Routes 밖)에 둬서 페이지 전환에도
          * 살아남는다 — 개선 로드맵 §6.3. */}
         <Toaster />
+        <PageviewTracker />
       </BrowserRouter>
     </QueryClientProvider>
   )

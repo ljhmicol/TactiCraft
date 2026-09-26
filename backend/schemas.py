@@ -431,3 +431,28 @@ class ReportOut(BaseModel):
     # 같이 얹는다(analysis면 경기 이름, comment면 본문 앞부분) — 대상이 이미
     # 삭제됐으면 None(routers/moderation.py가 채운다).
     target_preview: Optional[str] = None
+
+
+# 방문자 분석(2026-09-26, "사람들이 사이트 얼마나 사용하는지"). path만 받는다 —
+# IP·유저 에이전트는 서버가 아예 저장하지 않는다(models.PageView 참조).
+class PageViewIn(BaseModel):
+    path: str = Field(max_length=500)
+
+
+class DailyViewStat(BaseModel):
+    date: str  # YYYY-MM-DD
+    views: int
+    unique_visitors: int
+
+
+class TopPathStat(BaseModel):
+    path: str
+    views: int
+
+
+class AnalyticsSummaryOut(BaseModel):
+    total_views: int
+    unique_visitors: int  # 조회 기간(daily_views가 덮는 기간) 내 순 방문자
+    today_views: int
+    daily_views: List[DailyViewStat]
+    top_paths: List[TopPathStat]

@@ -362,6 +362,30 @@ class Report(Base):
     reporter = relationship("User")
 
 
+class PageView(Base):
+    """방문자 분석(2026-09-26, "사람들이 사이트 얼마나 사용하는지" 요청).
+
+    Umami/Plausible 같은 외부 서비스 대신 이 앱의 기존 SQLite에 그대로
+    쌓는다(사용자가 명시적으로 이 방식을 선택) — 새 서비스·별도 DB 없이
+    지금 있는 백업 하나로 방문자 데이터도 같이 보존된다. IP·유저 에이전트는
+    저장하지 않는다 — path·방문자 식별용 익명 쿠키 값·(로그인 상태면)
+    user_id·시각만 남긴다. visitor_id는 세션 쿠키(tacticore_session)와는
+    별개의 장기 쿠키(tacticore_visitor)에서 온다 — 로그인 여부와 무관하게
+    "같은 브라우저가 몇 번 방문했는지"를 세려면 로그인 세션에 얽매이지 않는
+    별도 식별자가 필요하기 때문이다. 새 테이블이라 create_all이 자동
+    생성한다(Comment/Like/Report와 같은 이유)."""
+
+    __tablename__ = "page_views"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    path = Column(String, nullable=False)
+    visitor_id = Column(String, nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))
+    created_at = Column(String, nullable=False, index=True)
+
+    user = relationship("User")
+
+
 class Like(Base):
     """커뮤니티 좋아요(TO-DO 41 후속, "커뮤니티 좋아요/인기순 정렬").
     Comment와 같은 이유로 새 테이블이라 create_all이 자동 생성한다.

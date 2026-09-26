@@ -6,7 +6,7 @@
 """
 
 import secrets
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional
 
 from sqlalchemy import func, select
@@ -743,3 +743,51 @@ def set_user_suspended(db: Session, admin: models.User, user_id: int, suspended:
     db.commit()
     db.refresh(user)
     return user
+
+
+def record_pageview(db: Session, path: str, visitor_id: str, user_id: Optional[int]) -> None:
+    db.add(models.PageView(path=path, visitor_id=visitor_id, user_id=user_id, created_at=_now()))
+    db.commit()
+
+
+def get_analytics_summary(db: Session, days: int = 30) -> dict:
+    """방문자 통계(2026-09-26, "사람들이 사이트 얼마나 사용하는지" 요청).
+
+    IP·유저 에이전트를 아예 안 남기므로(models.PageView 참조) 집계는
+    path/visitor_id/시각만으로 한다. SQLite 방언 날짜 함수 대신 파이썬에서
+    날짜별로 묶는다 — 이 앱 규모(하루 수백 건 이하)에서는 DB 함수를 쓸
+    이유가 없고, 날짜 포맷팅을 한 곳(파이썬)에서만 다루는 게 더 간단하다.
+    """
+    since = (datetime.now() - timedelta(days=days - 1)).strftime("%Y-%m-%d")
+    rows = (
+        db.query(models.PageView.path, models.PageView.visitor_id, models.PageView.created_at)
+        .filter(models.PageView.created_at >= since)
+        .all()
+    )
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    by_day: dict[str, dict] = {}
+    path_counts: dict[str, int] = {}
+    for r in rows:
+        day = r.created_at[:10]
+        bucket = by_day.setdefault(day, {"views": 0, "visitors": set()})
+        bucket["views"] += 1
+        bucket["visitors"].add(r.visitor_id)
+        path_counts[r.path] = path_counts.get(r.path, 0) + 1
+
+    daily_views = [
+        {"date": day, "views": v["views"], "unique_visitors": len(v["visitors"])}
+        for day, v in sorted(by_day.items())
+    ]
+    top_paths = [
+        {"path": p, "views": c}
+        for p, c in sorted(path_counts.items(), key=lambda kv: kv[1], reverse=True)[:10]
+    ]
+
+    return {
+        "total_views": len(rows),
+        "unique_visitors": len({r.visitor_id for r in rows}),
+        "today_views": by_day.get(today, {"views": 0})["views"],
+        "daily_views": daily_views,
+        "top_paths": top_paths,
+    }

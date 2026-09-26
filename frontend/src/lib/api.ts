@@ -313,3 +313,36 @@ export async function fetchHealth(): Promise<{ status: string; version: string }
     clearTimeout(timer)
   }
 }
+
+// 방문자 분석(2026-09-26, "사람들이 사이트 얼마나 사용하는지" 요청) — 외부
+// 서비스 대신 이 앱의 기존 SQLite에 쌓는다(routers/analytics.py 참조).
+
+/** 페이지 이동마다 호출 — 실패해도 화면 동작에 영향을 주면 안 되므로 이
+ * 함수를 호출하는 쪽(usePageviewTracking)이 항상 에러를 삼킨다. */
+export function recordPageview(path: string): Promise<void> {
+  return apiFetch('/analytics/pageview', { method: 'POST', body: JSON.stringify({ path }) })
+}
+
+export interface DailyViewStat {
+  date: string
+  views: number
+  uniqueVisitors: number
+}
+
+export interface TopPathStat {
+  path: string
+  views: number
+}
+
+export interface AnalyticsSummary {
+  totalViews: number
+  uniqueVisitors: number
+  todayViews: number
+  dailyViews: DailyViewStat[]
+  topPaths: TopPathStat[]
+}
+
+/** 운영자 전용(서버가 403으로 강제) — 최근 30일 방문자 통계. */
+export function fetchAnalyticsSummary(): Promise<AnalyticsSummary> {
+  return apiFetch('/admin/analytics')
+}
