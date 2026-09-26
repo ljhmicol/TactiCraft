@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { RUN_LOOP_DELAY, RUN_LOOP_DURATION } from '@/components/pitch/PlayerNode'
 import { createEmptyAnalysis } from '@/store/analysisStore'
 import type { PlayerPosition } from '@/types/analysis'
 
@@ -87,5 +88,60 @@ describe('buildGifFrameSpecs', () => {
     for (const f of frames) {
       expect(f.positions).toHaveLength(11)
     }
+  })
+})
+
+describe('buildGifFrameSpecs — run 화살표 재생(2026-09-26, "PNG/GIF에서도 화살표대로 움직이면 좋겠다")', () => {
+  function analysisWithRun() {
+    const a = createEmptyAnalysis('4-3-3', {
+      matchName: '테스트',
+      homeTeam: '홈',
+      awayTeam: '원정',
+      matchDate: '2026-09-08',
+      analyzedTeam: 'home',
+    })
+    const runner = a.phases.attack.positions[0]
+    const to = { x: runner.x + 20, y: runner.y }
+    a.phases.attack.annotations = [{ id: 'r1', type: 'run', from: { x: runner.x, y: runner.y }, to }]
+    return { analysis: a, runnerId: runner.playerId, to }
+  }
+
+  it('공식이 어긋나지 않는다 — 편집 화면(PlayerNode)과 같은 리듬이어야 한다', () => {
+    // exportGif.ts는 이 값을 import해서 쓰므로(값 복제가 아니라) 어긋날 수
+    // 없지만, 실수로 다시 하드코딩 값으로 되돌리는 걸 막기 위한 회귀 테스트.
+    expect(RUN_LOOP_DURATION).toBe(0.9)
+    expect(RUN_LOOP_DELAY).toBe(0.5)
+  })
+
+  it('run 화살표가 매칭된 국면에서는 해당 선수가 도착점 근처를 여러 번 오간다(왕복 2회)', () => {
+    const { analysis, runnerId, to } = analysisWithRun()
+    // 'attack' 국면 자체에 머무는 구간만 본다 — base→attack 전환 프레임도
+    // phase:'attack'으로 표기되지만(다음 국면 라벨), 이 신선한 분석은 base와
+    // attack의 좌표가 같아 그 구간은 계속 originalX로 평평하다. 그래서 "도착점
+    // 근처 봉우리"만 세면 전환 구간의 평평한 값과 섞이지 않는다.
+    const frames = buildGifFrameSpecs(analysis).filter((f) => f.phase === 'attack')
+    const runnerXs = frames.map((f) => f.positions.find((p) => p.playerId === runnerId)!.x)
+
+    // 화살표 없이는 나올 수 없는 "도착점(x+20) 근처" 봉우리가 최소 2번(RUN_LOOP_CYCLES)
+    // 나타나야 한다 — 그냥 한 번 이동하는 전환이 아니라 실제로 왕복함을 보증한다.
+    const peaks = runnerXs.filter(
+      (x, i) => x > to.x - 1 && (i === 0 || runnerXs[i - 1] <= x) && (i === runnerXs.length - 1 || runnerXs[i + 1] <= x),
+    )
+    expect(peaks.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('run 화살표가 없는 국면(base)은 기존처럼 정지 프레임 하나뿐이다(동일 참조 유지)', () => {
+    const { analysis } = analysisWithRun()
+    const frames = buildGifFrameSpecs(analysis)
+    const baseHold = frames.filter((f) => f.phase === 'base' && f.positions === analysis.phases.base.positions)
+    expect(baseHold).toHaveLength(1)
+  })
+
+  it('run 화살표가 있으면 그 국면의 프레임 수가 늘어난다(2번 왕복 + 마지막 정지)', () => {
+    const withRun = analysisWithRun().analysis
+    const plain = createEmptyAnalysis('4-3-3', withRun.match)
+    const attackFramesWithRun = buildGifFrameSpecs(withRun).filter((f) => f.phase === 'attack').length
+    const attackFramesPlain = buildGifFrameSpecs(plain).filter((f) => f.phase === 'attack').length
+    expect(attackFramesWithRun).toBeGreaterThan(attackFramesPlain)
   })
 })

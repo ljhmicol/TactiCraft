@@ -25,8 +25,11 @@ const OWN_RADIUS = circularRadius(PLAYER_COLORS.own.radius)
 // motion.g에 Framer Motion이 자동으로 tabindex=0을 붙이는데, 탭하는 순간
 // 그 g가 포커스를 받아 Safari 기본 포커스 링(두꺼운 이중 테두리)이 그려졌다.
 const SELECT_RING_RADIUS = circularRadius(PLAYER_COLORS.own.radius + 0.7)
-const RUN_LOOP_DURATION = 0.9 // 오버랩 구간 전진에 걸리는 시간(초)
-const RUN_LOOP_DELAY = 0.5 // 전진 끝점에서 리셋 전까지 머무는 시간(초)
+// export하는 이유: GIF 내보내기(lib/exportGif.ts)가 이 리듬 그대로 정지
+// 프레임들을 만들어야 편집 화면과 같은 속도로 보인다 — 값을 복제하는 대신
+// 여기서 직접 가져와 어긋날 수 없게 한다(exportGif.test.ts 참조).
+export const RUN_LOOP_DURATION = 0.9 // 오버랩 구간 전진에 걸리는 시간(초)
+export const RUN_LOOP_DELAY = 0.5 // 전진 끝점에서 리셋 전까지 머무는 시간(초)
 // 키보드 이동(개선 로드맵 §6.4, 2026-09-22) — 좌표계는 0~100(대략 1유닛 ≈
 // 1m, 2단계 §3 좌표계 참조). 방향키는 세밀한 조정(1유닛), Shift+방향키는
 // 한 번에 크게 옮길 때(5유닛) 쓴다.
