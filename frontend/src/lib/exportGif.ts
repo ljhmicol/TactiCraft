@@ -3,7 +3,7 @@ import { GIFEncoder, quantize, applyPalette } from 'gifenc'
 import { RUN_LOOP_DELAY, RUN_LOOP_DURATION } from '@/components/pitch/PlayerNode'
 import { ANNOTATION_LINK_EPS, annotationSamplePoints, travelTimes } from '@/lib/annotations'
 import { PHASE_TRANSITION_MS } from '@/store/analysisStore'
-import type { Annotation, Analysis, PhaseType, Point, PlayerPosition } from '@/types/analysis'
+import type { Annotation, Analysis, PhaseData, PhaseType, Point, PlayerPosition } from '@/types/analysis'
 
 const PHASE_ORDER: PhaseType[] = ['base', 'attack', 'defense']
 const TRANSITION_STEPS = 12 // 국면 사이 보간 샘플 수
@@ -27,10 +27,13 @@ const RUN_STEPS = 8 // 전진(및 복귀) 구간을 몇 프레임으로 쪼갤�
 const RUN_LOOP_CYCLES = 1 // 국면 하나에 머무는 동안 왕복을 몇 번 반복할지(GIF가 어차피 전체 반복되므로 1번으로 충분)
 const RUN_SNAP_MS = 40 // 역재생이 정확히 원점까지 못 미친 나머지를 마저 닫는 마지막 프레임의 노출 시간
 
-export interface GifFrameSpec {
-  phase: PhaseType
+export interface GifFrame {
   positions: PlayerPosition[]
   delayMs: number
+}
+
+export interface GifFrameSpec extends GifFrame {
+  phase: PhaseType
 }
 
 /** 표준 easeInOutCubic — 편집 화면의 cubic-bezier([0.4,0,0.2,1]) 전환과 체감이 비슷하다. */
@@ -99,15 +102,16 @@ function pointAlongPath(points: Point[], times: number[], t: number): Point {
  * 왔다갔다" 하는 느낌을 준다. 매칭되는 선수가 없으면(대부분의 국면) 원래
  * 정지 프레임 하나만 돌려준다 — 이때 positions는 원본 배열 참조를 그대로
  * 유지한다(exportGif.test.ts가 이 동일성을 검사한다).
+ *
+ * `phase`(PhaseType) 태그가 없는 형태로 뽑아둔 이유(2026-09-26, "GIF를
+ * 선택한 타임라인 시점을 내보내고 싶던거였어") — 매치 체인징 포인트는
+ * `analysis.phases`에 속하지 않아 PhaseType으로 태깅할 수 없다.
+ * `buildHoldFrames`(3국면 순환 전용)와 `buildPhaseDataGifFrames`(임의
+ * PhaseData 전용, 공유 링크가 씀)가 이 함수를 공유한다.
  */
-function buildHoldFrames(
-  phase: PhaseType,
-  positions: PlayerPosition[],
-  annotations: Annotation[],
-  holdMs: number,
-): GifFrameSpec[] {
+function buildRunLoopFrames(positions: PlayerPosition[], annotations: Annotation[], holdMs: number): GifFrame[] {
   const matches = findRunMatches(positions, annotations)
-  if (matches.length === 0) return [{ phase, positions, delayMs: holdMs }]
+  if (matches.length === 0) return [{ positions, delayMs: holdMs }]
 
   const byId = new Map(matches.map((m) => [m.playerId, m]))
   const atProgress = (t: number): PlayerPosition[] =>
@@ -118,24 +122,52 @@ function buildHoldFrames(
       return { playerId: p.playerId, x: point.x, y: point.y }
     })
 
-  const frames: GifFrameSpec[] = []
+  const frames: GifFrame[] = []
   const stepMs = RUN_LOOP_DURATION_MS / RUN_STEPS
   for (let cycle = 0; cycle < RUN_LOOP_CYCLES; cycle++) {
     // 전진: 시작점(positions)에서 도착점까지.
     for (let step = 1; step <= RUN_STEPS; step++) {
-      frames.push({ phase, positions: atProgress(easeInOutCubic(step / RUN_STEPS)), delayMs: Math.round(stepMs) })
+      frames.push({ positions: atProgress(easeInOutCubic(step / RUN_STEPS)), delayMs: Math.round(stepMs) })
     }
-    frames.push({ phase, positions: atProgress(1), delayMs: RUN_LOOP_DELAY_MS }) // 도착점에서 머묾
+    frames.push({ positions: atProgress(1), delayMs: RUN_LOOP_DELAY_MS }) // 도착점에서 머묾
     // 복귀: 같은 이징 곡선을 거꾸로 밟아 매끄럽게 되돌아온다(전진과 대칭이라
     // "왕복"으로 자연스럽게 보인다) — step=1(t≈0에 가깝지만 정확히 0은 아님)
     // 까지만 밟고, 정확한 시작점은 아래 마지막 프레임이 마저 채운다.
     for (let step = RUN_STEPS - 1; step >= 1; step--) {
-      frames.push({ phase, positions: atProgress(easeInOutCubic(step / RUN_STEPS)), delayMs: Math.round(stepMs) })
+      frames.push({ positions: atProgress(easeInOutCubic(step / RUN_STEPS)), delayMs: Math.round(stepMs) })
     }
-    frames.push({ phase, positions, delayMs: RUN_SNAP_MS }) // 정확히 시작점에서 짧게 머문 뒤 다음 왕복(또는 국면 전환)으로
+    frames.push({ positions, delayMs: RUN_SNAP_MS }) // 정확히 시작점에서 짧게 머문 뒤 다음 왕복(또는 국면 전환)으로
   }
-  frames.push({ phase, positions, delayMs: holdMs }) // 다음 국면 전환은 원래 위치에서 시작해야 한다
+  frames.push({ positions, delayMs: holdMs }) // 다음 국면 전환은 원래 위치에서 시작해야 한다
   return frames
+}
+
+function buildHoldFrames(
+  phase: PhaseType,
+  positions: PlayerPosition[],
+  annotations: Annotation[],
+  holdMs: number,
+): GifFrameSpec[] {
+  return buildRunLoopFrames(positions, annotations, holdMs).map((f) => ({ phase, ...f }))
+}
+
+/**
+ * 매치 체인징 포인트를 포함한 임의의 PhaseData 하나로 GIF 프레임을 만든다
+ * (2026-09-26, "GIF를 선택한 타임라인 시점을 내보내고 싶던거였어") —
+ * 공유 링크 페이지는 에디터처럼 "3국면 한번에"를 순환할 필요가 없고, 지금
+ * 화면에 보이는 시점(국면 탭 또는 체인징 포인트 칩) 그대로만 내보내면
+ * 된다는 뜻이었다. `allowRunLoop=false`면 run 화살표가 있어도 무시하고
+ * 정지 프레임 하나만 돌려준다 — 기본 국면(체인징 포인트 미선택)은 항상
+ * 정지 상태여야 한다는 규칙(PlayerNode.tsx의 같은 조건 참조)을 그대로
+ * 따른다.
+ */
+export function buildPhaseDataGifFrames(
+  phaseData: PhaseData,
+  options: { holdMs?: number; allowRunLoop?: boolean } = {},
+): GifFrame[] {
+  const { holdMs = HOLD_MS, allowRunLoop = true } = options
+  if (!allowRunLoop) return [{ positions: phaseData.positions, delayMs: holdMs }]
+  return buildRunLoopFrames(phaseData.positions, phaseData.annotations, holdMs)
 }
 
 /**

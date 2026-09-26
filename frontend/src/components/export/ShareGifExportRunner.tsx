@@ -3,27 +3,44 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { AnimatedSharePngCard, GIF_CARD_SIZE } from '@/components/export/AnimatedSharePngCard'
 import { scaledCardHeight, type CardRatio } from '@/lib/cardRatio'
-import { buildGifFrameSpecs, encodeGif, type CapturedFrame } from '@/lib/exportGif'
-import type { Analysis, LayerToggles } from '@/types/analysis'
+import { buildPhaseDataGifFrames, encodeGif, type CapturedFrame } from '@/lib/exportGif'
+import type { Analysis, LayerToggles, PhaseData } from '@/types/analysis'
 
 interface ShareGifExportRunnerProps {
   analysis: Analysis
+  phase: PhaseData
+  title: string
+  bodyText: string
   ratio: CardRatio
   layers: LayerToggles
+  /** 기본 국면(체인징 포인트 미선택)은 항상 정지 상태여야 한다는 규칙
+   * (PlayerNode.tsx 참조) — SharePage가 지금 보이는 시점 기준으로 계산해 넘긴다. */
+  allowRunLoop: boolean
   onDone: (blob: Blob) => void
   onError: (err: unknown) => void
 }
 
 /**
  * 공유 링크(`/share/:id`, `/s/:token`) 전용 GIF 캡처 루프 — 에디터의
- * `GifExportRunner`와 로직은 완전히 같지만(프레임마다 다시 그려 캡처)
- * `AnimatedSharePngCard`(스토어 미의존)를 쓰고 `layers`를 props로 받는다.
- * 범위는 항상 3국면 전체(scope='all')로 고정한다 — 공유 페이지는
- * "간단하게"(2026-09-26) 요청대로 비율 선택만 제공한다.
+ * `GifExportRunner`와 로직은 완전히 같지만(프레임마다 다시 그려 캡처),
+ * "3국면 한번에"를 순환하지 않고 지금 화면에 보이는 시점(국면 탭 또는
+ * 체인징 포인트) 하나만 내보낸다(2026-09-26, "GIF를 선택한 타임라인
+ * 시점을 내보내고 싶던거였어") — `buildPhaseDataGifFrames`가 매치
+ * 체인징 포인트도 `analysis.phases` 조회 없이 그대로 받을 수 있어 가능하다.
  */
-export function ShareGifExportRunner({ analysis, ratio, layers, onDone, onError }: ShareGifExportRunnerProps) {
+export function ShareGifExportRunner({
+  analysis,
+  phase,
+  title,
+  bodyText,
+  ratio,
+  layers,
+  allowRunLoop,
+  onDone,
+  onError,
+}: ShareGifExportRunnerProps) {
   const ref = useRef<HTMLDivElement>(null)
-  const frames = useMemo(() => buildGifFrameSpecs(analysis), [analysis])
+  const frames = useMemo(() => buildPhaseDataGifFrames(phase, { allowRunLoop }), [phase, allowRunLoop])
   const capturedRef = useRef<CapturedFrame[]>([])
   const finishedRef = useRef(false)
   const [index, setIndex] = useState(0)
@@ -75,5 +92,16 @@ export function ShareGifExportRunner({ analysis, ratio, layers, onDone, onError 
 
   const frame = frames[index]
   if (!frame) return null
-  return <AnimatedSharePngCard ref={ref} analysis={analysis} frame={frame} layers={layers} ratio={ratio} />
+  return (
+    <AnimatedSharePngCard
+      ref={ref}
+      analysis={analysis}
+      phase={phase}
+      framePositions={frame.positions}
+      title={title}
+      bodyText={bodyText}
+      layers={layers}
+      ratio={ratio}
+    />
+  )
 }

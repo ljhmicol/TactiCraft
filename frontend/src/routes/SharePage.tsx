@@ -65,12 +65,15 @@ type ViewKey = { kind: 'phase'; phase: PhaseType } | { kind: 'cp'; id: string }
  * 읽지 않는 `SharePngCard`를 따로 쓴다 — 레이어 토글을 이 페이지의 로컬
  * state로 props를 통해 넘긴다.
  *
- * GIF 다운로드(2026-09-26, "공유링크에서는 GIF가 없나?")도 같은 이유로
- * 에디터의 `GifExportRunner`/`AnimatedShareCard`를 그대로 못 쓰고
- * `ShareGifExportRunner`/`AnimatedSharePngCard`를 따로 쓴다 — 3국면
- * 한번에(scope 고정)·비율 선택만 제공하며, 에디터처럼 범위(현재 국면/3국면)를
- * 고르는 UI는 없다("간단하게만 추가" 선택, 개별 국면/체인징 포인트 GIF는
- * 범위 밖).
+ * GIF 다운로드(2026-09-26, "공유링크에서는 GIF가 없나?" → "GIF를 선택한
+ * 타임라인 시점을 내보내고 싶던거였어")도 같은 이유로 에디터의
+ * `GifExportRunner`/`AnimatedShareCard`를 그대로 못 쓰고
+ * `ShareGifExportRunner`/`AnimatedSharePngCard`를 따로 쓴다 — 에디터의
+ * "3국면 한번에" 순환과 달리, 이 페이지는 범위 선택 UI 자체가 없고 지금
+ * `view`가 가리키는 시점(국면 탭 또는 체인징 포인트 칩) 그대로만
+ * 내보낸다 — PNG(`SharePngCard`)가 이미 그렇게 동작하는 것과 같다.
+ * `allowRunLoop`는 기본 국면(체인징 포인트 미선택)에서만 false로 넘겨
+ * PlayerNode.tsx의 "기본 국면은 항상 정지" 규칙을 그대로 지킨다.
  *
  * 댓글(TO-DO 12번)도 여기 붙는다 — "공유된 분석에 의견"이라는 항목 설명과
  * 맞는 자리이자, EditorPage(자기 분석 편집)에 더 끼워 넣기엔 이미 레이아웃이
@@ -143,8 +146,8 @@ function ShareView({
   const bodyText = view.kind === 'phase' && view.phase === 'base' ? analysis.summary : phase.comment
   // 기본 국면은 정지 상태여야 한다(에디터의 PlayerNode와 동일 규칙) — 그 외
   // (공격/수비/체인징 포인트)에서만 run 화살표 반복 루프를 켠다.
-  const runAnnotations =
-    view.kind === 'phase' && view.phase === 'base' ? undefined : phase.annotations.filter((a) => a.type === 'run')
+  const allowRunLoop = !(view.kind === 'phase' && view.phase === 'base')
+  const runAnnotations = allowRunLoop ? phase.annotations.filter((a) => a.type === 'run') : undefined
 
   const handleExport = async () => {
     if (!cardRef.current) return
@@ -237,8 +240,12 @@ function ShareView({
       {gifRunning && (
         <ShareGifExportRunner
           analysis={analysis}
+          phase={phase}
+          title={cardTitle}
+          bodyText={bodyText}
           ratio={ratio}
           layers={layers}
+          allowRunLoop={allowRunLoop}
           onDone={handleGifDone}
           onError={handleGifError}
         />

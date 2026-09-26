@@ -4,7 +4,7 @@ import { RUN_LOOP_DELAY, RUN_LOOP_DURATION } from '@/components/pitch/PlayerNode
 import { createEmptyAnalysis } from '@/store/analysisStore'
 import type { PlayerPosition } from '@/types/analysis'
 
-import { buildGifFrameSpecs, easeInOutCubic, interpolatePositions } from './exportGif'
+import { buildGifFrameSpecs, buildPhaseDataGifFrames, easeInOutCubic, interpolatePositions } from './exportGif'
 
 describe('easeInOutCubic', () => {
   it('starts at 0 and ends at 1', () => {
@@ -202,5 +202,62 @@ describe('buildGifFrameSpecs — run 화살표 재생(2026-09-26, "PNG/GIF에서
     for (let i = 1; i < runnerXs.length; i++) {
       expect(Math.abs(runnerXs[i] - runnerXs[i - 1])).toBeLessThan(10)
     }
+  })
+})
+
+describe('buildPhaseDataGifFrames(2026-09-26, "GIF를 선택한 타임라인 시점을 내보내고 싶던거였어")', () => {
+  function analysisWithRun() {
+    const a = createEmptyAnalysis('4-3-3', {
+      matchName: '테스트',
+      homeTeam: '홈',
+      awayTeam: '원정',
+      matchDate: '2026-09-08',
+      analyzedTeam: 'home',
+    })
+    const runner = a.phases.attack.positions[0]
+    const to = { x: runner.x + 20, y: runner.y }
+    a.phases.attack.annotations = [{ id: 'r1', type: 'run', from: { x: runner.x, y: runner.y }, to }]
+    return { analysis: a, runnerId: runner.playerId, to }
+  }
+
+  it('매치 체인징 포인트(analysis.phases에 없는 PhaseData)도 그대로 받아 왕복 프레임을 만든다', () => {
+    const runner: PlayerPosition = { playerId: 'p1', x: 10, y: 50 }
+    const to = { x: 30, y: 50 }
+    const cp = {
+      id: 'cp1',
+      label: '테스트 시점',
+      positions: [runner],
+      comment: '',
+      annotations: [{ id: 'r1', type: 'run' as const, from: { x: runner.x, y: runner.y }, to }],
+    }
+    const frames = buildPhaseDataGifFrames(cp)
+    const xs = frames.map((f) => f.positions.find((p) => p.playerId === 'p1')!.x)
+    expect(Math.max(...xs)).toBeGreaterThan(to.x - 1)
+    expect(frames.length).toBeGreaterThan(1)
+  })
+
+  it('allowRunLoop=false면 run 화살표가 있어도 정지 프레임 하나뿐이다(기본 국면 규칙)', () => {
+    const { analysis } = analysisWithRun()
+    const frames = buildPhaseDataGifFrames(analysis.phases.attack, { allowRunLoop: false })
+    expect(frames).toEqual([{ positions: analysis.phases.attack.positions, delayMs: 1100 }])
+  })
+
+  it('allowRunLoop 기본값(true)은 run 화살표를 따라 왕복한다', () => {
+    const { analysis, runnerId, to } = analysisWithRun()
+    const frames = buildPhaseDataGifFrames(analysis.phases.attack)
+    const xs = frames.map((f) => f.positions.find((p) => p.playerId === runnerId)!.x)
+    expect(Math.max(...xs)).toBeGreaterThan(to.x - 1)
+  })
+
+  it('run 화살표가 없으면 원본 positions 참조를 그대로 유지한 정지 프레임 하나뿐이다', () => {
+    const analysis = createEmptyAnalysis('4-3-3', {
+      matchName: '테스트',
+      homeTeam: '홈',
+      awayTeam: '원정',
+      matchDate: '2026-09-08',
+      analyzedTeam: 'home',
+    })
+    const frames = buildPhaseDataGifFrames(analysis.phases.base)
+    expect(frames).toEqual([{ positions: analysis.phases.base.positions, delayMs: 1100 }])
   })
 })

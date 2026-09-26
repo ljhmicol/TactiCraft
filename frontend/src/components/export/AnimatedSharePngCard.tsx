@@ -9,11 +9,9 @@ import { PressingLine } from '@/components/pitch/PressingLine'
 import { PrintOpponentNode } from '@/components/pitch/PrintOpponentNode'
 import { PrintPlayerNode } from '@/components/pitch/PrintPlayerNode'
 import { BODY_BOX_HEIGHT_BY_RATIO, PITCH_MIN_HEIGHT_BY_RATIO, scaledCardHeight, type CardRatio } from '@/lib/cardRatio'
-import type { GifFrameSpec } from '@/lib/exportGif'
 import { SHARE_CARD_COLORS } from '@/lib/theme'
-import type { Analysis, LayerToggles, PhaseType } from '@/types/analysis'
+import type { Analysis, LayerToggles, PhaseData, PlayerPosition } from '@/types/analysis'
 
-const PHASE_LABELS: Record<PhaseType, string> = { base: '기본', attack: '공격', defense: '수비' }
 export const GIF_CARD_SIZE = 720
 const SCALE = GIF_CARD_SIZE / 1080
 
@@ -38,28 +36,32 @@ function useFitFontSize(text: string, boxHeight: number, maxSize: number, minSiz
 
 interface AnimatedSharePngCardProps {
   analysis: Analysis
-  frame: GifFrameSpec
+  phase: PhaseData
+  /** 이 프레임의 선수 좌표 — run 화살표 왕복 애니메이션 중 하나일 수 있다.
+   * 코멘트·화살표·상대팀·압박 라인처럼 보간되지 않는 나머지는 `phase`를
+   * 그대로 쓴다(exportGif.ts의 buildPhaseDataGifFrames 참조). */
+  framePositions: PlayerPosition[]
+  /** "기본 국면" / "공격 국면" / 체인징 포인트 라벨 등 — 호출부(SharePage)가 이미 결정해서 넘긴다. */
+  title: string
+  bodyText: string
   layers: LayerToggles
   ratio: CardRatio
 }
 
 /**
- * 공유 링크(`/share/:id`, `/s/:token`) 전용 GIF 프레임 카드. 에디터의
- * `AnimatedShareCard`와 모양·역할은 같지만(GifExportRunner가 프레임마다
- * 다시 그려 캡처) `useAnalysisStore`를 전혀 읽지 않는다 — `SharePngCard`가
- * `OpponentNode` 대신 `PrintOpponentNode`를 쓰는 것과 똑같은 이유다:
- * `OpponentNode`는 드래그를 위해 스토어의 `moveOpponent`를 직접 참조하는데,
- * 이 화면이 보여주는 분석은 "지금 편집 중인 분석"과 무관할 수 있어(다른
- * 사람이 링크로 바로 들어옴) 스토어 상태(레이어 토글 포함)를 그대로 읽으면
- * 이 페이지의 로컬 레이어 토글과 어긋난다. 그래서 레이어도 `SharePngCard`와
- * 같이 props로 받는다.
+ * 공유 링크(`/share/:id`, `/s/:token`) 전용 GIF 프레임 카드. `SharePngCard`와
+ * 모양·props가 거의 같지만(둘 다 `useAnalysisStore`를 안 읽는다 — 이 화면이
+ * 보여주는 분석은 "지금 편집 중인 분석"과 무관할 수 있어서다) 정지된
+ * `phase.positions` 대신 매 프레임 다시 그려지는 `framePositions`를 쓴다.
+ * `SharePlayerNode`(라이브 반복 루프) 대신 `PrintPlayerNode`(순수 정지
+ * 렌더)를 쓰는 이유도 같다 — 애니메이션은 이미 `buildPhaseDataGifFrames`가
+ * 프레임별 좌표로 구워뒀으므로, 카드 자체는 그 순간을 그대로 캡처하기만
+ * 하면 된다(GifExportRunner/AnimatedShareCard와 같은 이유, 2026-09-26).
  */
 export const AnimatedSharePngCard = forwardRef<HTMLDivElement, AnimatedSharePngCardProps>(
-  function AnimatedSharePngCard({ analysis, frame, layers, ratio }, ref) {
-    const phaseData = analysis.phases[frame.phase]
-    const hasOpponent = Boolean(phaseData.opponentPositions && phaseData.opponentPositions.length > 0)
-    const bench = analysis.players.filter((p) => !phaseData.positions.some((pos) => pos.playerId === p.id))
-    const rawBodyText = frame.phase === 'base' ? analysis.summary : phaseData.comment
+  function AnimatedSharePngCard({ analysis, phase, framePositions, title, bodyText: rawBodyText, layers, ratio }, ref) {
+    const hasOpponent = Boolean(phase.opponentPositions && phase.opponentPositions.length > 0)
+    const bench = analysis.players.filter((p) => !phase.positions.some((pos) => pos.playerId === p.id))
     const bodyText = rawBodyText.length > 500 ? `${rawBodyText.slice(0, 499).trimEnd()}…` : rawBodyText
     const cardHeight = scaledCardHeight(ratio, GIF_CARD_SIZE)
     const pitchMinHeight = Math.round(PITCH_MIN_HEIGHT_BY_RATIO[ratio] * SCALE)
@@ -104,6 +106,10 @@ export const AnimatedSharePngCard = forwardRef<HTMLDivElement, AnimatedSharePngC
             >
               {analysis.match.matchName || `${analysis.match.homeTeam} vs ${analysis.match.awayTeam}`}
             </div>
+            <div style={{ fontSize: Math.round(28 * SCALE), color: SHARE_CARD_COLORS.subtitle, marginTop: Math.round(8 * SCALE) }}>
+              {analysis.match.matchDate}
+              {analysis.match.competition ? ` · ${analysis.match.competition}` : ''}
+            </div>
             <div
               style={{
                 fontSize: Math.round(32 * SCALE),
@@ -112,7 +118,7 @@ export const AnimatedSharePngCard = forwardRef<HTMLDivElement, AnimatedSharePngC
                 marginTop: Math.round(12 * SCALE),
               }}
             >
-              {PHASE_LABELS[frame.phase]} 국면
+              {title}
             </div>
           </div>
 
@@ -120,15 +126,13 @@ export const AnimatedSharePngCard = forwardRef<HTMLDivElement, AnimatedSharePngC
             <div style={{ height: '100%', width: 'auto', aspectRatio: '68 / 105', flex: 'none' }}>
               <Pitch>
                 {layers.channelGrid && <ChannelGrid halfSpaces={layers.halfSpaces} />}
-                {layers.compactness && <CompactnessBox positions={phaseData.positions} />}
-                {layers.pressingLine && (
-                  <PressingLine positions={phaseData.positions} pressingLineY={phaseData.pressingLineY} />
-                )}
-                {layers.overload && hasOpponent && <OverloadLayer phase={phaseData} />}
-                <AnnotationLayer annotations={phaseData.annotations} animated={false} />
-                {phaseData.opponentPositions?.map((pos, i) => <PrintOpponentNode key={i} position={pos} />)}
+                {layers.compactness && <CompactnessBox positions={phase.positions} />}
+                {layers.pressingLine && <PressingLine positions={phase.positions} pressingLineY={phase.pressingLineY} />}
+                {layers.overload && hasOpponent && <OverloadLayer phase={phase} />}
+                <AnnotationLayer annotations={phase.annotations} animated={false} />
+                {phase.opponentPositions?.map((pos, i) => <PrintOpponentNode key={i} position={pos} />)}
                 {analysis.players.map((player, index) => {
-                  const pos = frame.positions.find((p) => p.playerId === player.id)
+                  const pos = framePositions.find((p) => p.playerId === player.id)
                   if (!pos) return null
                   return (
                     <PrintPlayerNode
