@@ -3,29 +3,32 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { AnimatedShareCard, GIF_CARD_SIZE } from '@/components/export/AnimatedShareCard'
 import { scaledCardHeight, type CardRatio } from '@/lib/cardRatio'
-import { buildGifFrameSpecs, encodeGif, type CapturedFrame } from '@/lib/exportGif'
+import { buildGifFrameSpecs, type CapturedFrame } from '@/lib/exportGif'
+import { encodeAnimation } from '@/lib/exportVideo'
 import type { Analysis, PhaseType } from '@/types/analysis'
 
 interface GifExportRunnerProps {
   analysis: Analysis
   ratio: CardRatio
   scope: PhaseType | 'all'
-  onDone: (blob: Blob) => void
+  onDone: (blob: Blob, extension: string) => void
   onError: (err: unknown) => void
 }
 
 /**
- * GIF 내보내기(TO-DO 6)의 실제 캡처 루프. PNG(exportImage.ts)는 이미
- * 정지된 화면을 한 번만 캡처하지만, GIF는 프레임 수십 장을 순서대로
- * 렌더링→캡처해야 한다. React state(index)로 한 번에 프레임 하나씩
- * AnimatedShareCard를 다시 그리고, 두 번의 requestAnimationFrame으로
- * 페인트가 끝난 뒤에만 `toCanvas`로 캡처한다 — 라이브 애니메이션을
- * 실시간으로 녹화하는 대신, 국면 사이 좌표를 미리 계산해(lib/exportGif.ts)
- * 정지 이미지를 순서대로 찍는 방식이라 캡처 타이밍이 기기 성능에 흔들리지
- * 않는다.
+ * GIF/동영상 내보내기(TO-DO 6, 2026-09-26부터 동영상 우선)의 실제 캡처
+ * 루프. PNG(exportImage.ts)는 이미 정지된 화면을 한 번만 캡처하지만, 이
+ * 쪽은 프레임 수십 장을 순서대로 렌더링→캡처해야 한다. React state(index)로
+ * 한 번에 프레임 하나씩 AnimatedShareCard를 다시 그리고, 두 번의
+ * requestAnimationFrame으로 페인트가 끝난 뒤에만 `toCanvas`로 캡처한다 —
+ * 라이브 애니메이션을 실시간으로 녹화하는 대신, 국면 사이 좌표를 미리
+ * 계산해(lib/exportGif.ts) 정지 이미지를 순서대로 찍는 방식이라 캡처
+ * 타이밍이 기기 성능에 흔들리지 않는다(인코딩 자체는 lib/exportVideo.ts가
+ * 맡는데, MediaRecorder 특성상 그 단계만 벽시계 시간에 매인다).
  *
- * 프레임 전부를 다 캡처하면 gifenc로 인코딩해 onDone(blob)을 호출하고,
- * 그 시점부터는 이 컴포넌트를 부모(ExportControls)가 언마운트한다.
+ * 프레임 전부를 다 캡처하면 encodeAnimation으로 인코딩해(가능하면 mp4/webm,
+ * 아니면 GIF로 대체) onDone(blob, extension)을 호출하고, 그 시점부터는 이
+ * 컴포넌트를 부모(ExportControls)가 언마운트한다.
  */
 export function GifExportRunner({ analysis, ratio, scope, onDone, onError }: GifExportRunnerProps) {
   const ref = useRef<HTMLDivElement>(null)
@@ -82,11 +85,9 @@ export function GifExportRunner({ analysis, ratio, scope, onDone, onError }: Gif
   useEffect(() => {
     if (frames.length === 0 || index < frames.length || finishedRef.current) return
     finishedRef.current = true
-    try {
-      onDone(encodeGif(capturedRef.current))
-    } catch (err) {
-      onError(err)
-    }
+    encodeAnimation(capturedRef.current)
+      .then(({ blob, extension }) => onDone(blob, extension))
+      .catch(onError)
   }, [index, frames.length, onDone, onError])
 
   const frame = frames[index]

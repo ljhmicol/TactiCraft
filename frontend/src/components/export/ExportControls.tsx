@@ -35,10 +35,17 @@ function downloadBlob(blob: Blob, filename: string) {
 }
 
 /**
- * PNG·GIF 카드 내보내기 UI. 비율(1:1/4:5/9:16)은 PNG·GIF 공용 — 같은
+ * PNG·움직이는 카드 내보내기 UI. 비율(1:1/4:5/9:16)은 둘 다 공용 — 같은
  * `ratio` 상태를 공유해서(2026-09-26, "GIF도 비율 설정할 수 있으면
- * 좋겠어") 한 번 고르면 PNG와 GIF 둘 다에 적용된다. 하단 텍스트는 국면별로
+ * 좋겠어") 한 번 고르면 둘 다에 적용된다. 하단 텍스트는 국면별로
  * 다르다 — 기본은 종합 평가, 공격·수비는 해당 국면 코멘트.
+ *
+ * "움직이는 카드"는 2026-09-26까지는 GIF만이었는데("GIF 말고 움직이는걸
+ * 보여줄 수 있는 형식이 또 뭐가있지?" → "바꿔줘") 이제 `encodeAnimation`
+ * (lib/exportVideo.ts)이 가능하면 mp4/webm으로 인코딩하고, 그 브라우저가
+ * MediaRecorder를 지원하지 않을 때만 GIF로 조용히 대체한다 — 버튼·다이얼로그
+ * 라벨은 실제 산출물이 무엇이 될지 미리 알 수 없어 "GIF" 대신 중립적인
+ * "움직이는 카드"로 쓰고, 실제 확장자는 다운로드 파일명에서 드러난다.
  *
  * PNG 내보내기는 "범위" 선택이 있다(2026-09-23) — 처음엔 "3국면 한번에
  * PNG"를 별도 버튼으로 뒀는데, 버튼이 하나 더 느는 것보다 기존 PNG
@@ -46,17 +53,18 @@ function downloadBlob(blob: Blob, filename: string) {
  * 피드백으로 다이얼로그 방식으로 바꿨다. 범위가 "3국면"이면 카드 자체가
  * 고정 크기(MultiPhaseShareCard)라 비율 선택은 의미가 없어서 숨긴다.
  *
- * GIF는 PNG처럼 ref 하나를 한 번 캡처하는 게 아니라 프레임마다 다시
- * 렌더링→캡처해야 해서(GifExportRunner) 버튼을 누른 시점에만 그 러너를
- * 마운트하고, 다 끝나면(onDone/onError) 언마운트한다.
+ * 움직이는 카드는 PNG처럼 ref 하나를 한 번 캡처하는 게 아니라 프레임마다
+ * 다시 렌더링→캡처해야 해서(GifExportRunner) 버튼을 누른 시점에만 그
+ * 러너를 마운트하고, 다 끝나면(onDone/onError) 언마운트한다.
  *
  * PNG 쪽 상태(ratio·exporting·cardRef·handleExport)는 2026-09-20(개선
  * 로드맵 §6.2)부터 이 컴포넌트가 직접 갖지 않고 `useCardExport`를 호출한
  * `EditorPage`에서 props로 받는다 — 모바일 하단 시트(BottomActionBar)도
  * 같은 캡처 대상을 트리거해야 하는데, `ShareCard`(아래)는 두 번 마운트하면
- * 안 되므로 한 곳(여기)에만 마운트하고 상태만 공유한다. GIF는 로드맵
- * 범위가 PNG만이라 이 컴포넌트에 로컬로 남겨뒀다. 3국면 카드(`multiPhase*`
- * props)도 같은 이유로 `EditorPage`의 `useMultiPhaseExport`에서 내려받는다.
+ * 안 되므로 한 곳(여기)에만 마운트하고 상태만 공유한다. 움직이는 카드는
+ * 로드맵 범위가 PNG만이라 이 컴포넌트에 로컬로 남겨뒀다. 3국면 카드
+ * (`multiPhase*` props)도 같은 이유로 `EditorPage`의 `useMultiPhaseExport`에서
+ * 내려받는다.
  */
 export function ExportControls({
   analysis,
@@ -95,15 +103,15 @@ export function ExportControls({
     setGifRunning(true)
   }
 
-  const handleGifDone = (blob: Blob) => {
-    downloadBlob(blob, `tacticore_${Date.now()}.gif`)
+  const handleGifDone = (blob: Blob, extension: string) => {
+    downloadBlob(blob, `tacticore_${Date.now()}.${extension}`)
     setGifRunning(false)
     setExportingGif(false)
   }
 
   const handleGifError = (err: unknown) => {
-    console.error('GIF 내보내기 실패', err)
-    setGifError(err instanceof Error ? err.message : 'GIF 내보내기에 실패했습니다.')
+    console.error('움직이는 카드 내보내기 실패', err)
+    setGifError(err instanceof Error ? err.message : '움직이는 카드 내보내기에 실패했습니다.')
     setGifRunning(false)
     setExportingGif(false)
   }
@@ -178,12 +186,12 @@ export function ExportControls({
         <Dialog open={gifDialogOpen} onOpenChange={setGifDialogOpen}>
           <DialogTrigger asChild>
             <Button size="sm" variant="outline" disabled={exportingGif}>
-              {exportingGif ? 'GIF 만드는 중…' : 'GIF 내보내기'}
+              {exportingGif ? '만드는 중…' : '움직이는 카드 내보내기'}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-sm">
             <DialogHeader>
-              <DialogTitle>GIF로 내보내기</DialogTitle>
+              <DialogTitle>움직이는 카드로 내보내기</DialogTitle>
             </DialogHeader>
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-2">
@@ -225,7 +233,7 @@ export function ExportControls({
             </div>
             <DialogFooter>
               <Button onClick={handleGifExport} disabled={exportingGif}>
-                GIF 생성
+                만들기
               </Button>
             </DialogFooter>
           </DialogContent>
