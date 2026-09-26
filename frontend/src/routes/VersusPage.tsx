@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
+import { BottleneckInfo, ChannelGridInfo, CompactnessInfo, OverloadInfo, PressingLineInfo } from '@/components/common/MetricInfoButtons'
 import { VersusShareCard } from '@/components/export/VersusShareCard'
 import { MatchupView } from '@/components/versus/MatchupView'
 import { Button } from '@/components/ui/button'
@@ -217,13 +218,13 @@ export function VersusPage() {
       <div className="flex flex-wrap gap-2">
         {(
           [
-            { key: 'channelGrid', label: '5채널', on: showChannelGrid, set: setShowChannelGrid, disabled: false },
-            { key: 'overload', label: '오버로드', on: showOverload, set: setShowOverload, disabled: false },
+            { key: 'channelGrid', label: '5채널', on: showChannelGrid, set: setShowChannelGrid, disabled: false, info: ChannelGridInfo },
+            { key: 'overload', label: '오버로드', on: showOverload, set: setShowOverload, disabled: false, info: OverloadInfo },
             // 피치 위 "N:M" 숫자만 끄는 토글(TO-DO 50-2, "피치 내부 시각적
             // 복잡도" 피드백) — 오버로드 레이어 자체가 꺼져 있으면 무의미하니
             // 그때는 비활성화한다. 호버 방식 대신 토글을 고른 이유는
             // CLAUDE.md에 남은 실기기(iOS Safari/Android Chrome) 미검증
-            // 메모 — 터치 기기엔 hover가 없다.
+            // 메모 — 터치 기기엔 hover가 없다. (오버로드 설명에 이미 포함되므로 별도 info 없음.)
             {
               key: 'zoneNumbers',
               label: '구역 수치',
@@ -241,26 +242,43 @@ export function VersusPage() {
               on: showBottleneck,
               set: setShowBottleneck,
               disabled: !showOverload,
+              info: BottleneckInfo,
             },
-            { key: 'pressingLine', label: '압박 라인(수비 팀)', on: showPressingLine, set: setShowPressingLine, disabled: false },
+            {
+              key: 'pressingLine',
+              label: '압박 라인(수비 팀)',
+              on: showPressingLine,
+              set: setShowPressingLine,
+              disabled: false,
+              info: PressingLineInfo,
+            },
             { key: 'annotations', label: '이동 벡터', on: showAnnotations, set: setShowAnnotations, disabled: false },
             // 팀 폭/깊이 정면 비교(통계 기능 백로그 4번) — showOverload와
             // 무관하다(15구역 집계가 아니라 좌표 bounding box라서), 그래서
             // 위 "밀집 구역"과 달리 disabled 조건이 없다.
-            { key: 'compactness', label: '폭/깊이 비교', on: showCompactness, set: setShowCompactness, disabled: false },
+            {
+              key: 'compactness',
+              label: '폭/깊이 비교',
+              on: showCompactness,
+              set: setShowCompactness,
+              disabled: false,
+              info: CompactnessInfo,
+            },
           ] as const
         ).map((chip) => (
-          <button
-            key={chip.key}
-            type="button"
-            disabled={chip.disabled}
-            onClick={() => chip.set((v) => !v)}
-            className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-40 ${
-              chip.on ? 'bg-accent text-accent-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {chip.label}
-          </button>
+          <span key={chip.key} className="inline-flex items-center gap-1">
+            <button
+              type="button"
+              disabled={chip.disabled}
+              onClick={() => chip.set((v) => !v)}
+              className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-40 ${
+                chip.on ? 'bg-accent text-accent-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {chip.label}
+            </button>
+            {'info' in chip && chip.info && <chip.info />}
+          </span>
         ))}
       </div>
 
