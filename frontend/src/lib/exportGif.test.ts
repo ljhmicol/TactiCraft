@@ -137,11 +137,25 @@ describe('buildGifFrameSpecs — run 화살표 재생(2026-09-26, "PNG/GIF에서
     expect(baseHold).toHaveLength(1)
   })
 
-  it('run 화살표가 있으면 그 국면의 프레임 수가 늘어난다(2번 왕복 + 마지막 정지)', () => {
+  it('run 화살표가 있으면 그 국면의 프레임 수가 늘어난다(왕복 + 마지막 정지)', () => {
     const withRun = analysisWithRun().analysis
     const plain = createEmptyAnalysis('4-3-3', withRun.match)
     const attackFramesWithRun = buildGifFrameSpecs(withRun).filter((f) => f.phase === 'attack').length
     const attackFramesPlain = buildGifFrameSpecs(plain).filter((f) => f.phase === 'attack').length
     expect(attackFramesWithRun).toBeGreaterThan(attackFramesPlain)
+  })
+
+  it('역재생으로 매끄럽게 돌아온다 — 순간 리셋(큰 점프)이 없다(2026-09-26, "재생이 뚝뚝 끊긴다" 피드백)', () => {
+    const { analysis, runnerId } = analysisWithRun()
+    const frames = buildGifFrameSpecs(analysis).filter((f) => f.phase === 'attack')
+    const runnerXs = frames.map((f) => f.positions.find((p) => p.playerId === runnerId)!.x)
+
+    // 화살표 전체 길이(20)의 절반을 한 프레임에 넘는 변화는 없어야 한다 —
+    // 예전엔 도착점(x+20)에서 시작점(x)으로 프레임 하나에 훅 튀는 순간
+    // 리셋이 있었다. 이징 곡선이 가장 가파른 중간 구간을 감안해 넉넉히
+    // 잡되, 화살표 전체 길이를 통째로 건너뛰는 점프는 확실히 잡아낸다.
+    for (let i = 1; i < runnerXs.length; i++) {
+      expect(Math.abs(runnerXs[i] - runnerXs[i - 1])).toBeLessThan(10)
+    }
   })
 })

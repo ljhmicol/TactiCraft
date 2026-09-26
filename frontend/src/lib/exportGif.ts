@@ -16,14 +16,16 @@ const HOLD_MS = 1100 // 정지 국면을 보여주는 시간
 // 없게 한다.
 const RUN_LOOP_DURATION_MS = RUN_LOOP_DURATION * 1000
 const RUN_LOOP_DELAY_MS = RUN_LOOP_DELAY * 1000
-// 2026-09-26, "잘됐는데 좀 렉걸린다" 피드백으로 4/2에서 낮췄다 — 프레임마다
-// 실제 DOM 캡처(toCanvas)가 걸리는 시간이 더해지므로, run 화살표가 매칭된
-// 국면마다 프레임이 배로 늘면 내보내기 자체가 눈에 띄게 느려진다. GIF는
-// 전체가 무한 반복 재생되므로(encodeGif의 repeat:0) 한 국면에 머무는 동안
-// 왕복을 1번만 보여줘도 "계속 왔다갔다"하는 느낌은 유지된다.
-const RUN_STEPS = 4 // 전진 구간을 몇 프레임으로 쪼갤지
-const RUN_LOOP_CYCLES = 1 // 국면 하나에 머무는 동안 몇 번 왕복할지
-const RUN_SNAP_MS = 40 // 역재생 없이 순간 리셋된 프레임의 노출 시간(GIF 프레임 최소 단위 근처)
+// 2026-09-26, "잘됐는데 좀 렉걸린다"(→ 알고보니 완성된 GIF 재생이 뚝뚝
+// 끊긴다는 뜻이었다) 피드백 — 편집 화면(PlayerNode)은 전진 후 "역재생 없이
+// 순간 리셋"하지만(PlayerNode.tsx 주석 참조 — 그 화면에서는 의도된 설계다),
+// 그 순간 리셋을 GIF 프레임으로 그대로 찍으면 반복마다 화면이 뚝 끊기는
+// 순간이동처럼 보인다. 라이브 화면과 달리 GIF는 주변 맥락 없이 그 장면만
+// 계속 도는 독립된 결과물이라, 여기서는 같은 경로를 매끄럽게 되돌아오는
+// 역재생으로 다르게 구현한다 — 편집 화면 자체의 동작은 그대로 둔다.
+const RUN_STEPS = 8 // 전진(및 복귀) 구간을 몇 프레임으로 쪼갤지
+const RUN_LOOP_CYCLES = 1 // 국면 하나에 머무는 동안 왕복을 몇 번 반복할지(GIF가 어차피 전체 반복되므로 1번으로 충분)
+const RUN_SNAP_MS = 40 // 역재생이 정확히 원점까지 못 미친 나머지를 마저 닫는 마지막 프레임의 노출 시간
 
 export interface GifFrameSpec {
   phase: PhaseType
@@ -91,12 +93,12 @@ function pointAlongPath(points: Point[], times: number[], t: number): Point {
 
 /**
  * run 화살표가 있는 선수를 그 화살표를 따라 전진→도착점에서 잠깐 머묾→
- * 역재생 없이 순간 리셋시키는 프레임들을 만든다(2026-09-26, "PNG/GIF에서도
- * 화살표대로 움직이면 좋겠다") — 편집 화면(PlayerNode)의 무한 반복 애니메이션과
- * 같은 리듬(RUN_LOOP_DURATION_MS/RUN_LOOP_DELAY_MS)을 RUN_LOOP_CYCLES번
- * 반복해 "계속 왔다갔다" 하는 느낌을 준다. 매칭되는 선수가 없으면(대부분의
- * 국면) 원래 정지 프레임 하나만 돌려준다 — 이때 positions는 원본 배열
- * 참조를 그대로 유지한다(exportGif.test.ts가 이 동일성을 검사한다).
+ * 같은 경로로 매끄럽게 되돌아오는 프레임들을 만든다(2026-09-26, "PNG/GIF
+ * 에서도 화살표대로 움직이면 좋겠다", 이어서 "재생이 뚝뚝 끊긴다" 피드백으로
+ * 순간 리셋 대신 역재생으로 수정) — RUN_LOOP_CYCLES번 반복해 "계속
+ * 왔다갔다" 하는 느낌을 준다. 매칭되는 선수가 없으면(대부분의 국면) 원래
+ * 정지 프레임 하나만 돌려준다 — 이때 positions는 원본 배열 참조를 그대로
+ * 유지한다(exportGif.test.ts가 이 동일성을 검사한다).
  */
 function buildHoldFrames(
   phase: PhaseType,
@@ -119,11 +121,18 @@ function buildHoldFrames(
   const frames: GifFrameSpec[] = []
   const stepMs = RUN_LOOP_DURATION_MS / RUN_STEPS
   for (let cycle = 0; cycle < RUN_LOOP_CYCLES; cycle++) {
-    frames.push({ phase, positions, delayMs: RUN_SNAP_MS }) // 시작점으로 순간 리셋된 프레임
+    // 전진: 시작점(positions)에서 도착점까지.
     for (let step = 1; step <= RUN_STEPS; step++) {
       frames.push({ phase, positions: atProgress(easeInOutCubic(step / RUN_STEPS)), delayMs: Math.round(stepMs) })
     }
     frames.push({ phase, positions: atProgress(1), delayMs: RUN_LOOP_DELAY_MS }) // 도착점에서 머묾
+    // 복귀: 같은 이징 곡선을 거꾸로 밟아 매끄럽게 되돌아온다(전진과 대칭이라
+    // "왕복"으로 자연스럽게 보인다) — step=1(t≈0에 가깝지만 정확히 0은 아님)
+    // 까지만 밟고, 정확한 시작점은 아래 마지막 프레임이 마저 채운다.
+    for (let step = RUN_STEPS - 1; step >= 1; step--) {
+      frames.push({ phase, positions: atProgress(easeInOutCubic(step / RUN_STEPS)), delayMs: Math.round(stepMs) })
+    }
+    frames.push({ phase, positions, delayMs: RUN_SNAP_MS }) // 정확히 시작점에서 짧게 머문 뒤 다음 왕복(또는 국면 전환)으로
   }
   frames.push({ phase, positions, delayMs: holdMs }) // 다음 국면 전환은 원래 위치에서 시작해야 한다
   return frames
