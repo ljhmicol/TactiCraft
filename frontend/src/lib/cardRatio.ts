@@ -32,3 +32,15 @@ export const BODY_BOX_HEIGHT_BY_RATIO: Record<CardRatio, { withBench: number; no
   '4:5': { withBench: 220, noBench: 270 },
   '9:16': { withBench: 320, noBench: 400 },
 }
+
+/**
+ * width 기준으로 축척한 카드 높이(2026-09-26, "GIF도 비율 설정할 수 있으면
+ * 좋겠어" 요청) — PNG(width=CARD_WIDTH=1080)뿐 아니라 GIF처럼 더 작은
+ * 고정 폭(AnimatedShareCard의 GIF_CARD_SIZE=720)에도 같은 비율을 쓰려면
+ * 폭에 비례해 높이를 다시 계산해야 한다. width가 CARD_WIDTH와 같으면
+ * CARD_HEIGHT_BY_RATIO[ratio]와 정확히 같은 값을 돌려준다(기존 PNG 동작과
+ * 100% 호환).
+ */
+export function scaledCardHeight(ratio: CardRatio, width: number): number {
+  return Math.round((CARD_HEIGHT_BY_RATIO[ratio] / CARD_WIDTH) * width)
+}

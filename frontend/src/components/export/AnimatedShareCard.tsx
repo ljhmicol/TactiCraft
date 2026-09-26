@@ -8,6 +8,7 @@ import { OverloadLayer } from '@/components/pitch/OverloadLayer'
 import { Pitch } from '@/components/pitch/Pitch'
 import { PressingLine } from '@/components/pitch/PressingLine'
 import { PrintPlayerNode } from '@/components/pitch/PrintPlayerNode'
+import { BODY_BOX_HEIGHT_BY_RATIO, PITCH_MIN_HEIGHT_BY_RATIO, scaledCardHeight, type CardRatio } from '@/lib/cardRatio'
 import type { GifFrameSpec } from '@/lib/exportGif'
 import { SHARE_CARD_COLORS } from '@/lib/theme'
 import { useAnalysisStore } from '@/store/analysisStore'
@@ -48,6 +49,7 @@ function useFitFontSize(text: string, boxHeight: number, maxSize: number, minSiz
 interface AnimatedShareCardProps {
   analysis: Analysis
   frame: GifFrameSpec
+  ratio: CardRatio
 }
 
 /**
@@ -62,9 +64,14 @@ interface AnimatedShareCardProps {
  * PlayerNode 대신 PrintPlayerNode를 쓴다 — Framer Motion 애니메이션이나
  * 활성 분석 스토어 결합 없이, 주어진 좌표를 그 순간 그대로 정지 이미지로
  * 찍어야 프레임마다 캡처가 흔들리지 않는다.
+ *
+ * ratio(2026-09-26, "GIF도 비율 설정할 수 있으면 좋겠어") — ShareCard(PNG)와
+ * 같은 비율 테이블(lib/cardRatio.ts)을 GIF_CARD_SIZE 폭 기준으로 다시
+ * 축척해 쓴다(scaledCardHeight) — PNG는 1080폭 기준값을 그대로 쓰고 GIF는
+ * 720폭 기준으로 비례 축소된 값을 쓸 뿐, 같은 비율(1:1/4:5/9:16)이 나온다.
  */
 export const AnimatedShareCard = forwardRef<HTMLDivElement, AnimatedShareCardProps>(function AnimatedShareCard(
-  { analysis, frame },
+  { analysis, frame, ratio },
   ref,
 ) {
   const layers = useAnalysisStore((s) => s.layers)
@@ -73,8 +80,10 @@ export const AnimatedShareCard = forwardRef<HTMLDivElement, AnimatedShareCardPro
   const bench = analysis.players.filter((p) => !phaseData.positions.some((pos) => pos.playerId === p.id))
   const rawBodyText = frame.phase === 'base' ? analysis.summary : phaseData.comment
   const bodyText = rawBodyText.length > 500 ? `${rawBodyText.slice(0, 499).trimEnd()}…` : rawBodyText
-  // ShareCard(1:1)의 170/210을 그대로 SCALE만큼 축소 — 임의로 다시 정하지 않는다.
-  const bodyBoxHeight = Math.round((bench.length > 0 ? 170 : 210) * SCALE)
+  const cardHeight = scaledCardHeight(ratio, GIF_CARD_SIZE)
+  const pitchMinHeight = Math.round(PITCH_MIN_HEIGHT_BY_RATIO[ratio] * SCALE)
+  // ShareCard(PNG)의 BODY_BOX_HEIGHT_BY_RATIO를 그대로 SCALE만큼 축소 — 임의로 다시 정하지 않는다.
+  const bodyBoxHeight = Math.round(BODY_BOX_HEIGHT_BY_RATIO[ratio][bench.length > 0 ? 'withBench' : 'noBench'] * SCALE)
   const { ref: bodyRef, fontSize: bodyFontSize } = useFitFontSize(
     bodyText,
     bodyBoxHeight,
@@ -97,7 +106,7 @@ export const AnimatedShareCard = forwardRef<HTMLDivElement, AnimatedShareCardPro
         ref={ref}
         style={{
           width: GIF_CARD_SIZE,
-          height: GIF_CARD_SIZE,
+          height: cardHeight,
           background: SHARE_CARD_COLORS.background,
           padding: Math.round(64 * SCALE),
           display: 'flex',
@@ -134,8 +143,12 @@ export const AnimatedShareCard = forwardRef<HTMLDivElement, AnimatedShareCardPro
           </div>
         </div>
 
-        <div style={{ flex: 1, minHeight: Math.round(380 * SCALE), display: 'flex', justifyContent: 'center' }}>
-          <div style={{ height: '100%' }}>
+        <div style={{ flex: 1, minHeight: pitchMinHeight, display: 'flex', justifyContent: 'center' }}>
+          {/* ShareCard.tsx의 같은 div와 완전히 같은 이유(iOS WebKit 오프스크린
+              렌더링에서 순환 크기 참조가 0으로 풀리는 문제, "검은 화면" 리포트) —
+              이 카드도 이제 비율마다 높이가 달라져(GIF_CARD_SIZE 고정폭 대신)
+              똑같은 위험에 노출된다. width:auto+aspectRatio로 고정한다. */}
+          <div style={{ height: '100%', width: 'auto', aspectRatio: '68 / 105', flex: 'none' }}>
             <Pitch>
               {layers.channelGrid && <ChannelGrid halfSpaces={layers.halfSpaces} />}
               {layers.compactness && <CompactnessBox positions={phaseData.positions} />}

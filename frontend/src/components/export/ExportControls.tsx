@@ -35,10 +35,10 @@ function downloadBlob(blob: Blob, filename: string) {
 }
 
 /**
- * PNG·GIF 카드 내보내기 UI. 비율(1:1/4:5)은 PNG 전용 — GIF는 프레임을
- * 수십 장 인코딩해야 해서 1:1 정사각형 하나로 범위를 좁혔다(TO-DO 6번).
- * 하단 텍스트는 국면별로 다르다 — 기본은 종합 평가, 공격·수비는 해당
- * 국면 코멘트.
+ * PNG·GIF 카드 내보내기 UI. 비율(1:1/4:5/9:16)은 PNG·GIF 공용 — 같은
+ * `ratio` 상태를 공유해서(2026-09-26, "GIF도 비율 설정할 수 있으면
+ * 좋겠어") 한 번 고르면 PNG와 GIF 둘 다에 적용된다. 하단 텍스트는 국면별로
+ * 다르다 — 기본은 종합 평가, 공격·수비는 해당 국면 코멘트.
  *
  * PNG 내보내기는 "범위" 선택이 있다(2026-09-23) — 처음엔 "3국면 한번에
  * PNG"를 별도 버튼으로 뒀는데, 버튼이 하나 더 느는 것보다 기존 PNG
@@ -85,9 +85,11 @@ export function ExportControls({
   const [gifRunning, setGifRunning] = useState(false)
   const [gifError, setGifError] = useState<string | null>(null)
   const [pngDialogOpen, setPngDialogOpen] = useState(false)
+  const [gifDialogOpen, setGifDialogOpen] = useState(false)
   const [scope, setScope] = useState<'current' | 'all'>('current')
 
   const handleGifExport = () => {
+    setGifDialogOpen(false)
     setGifError(null)
     setExportingGif(true)
     setGifRunning(true)
@@ -173,15 +175,42 @@ export function ExportControls({
           </DialogContent>
         </Dialog>
 
-        <Button size="sm" variant="outline" onClick={handleGifExport} disabled={exportingGif}>
-          {exportingGif ? 'GIF 만드는 중…' : 'GIF 내보내기'}
-        </Button>
+        <Dialog open={gifDialogOpen} onOpenChange={setGifDialogOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" variant="outline" disabled={exportingGif}>
+              {exportingGif ? 'GIF 만드는 중…' : 'GIF 내보내기'}
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle>GIF로 내보내기</DialogTitle>
+            </DialogHeader>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">비율</span>
+              <Select value={ratio} onValueChange={(v) => setRatio(v as CardRatio)}>
+                <SelectTrigger className="w-20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1:1">1:1</SelectItem>
+                  <SelectItem value="4:5">4:5</SelectItem>
+                  <SelectItem value="9:16">9:16</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button onClick={handleGifExport} disabled={exportingGif}>
+                GIF 생성
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
       {gifError && <p className="rounded-md bg-destructive/10 p-2 text-xs text-destructive">{gifError}</p>}
 
       <ShareCard ref={cardRef} analysis={analysis} phase={phase} ratio={ratio} />
       <MultiPhaseShareCard ref={multiPhaseCardRef} analysis={analysis} />
-      {gifRunning && <GifExportRunner analysis={analysis} onDone={handleGifDone} onError={handleGifError} />}
+      {gifRunning && <GifExportRunner analysis={analysis} ratio={ratio} onDone={handleGifDone} onError={handleGifError} />}
     </div>
   )
 }

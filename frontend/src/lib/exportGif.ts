@@ -16,8 +16,13 @@ const HOLD_MS = 1100 // 정지 국면을 보여주는 시간
 // 없게 한다.
 const RUN_LOOP_DURATION_MS = RUN_LOOP_DURATION * 1000
 const RUN_LOOP_DELAY_MS = RUN_LOOP_DELAY * 1000
-const RUN_STEPS = 6 // 전진 구간을 몇 프레임으로 쪼갤지
-const RUN_LOOP_CYCLES = 2 // "계속 왔다갔다" 하는 느낌을 주려고 국면 하나에 머무는 동안 두 번 반복한다
+// 2026-09-26, "잘됐는데 좀 렉걸린다" 피드백으로 4/2에서 낮췄다 — 프레임마다
+// 실제 DOM 캡처(toCanvas)가 걸리는 시간이 더해지므로, run 화살표가 매칭된
+// 국면마다 프레임이 배로 늘면 내보내기 자체가 눈에 띄게 느려진다. GIF는
+// 전체가 무한 반복 재생되므로(encodeGif의 repeat:0) 한 국면에 머무는 동안
+// 왕복을 1번만 보여줘도 "계속 왔다갔다"하는 느낌은 유지된다.
+const RUN_STEPS = 4 // 전진 구간을 몇 프레임으로 쪼갤지
+const RUN_LOOP_CYCLES = 1 // 국면 하나에 머무는 동안 몇 번 왕복할지
 const RUN_SNAP_MS = 40 // 역재생 없이 순간 리셋된 프레임의 노출 시간(GIF 프레임 최소 단위 근처)
 
 export interface GifFrameSpec {

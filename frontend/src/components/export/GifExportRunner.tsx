@@ -2,11 +2,13 @@ import { toCanvas } from 'html-to-image'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { AnimatedShareCard, GIF_CARD_SIZE } from '@/components/export/AnimatedShareCard'
+import { scaledCardHeight, type CardRatio } from '@/lib/cardRatio'
 import { buildGifFrameSpecs, encodeGif, type CapturedFrame } from '@/lib/exportGif'
 import type { Analysis } from '@/types/analysis'
 
 interface GifExportRunnerProps {
   analysis: Analysis
+  ratio: CardRatio
   onDone: (blob: Blob) => void
   onError: (err: unknown) => void
 }
@@ -24,12 +26,13 @@ interface GifExportRunnerProps {
  * 프레임 전부를 다 캡처하면 gifenc로 인코딩해 onDone(blob)을 호출하고,
  * 그 시점부터는 이 컴포넌트를 부모(ExportControls)가 언마운트한다.
  */
-export function GifExportRunner({ analysis, onDone, onError }: GifExportRunnerProps) {
+export function GifExportRunner({ analysis, ratio, onDone, onError }: GifExportRunnerProps) {
   const ref = useRef<HTMLDivElement>(null)
   const frames = useMemo(() => buildGifFrameSpecs(analysis), [analysis])
   const capturedRef = useRef<CapturedFrame[]>([])
   const finishedRef = useRef(false)
   const [index, setIndex] = useState(0)
+  const cardHeight = scaledCardHeight(ratio, GIF_CARD_SIZE)
 
   useEffect(() => {
     if (index >= frames.length) return
@@ -56,7 +59,7 @@ export function GifExportRunner({ analysis, onDone, onError }: GifExportRunnerPr
           // CORS 에러도 없어진다.
           skipFonts: true,
           width: GIF_CARD_SIZE,
-          height: GIF_CARD_SIZE,
+          height: cardHeight,
         })
         if (cancelled) return
         capturedRef.current.push({ canvas, delayMs: frames[index].delayMs })
@@ -73,7 +76,7 @@ export function GifExportRunner({ analysis, onDone, onError }: GifExportRunnerPr
     return () => {
       cancelled = true
     }
-  }, [index, frames, onError])
+  }, [index, frames, onError, cardHeight])
 
   useEffect(() => {
     if (frames.length === 0 || index < frames.length || finishedRef.current) return
@@ -87,5 +90,5 @@ export function GifExportRunner({ analysis, onDone, onError }: GifExportRunnerPr
 
   const frame = frames[index]
   if (!frame) return null
-  return <AnimatedShareCard ref={ref} analysis={analysis} frame={frame} />
+  return <AnimatedShareCard ref={ref} analysis={analysis} frame={frame} ratio={ratio} />
 }
