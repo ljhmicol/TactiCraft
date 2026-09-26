@@ -4,11 +4,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatedShareCard, GIF_CARD_SIZE } from '@/components/export/AnimatedShareCard'
 import { scaledCardHeight, type CardRatio } from '@/lib/cardRatio'
 import { buildGifFrameSpecs, encodeGif, type CapturedFrame } from '@/lib/exportGif'
-import type { Analysis } from '@/types/analysis'
+import type { Analysis, PhaseType } from '@/types/analysis'
 
 interface GifExportRunnerProps {
   analysis: Analysis
   ratio: CardRatio
+  scope: PhaseType | 'all'
   onDone: (blob: Blob) => void
   onError: (err: unknown) => void
 }
@@ -26,9 +27,9 @@ interface GifExportRunnerProps {
  * 프레임 전부를 다 캡처하면 gifenc로 인코딩해 onDone(blob)을 호출하고,
  * 그 시점부터는 이 컴포넌트를 부모(ExportControls)가 언마운트한다.
  */
-export function GifExportRunner({ analysis, ratio, onDone, onError }: GifExportRunnerProps) {
+export function GifExportRunner({ analysis, ratio, scope, onDone, onError }: GifExportRunnerProps) {
   const ref = useRef<HTMLDivElement>(null)
-  const frames = useMemo(() => buildGifFrameSpecs(analysis), [analysis])
+  const frames = useMemo(() => buildGifFrameSpecs(analysis, scope), [analysis, scope])
   const capturedRef = useRef<CapturedFrame[]>([])
   const finishedRef = useRef(false)
   const [index, setIndex] = useState(0)

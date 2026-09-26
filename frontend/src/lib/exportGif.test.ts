@@ -91,6 +91,51 @@ describe('buildGifFrameSpecs', () => {
   })
 })
 
+describe('buildGifFrameSpecs — scope(2026-09-26, "GIF도 PNG처럼 현재 국면/3국면 한번에")', () => {
+  const analysis = createEmptyAnalysis('4-3-3', {
+    matchName: '테스트',
+    homeTeam: '홈',
+    awayTeam: '원정',
+    matchDate: '2026-09-08',
+    analyzedTeam: 'home',
+  })
+
+  it('scope를 생략하면 기존처럼 3국면 전체를 순환한다(기본값 all, 회귀 방지)', () => {
+    const frames = buildGifFrameSpecs(analysis)
+    const phaseSequence = [...new Set(frames.map((f) => f.phase))]
+    expect(phaseSequence).toEqual(['base', 'attack', 'defense'])
+  })
+
+  it('특정 국면을 넘기면 그 국면만 담고, 전환 프레임 없이 원본 positions 그대로 정지한다', () => {
+    const frames = buildGifFrameSpecs(analysis, 'attack')
+    const phaseSequence = [...new Set(frames.map((f) => f.phase))]
+    expect(phaseSequence).toEqual(['attack'])
+    expect(frames.some((f) => f.positions === analysis.phases.attack.positions)).toBe(true)
+  })
+
+  it('run 화살표가 있는 국면만 스코프로 지정해도 왕복 애니메이션이 그대로 나온다(도착점 근처를 왕복)', () => {
+    const a = createEmptyAnalysis('4-3-3', {
+      matchName: '테스트',
+      homeTeam: '홈',
+      awayTeam: '원정',
+      matchDate: '2026-09-08',
+      analyzedTeam: 'home',
+    })
+    const runner = a.phases.attack.positions[0]
+    const to = { x: runner.x + 20, y: runner.y }
+    a.phases.attack.annotations = [{ id: 'r1', type: 'run', from: { x: runner.x, y: runner.y }, to }]
+
+    // 스코프 지정 시엔 전환 프레임이 없으므로(=국면 하나뿐), 3국면 전체를
+    // 만들 때 그 국면에 해당하는 구간(전환 프레임 제외)과 완전히 같아야
+    // 한다 — buildHoldFrames를 그대로 재사용했는지 확인하는 회귀 테스트.
+    const holdOnly = buildGifFrameSpecs(a)
+      .filter((f) => f.phase === 'attack')
+      .slice(-buildGifFrameSpecs(a, 'attack').length)
+    const scopedFrames = buildGifFrameSpecs(a, 'attack')
+    expect(scopedFrames.map((f) => f.delayMs)).toEqual(holdOnly.map((f) => f.delayMs))
+  })
+})
+
 describe('buildGifFrameSpecs — run 화살표 재생(2026-09-26, "PNG/GIF에서도 화살표대로 움직이면 좋겠다")', () => {
   function analysisWithRun() {
     const a = createEmptyAnalysis('4-3-3', {

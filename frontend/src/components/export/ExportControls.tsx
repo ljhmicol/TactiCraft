@@ -185,18 +185,43 @@ export function ExportControls({
             <DialogHeader>
               <DialogTitle>GIF로 내보내기</DialogTitle>
             </DialogHeader>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">비율</span>
-              <Select value={ratio} onValueChange={(v) => setRatio(v as CardRatio)}>
-                <SelectTrigger className="w-20">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1:1">1:1</SelectItem>
-                  <SelectItem value="4:5">4:5</SelectItem>
-                  <SelectItem value="9:16">9:16</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                {(
+                  [
+                    { value: 'current' as const, label: `현재 국면 (${PHASE_LABELS[phase]})` },
+                    { value: 'all' as const, label: '3국면 한번에' },
+                  ]
+                ).map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setScope(opt.value)}
+                    className={cn(
+                      'rounded-md border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                      scope === opt.value
+                        ? 'border-primary bg-accent text-accent-foreground'
+                        : 'border-border text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">비율</span>
+                <Select value={ratio} onValueChange={(v) => setRatio(v as CardRatio)}>
+                  <SelectTrigger className="w-20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1:1">1:1</SelectItem>
+                    <SelectItem value="4:5">4:5</SelectItem>
+                    <SelectItem value="9:16">9:16</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <DialogFooter>
               <Button onClick={handleGifExport} disabled={exportingGif}>
@@ -210,7 +235,15 @@ export function ExportControls({
 
       <ShareCard ref={cardRef} analysis={analysis} phase={phase} ratio={ratio} />
       <MultiPhaseShareCard ref={multiPhaseCardRef} analysis={analysis} />
-      {gifRunning && <GifExportRunner analysis={analysis} ratio={ratio} onDone={handleGifDone} onError={handleGifError} />}
+      {gifRunning && (
+        <GifExportRunner
+          analysis={analysis}
+          ratio={ratio}
+          scope={scope === 'all' ? 'all' : phase}
+          onDone={handleGifDone}
+          onError={handleGifError}
+        />
+      )}
     </div>
   )
 }

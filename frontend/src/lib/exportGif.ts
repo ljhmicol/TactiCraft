@@ -151,8 +151,20 @@ function buildHoldFrames(
  * 즉시 바뀌고 선수 위치만 뒤따라 움직이는 것과 같은 규칙이다.
  * AnimatedShareCard가 frame.phase로 그 국면의 코멘트·상대팀·화살표를
  * 그대로 조회해서 이 규칙을 구현한다.
+ *
+ * scope(2026-09-26, "GIF도 PNG처럼 현재 국면/3국면 한번에 고를 수 있으면
+ * 좋겠어") — 기본값 'all'은 위 3국면 순환 그대로다. 특정 PhaseType을
+ * 넘기면 그 국면 하나만(전환 없이) buildHoldFrames로 왕복 애니메이션을
+ * 만들어 돌려준다 — GIF는 어차피 무한 반복 재생되므로, 그 국면에 run
+ * 화살표가 있으면 왕복이 계속되고 없으면 정지 이미지나 다름없는 짧은
+ * GIF가 된다(PNG의 "현재 국면" 내보내기와 같은 스코프 개념).
  */
-export function buildGifFrameSpecs(analysis: Analysis): GifFrameSpec[] {
+export function buildGifFrameSpecs(analysis: Analysis, scope: PhaseType | 'all' = 'all'): GifFrameSpec[] {
+  if (scope !== 'all') {
+    const phaseData = analysis.phases[scope]
+    return buildHoldFrames(scope, phaseData.positions, phaseData.annotations, HOLD_MS)
+  }
+
   const frames: GifFrameSpec[] = []
   for (let i = 0; i < PHASE_ORDER.length; i++) {
     const current = PHASE_ORDER[i]
