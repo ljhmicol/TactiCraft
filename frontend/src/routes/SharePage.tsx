@@ -14,6 +14,7 @@ import { PrintOpponentNode } from '@/components/pitch/PrintOpponentNode'
 import { SharePlayerNode } from '@/components/pitch/SharePlayerNode'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ShareGifExportRunner } from '@/components/export/ShareGifExportRunner'
 import { SharePngCard } from '@/components/export/SharePngCard'
 import { useAnalysis, useSharedAnalysis } from '@/hooks/useAnalyses'
 import { useCurrentUser } from '@/hooks/useAuth'
@@ -27,6 +28,18 @@ import type { Analysis, LayerToggles, PhaseData, PhaseType } from '@/types/analy
 
 const PHASE_LABELS: Record<PhaseType, string> = { base: '기본', attack: '공격', defense: '수비' }
 const PHASES: PhaseType[] = ['base', 'attack', 'defense']
+
+// ExportControls.tsx의 downloadBlob과 같은 이유로 문서에 붙였다 떼고, revoke를 미룬다.
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+}
 
 type ViewKey = { kind: 'phase'; phase: PhaseType } | { kind: 'cp'; id: string }
 
@@ -51,6 +64,13 @@ type ViewKey = { kind: 'phase'; phase: PhaseType } | { kind: 'cp'; id: string }
  * 방식(고정 1080px 카드를 화면 밖에 렌더링해 캡처)이지만 `useAnalysisStore`를
  * 읽지 않는 `SharePngCard`를 따로 쓴다 — 레이어 토글을 이 페이지의 로컬
  * state로 props를 통해 넘긴다.
+ *
+ * GIF 다운로드(2026-09-26, "공유링크에서는 GIF가 없나?")도 같은 이유로
+ * 에디터의 `GifExportRunner`/`AnimatedShareCard`를 그대로 못 쓰고
+ * `ShareGifExportRunner`/`AnimatedSharePngCard`를 따로 쓴다 — 3국면
+ * 한번에(scope 고정)·비율 선택만 제공하며, 에디터처럼 범위(현재 국면/3국면)를
+ * 고르는 UI는 없다("간단하게만 추가" 선택, 개별 국면/체인징 포인트 GIF는
+ * 범위 밖).
  *
  * 댓글(TO-DO 12번)도 여기 붙는다 — "공유된 분석에 의견"이라는 항목 설명과
  * 맞는 자리이자, EditorPage(자기 분석 편집)에 더 끼워 넣기엔 이미 레이아웃이
@@ -106,6 +126,8 @@ function ShareView({
   })
   const [ratio, setRatio] = useState<CardRatio>('1:1')
   const [exporting, setExporting] = useState(false)
+  const [gifRunning, setGifRunning] = useState(false)
+  const [exportingGif, setExportingGif] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
 
   if (isLoading) return <div className="p-6 text-muted-foreground">불러오는 중…</div>
@@ -137,6 +159,25 @@ function ShareView({
     } finally {
       setExporting(false)
     }
+  }
+
+  const handleGifExport = () => {
+    setExportingGif(true)
+    setGifRunning(true)
+  }
+
+  const handleGifDone = (blob: Blob) => {
+    downloadBlob(blob, `tacticore_${Date.now()}.gif`)
+    toast({ description: `GIF 생성 완료 (${Math.round(blob.size / 1024)}KB)` })
+    setGifRunning(false)
+    setExportingGif(false)
+  }
+
+  const handleGifError = (err: unknown) => {
+    const detail = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
+    toast({ variant: 'destructive', description: `GIF 내보내기에 실패했습니다. ${detail}` })
+    setGifRunning(false)
+    setExportingGif(false)
   }
 
   const handleLikeClick = () => {
@@ -177,6 +218,9 @@ function ShareView({
           <Button size="sm" onClick={handleExport} disabled={exporting}>
             {exporting ? '내보내는 중…' : 'PNG 다운로드'}
           </Button>
+          <Button size="sm" variant="outline" onClick={handleGifExport} disabled={exportingGif}>
+            {exportingGif ? 'GIF 만드는 중…' : 'GIF 다운로드'}
+          </Button>
         </div>
       </div>
 
@@ -190,6 +234,15 @@ function ShareView({
         layers={layers}
         ratio={ratio}
       />
+      {gifRunning && (
+        <ShareGifExportRunner
+          analysis={analysis}
+          ratio={ratio}
+          layers={layers}
+          onDone={handleGifDone}
+          onError={handleGifError}
+        />
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="inline-flex rounded-lg border border-border bg-muted p-1">
