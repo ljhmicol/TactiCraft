@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 import { useAnalyticsSummary } from '@/hooks/useAnalytics'
 import { useCurrentUser } from '@/hooks/useAuth'
-import type { DailyViewStat } from '@/lib/api'
+import type { DailyViewStat, RecentUserView } from '@/lib/api'
 
 /** 막대 하나 — 끝(위쪽)만 둥글게 깎는다(마크 스펙: "베이스라인에 붙는
  * 4px 둥근 끝"). 아래쪽은 베이스라인에 그대로 닿아야 하므로 각지게 둔다. */
@@ -90,6 +90,38 @@ function DailyViewsChart({ data }: { data: DailyViewStat[] }) {
   )
 }
 
+/** "누가 조회했는지 알 수 없냐"는 후속 질문(2026-09-26)의 답 — 로그인 상태의
+ * 조회만 여기 뜬다. 비로그인 방문자는 애초에 신원을 알 방법이 없다(위
+ * 안내 문구 참조). */
+function RecentUserViewsTable({ views }: { views: RecentUserView[] }) {
+  if (views.length === 0) {
+    return <p className="text-sm text-muted-foreground">아직 로그인 상태로 조회한 기록이 없습니다.</p>
+  }
+  return (
+    <table className="w-full text-sm">
+      <thead>
+        <tr className="border-b border-border text-left text-xs text-muted-foreground">
+          <th className="py-1 font-normal">사용자</th>
+          <th className="py-1 font-normal">경로</th>
+          <th className="py-1 font-normal text-right">시각</th>
+        </tr>
+      </thead>
+      <tbody>
+        {views.map((v, i) => (
+          // 같은 사용자가 같은 분에 여러 경로를 봤을 수 있어 (username, path,
+          // createdAt) 조합만으로는 유일하지 않다 — 서버가 시각 내림차순으로
+          // 이미 정렬해 주므로 배열 인덱스를 키로 써도 순서가 흔들리지 않는다.
+          <tr key={i} className="border-b border-border/50">
+            <td className="py-1.5 text-foreground">{v.username}</td>
+            <td className="py-1.5 text-muted-foreground">{v.path}</td>
+            <td className="py-1.5 text-right text-muted-foreground">{v.createdAt.replace('T', ' ')}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
 function StatTile({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex-1 rounded-md border border-border p-3">
@@ -160,6 +192,11 @@ export function AdminAnalyticsPage() {
             </tbody>
           </table>
         )}
+      </div>
+
+      <div>
+        <h2 className="mb-2 text-sm font-medium text-foreground">최근 로그인 사용자 방문</h2>
+        <RecentUserViewsTable views={data.recentUserViews} />
       </div>
     </div>
   )

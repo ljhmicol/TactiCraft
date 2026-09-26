@@ -334,12 +334,23 @@ export interface TopPathStat {
   views: number
 }
 
+/** "누가 조회했는지 알 수 없냐"는 후속 질문(2026-09-26)의 답 — 로그인 상태의
+ * 조회만 여기 나타난다. 비로그인 방문자는 IP·기기 정보를 아예 저장하지
+ * 않으므로 신원을 알아낼 방법 자체가 없다(설계상 의도, routers/analytics.py
+ * 참조). */
+export interface RecentUserView {
+  username: string
+  path: string
+  createdAt: string
+}
+
 export interface AnalyticsSummary {
   totalViews: number
   uniqueVisitors: number
   todayViews: number
   dailyViews: DailyViewStat[]
   topPaths: TopPathStat[]
+  recentUserViews: RecentUserView[]
 }
 
 /** 운영자 전용(서버가 403으로 강제) — 최근 30일 방문자 통계. */

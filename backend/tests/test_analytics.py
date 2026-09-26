@@ -55,3 +55,20 @@ def test_admin_sees_recorded_pageviews():
     assert len(body["daily_views"]) == 1
     assert body["daily_views"][0]["views"] == 3
     assert body["daily_views"][0]["unique_visitors"] == 2
+
+
+def test_logged_in_pageviews_show_username_but_anonymous_ones_dont():
+    logged_in = TestClient(main.app)
+    register_user(logged_in, email="viewer@t.com", username="열람자")
+    logged_in.post("/api/analytics/pageview", json={"path": "/profile"})
+
+    anonymous = TestClient(main.app)
+    anonymous.post("/api/analytics/pageview", json={"path": "/"})
+
+    admin = _admin_client()
+    res = admin.get("/api/admin/analytics")
+    assert res.status_code == 200, res.text
+    recent = res.json()["recent_user_views"]
+    assert len(recent) == 1
+    assert recent[0]["username"] == "열람자"
+    assert recent[0]["path"] == "/profile"

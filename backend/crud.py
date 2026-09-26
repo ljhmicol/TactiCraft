@@ -784,10 +784,31 @@ def get_analytics_summary(db: Session, days: int = 30) -> dict:
         for p, c in sorted(path_counts.items(), key=lambda kv: kv[1], reverse=True)[:10]
     ]
 
+    # 로그인 상태의 조회는 PageView.user_id로 이미 남아 있다 — "누가
+    # 조회했는지 알 수 없냐"는 후속 질문(2026-09-26)에 그 기록을 그대로
+    # 보여준다. 비로그인 방문자는 IP·기기 정보를 아예 저장하지 않으므로
+    # (위 문단 참조) 이 목록엔 애초에 나타나지 않는다 — 알아낼 방법이 없는
+    # 게 아니라 처음부터 안 남기기로 한 설계다.
+    recent_user_views = (
+        db.query(models.PageView, models.User)
+        .join(models.User, models.PageView.user_id == models.User.id)
+        .order_by(models.PageView.created_at.desc())
+        .limit(50)
+        .all()
+    )
+
     return {
         "total_views": len(rows),
         "unique_visitors": len({r.visitor_id for r in rows}),
         "today_views": by_day.get(today, {"views": 0})["views"],
         "daily_views": daily_views,
         "top_paths": top_paths,
+        "recent_user_views": [
+            {
+                "username": user.username or user.email.split("@")[0],
+                "path": pv.path,
+                "created_at": pv.created_at,
+            }
+            for pv, user in recent_user_views
+        ],
     }

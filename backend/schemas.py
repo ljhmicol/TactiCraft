@@ -450,9 +450,20 @@ class TopPathStat(BaseModel):
     views: int
 
 
+# "누가 조회했는지 알 수 없냐"는 후속 질문(2026-09-26)에 대한 답 — 비로그인
+# 방문자는 애초에 IP·기기 정보를 저장하지 않아 신원을 알 방법이 없지만,
+# 로그인 상태의 조회는 PageView.user_id로 이미 남아 있었다. 이 스키마는
+# 그 기록을 운영자 화면에 그대로 노출한다.
+class RecentUserView(BaseModel):
+    username: str
+    path: str
+    created_at: str
+
+
 class AnalyticsSummaryOut(BaseModel):
     total_views: int
     unique_visitors: int  # 조회 기간(daily_views가 덮는 기간) 내 순 방문자
     today_views: int
     daily_views: List[DailyViewStat]
     top_paths: List[TopPathStat]
+    recent_user_views: List[RecentUserView]
