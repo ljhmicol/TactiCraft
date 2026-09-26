@@ -212,6 +212,14 @@ class AnalysisOut(AnalysisIn):
     # liked_by_me는 CommunityAnalysisOut과 같은 이유로 비로그인 시 항상 False.
     like_count: int = 0
     liked_by_me: bool = False
+    # 커뮤니티 리믹스(개선 로드맵 §7.3) — allow_remix는 소유자만 바꿀 수 있지만
+    # (전용 PATCH, 아래 AnalysisRemixSettingsIn) 값 자체는 누구에게나 보인다
+    # (버튼을 보여줄지 판단해야 하므로). remixed_from_*는 "이 분석 자체가
+    # 리믹스로 만들어졌는지"의 출처 표시 — 원본이 아니라면 전부 None이다.
+    allow_remix: bool = True
+    remixed_from_id: Optional[int] = None
+    remixed_from_author: Optional[str] = None
+    remixed_at: Optional[str] = None
 
 
 class AnalysisSummary(BaseModel):
@@ -239,6 +247,13 @@ class AnalysisVisibilityIn(BaseModel):
     놀람을 줄 수 있어서다)."""
 
     visibility: Visibility
+
+
+class AnalysisRemixSettingsIn(BaseModel):
+    """리믹스 허용 여부 변경(개선 로드맵 §7.3) — AnalysisVisibilityIn과 같은
+    이유로 전용 엔드포인트를 쓴다."""
+
+    allow_remix: bool
 
 
 class CommunityAnalysisOut(BaseModel):

@@ -24,6 +24,7 @@ import { SaveRosterTemplateButton } from '@/components/editor/SaveRosterTemplate
 import { ShareLinkButton } from '@/components/editor/ShareLinkButton'
 import { ToolPalette } from '@/components/editor/ToolPalette'
 import { UndoRedoButtons } from '@/components/editor/UndoRedoButtons'
+import { AllowRemixToggle } from '@/components/editor/AllowRemixToggle'
 import { VisibilitySelect } from '@/components/editor/VisibilitySelect'
 import { ExportControls } from '@/components/export/ExportControls'
 import { AnnotationLayer } from '@/components/pitch/AnnotationLayer'
@@ -204,6 +205,7 @@ export function EditorPage() {
           <SaveRosterTemplateButton analysis={analysis} />
           <ShareLinkButton analysis={analysis} />
           <VisibilitySelect analysis={analysis} />
+          <AllowRemixToggle analysis={analysis} />
           <ExportControls
             analysis={analysis}
             phase={currentPhase}

@@ -110,6 +110,14 @@ export interface Analysis {
   // 저장 페이로드에는 의미가 없다(백엔드가 무시함).
   likeCount?: number
   likedByMe?: boolean
+  // 커뮤니티 리믹스(개선 로드맵 §7.3) — allowRemix는 전용 API로만 바뀐다
+  // (setAnalysisRemixSettings), 일반 저장(PUT)은 이 필드를 건드리지 않는다.
+  // remixedFrom*은 "이 분석 자체가 리믹스로 만들어졌는지"의 출처 표시 —
+  // 원본이 아니면 전부 undefined.
+  allowRemix?: boolean
+  remixedFromId?: number | null
+  remixedFromAuthor?: string | null
+  remixedAt?: string | null
 }
 
 /** 목록 조회 전용 (좌표 없음) */

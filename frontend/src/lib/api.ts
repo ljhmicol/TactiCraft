@@ -125,6 +125,18 @@ export function setAnalysisVisibility(id: number, visibility: Visibility): Promi
   return apiFetch(`/analyses/${id}/visibility`, { method: 'PATCH', body: JSON.stringify({ visibility }) })
 }
 
+/** 리믹스 허용 여부 변경(개선 로드맵 §7.3) — setAnalysisVisibility와 같은
+ * 이유로 전용 PATCH를 쓴다. */
+export function setAnalysisRemixSettings(id: number, allowRemix: boolean): Promise<AnalysisSummary> {
+  return apiFetch(`/analyses/${id}/remix-settings`, { method: 'PATCH', body: JSON.stringify({ allowRemix }) })
+}
+
+/** 커뮤니티 리믹스(개선 로드맵 §7.3) — 로그인 필수. 자기 분석이거나, 읽을 수
+ * 없거나, 원작자가 리믹스를 꺼뒀으면 서버가 각각 400/404/403으로 거절한다. */
+export function remixAnalysis(id: number): Promise<Analysis> {
+  return apiFetch(`/analyses/${id}/remix`, { method: 'POST' })
+}
+
 /** 커뮤니티 목록(TO-DO 12번 후속) — 공개(visibility='community')로 설정된 분석만.
  * 댓글 읽기와 같은 이유로 로그인 여부와 무관하게 공개다. sort(TO-DO 41
  * 후속) — 'recent'(기본, 최신순) | 'popular'(좋아요 많은 순). */

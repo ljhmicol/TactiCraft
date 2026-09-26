@@ -58,6 +58,10 @@ _ensure_column("analyses", "share_token", "TEXT")
 _ensure_column("sessions", "expires_at", "TEXT")
 _ensure_column("sessions", "last_used_at", "TEXT")
 _ensure_column("users", "is_suspended", "BOOLEAN DEFAULT 0")
+_ensure_column("analyses", "allow_remix", "BOOLEAN NOT NULL DEFAULT 1")
+_ensure_column("analyses", "remixed_from_id", "INTEGER REFERENCES analyses(id)")
+_ensure_column("analyses", "remixed_from_author", "TEXT")
+_ensure_column("analyses", "remixed_at", "TEXT")
 
 
 def _backfill_usernames() -> None:

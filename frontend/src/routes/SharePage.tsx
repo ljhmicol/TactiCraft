@@ -1,9 +1,10 @@
 import { Heart } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 
 import { CommunityComments } from '@/components/comments/CommunityComments'
 import { ReportButton } from '@/components/common/ReportButton'
+import { RemixButton } from '@/components/common/RemixButton'
 import { AnnotationLayer } from '@/components/pitch/AnnotationLayer'
 import { ChannelGrid } from '@/components/pitch/ChannelGrid'
 import { CompactnessBox } from '@/components/pitch/CompactnessBox'
@@ -206,6 +207,23 @@ function ShareView({
             {analysis.match.matchDate}
             {analysis.match.competition ? ` · ${analysis.match.competition}` : ''}
           </p>
+          {/* 리믹스 출처 표시(개선 로드맵 §7.3, "원작자·원본 링크·복제 시점을
+           * 보존한다") — remixedFromId가 있어야만(원본이 삭제되지 않은 경우)
+           * 링크를 건다. 원본이 지워졌어도 remixedFromAuthor는 그때 스냅샷이라
+           * 계속 보인다. */}
+          {analysis.remixedFromAuthor && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {analysis.remixedFromAuthor}님의 전술을 리믹스함
+              {analysis.remixedFromId !== null && analysis.remixedFromId !== undefined && (
+                <>
+                  {' · '}
+                  <Link to={`/share/${analysis.remixedFromId}`} className="underline hover:text-foreground">
+                    원본 보기
+                  </Link>
+                </>
+              )}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Select value={ratio} onValueChange={(v) => setRatio(v as CardRatio)}>
@@ -361,31 +379,36 @@ function ShareView({
       {/* 좋아요(TO-DO 58) 위치 — 처음엔 제목 아래(상단)에 뒀다가, "좋아요를
        * 댓글 바로 위로 이동시켜줘"(2026-09-17) 요청으로 여기로 옮겼다.
        * "게시물을 다 읽고 반응한다"는 순서(먼저 전술판·코멘트를 보고,
-       * 그다음 반응 표시 → 댓글)가 소셜 피드에서 더 흔한 배치라는 판단. */}
-      <button
-        type="button"
-        onClick={handleLikeClick}
-        disabled={toggleLike.isPending}
-        title={isLoggedIn ? undefined : '로그인이 필요합니다'}
-        className={cn(
-          'flex items-center gap-1.5 self-start text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none disabled:opacity-50',
-          analysis.likedByMe && 'text-rose-400 hover:text-rose-400',
-        )}
-        aria-label={analysis.likedByMe ? '좋아요 취소' : '좋아요'}
-      >
-        <Heart className={cn('h-4 w-4', analysis.likedByMe && 'fill-current')} />
-        {analysis.likeCount ?? 0}
-      </button>
+       * 그다음 반응 표시 → 댓글)가 소셜 피드에서 더 흔한 배치라는 판단.
+       * 리믹스(개선 로드맵 §7.3)도 같은 "게시물에 대한 반응" 그룹이라 옆에 둔다. */}
+      <div className="flex flex-wrap items-center gap-4 self-start">
+        <button
+          type="button"
+          onClick={handleLikeClick}
+          disabled={toggleLike.isPending}
+          title={isLoggedIn ? undefined : '로그인이 필요합니다'}
+          className={cn(
+            'flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none disabled:opacity-50',
+            analysis.likedByMe && 'text-rose-400 hover:text-rose-400',
+          )}
+          aria-label={analysis.likedByMe ? '좋아요 취소' : '좋아요'}
+        >
+          <Heart className={cn('h-4 w-4', analysis.likedByMe && 'fill-current')} />
+          {analysis.likeCount ?? 0}
+        </button>
 
-      {/* 신고(개선 로드맵 §5.5, 2026-09-20) — 좋아요 바로 옆, 같은 "게시물에
-       * 대한 반응" 그룹으로 묶었다. 소유자가 자기 글을 신고하는 것도 막지는
-       * 않는다(막을 이유가 없고, 서버도 막지 않는다). */}
-      {analysis.id !== undefined && (
-        <ReportButton
-          isLoggedIn={isLoggedIn}
-          onReport={(reason) => reportAnalysis.mutateAsync({ analysisId: analysis.id as number, reason })}
-        />
-      )}
+        <RemixButton analysis={analysis} />
+
+        {/* 신고(개선 로드맵 §5.5, 2026-09-20) — 좋아요 바로 옆, 같은 "게시물에
+         * 대한 반응" 그룹으로 묶었다. 소유자가 자기 글을 신고하는 것도 막지는
+         * 않는다(막을 이유가 없고, 서버도 막지 않는다). */}
+        {analysis.id !== undefined && (
+          <ReportButton
+            isLoggedIn={isLoggedIn}
+            onReport={(reason) => reportAnalysis.mutateAsync({ analysisId: analysis.id as number, reason })}
+          />
+        )}
+      </div>
 
       {analysis.id !== undefined && <CommunityComments analysisId={analysis.id} isOwner={Boolean(analysis.isOwner)} />}
     </div>

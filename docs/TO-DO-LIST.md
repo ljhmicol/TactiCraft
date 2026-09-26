@@ -23,6 +23,7 @@
 - [O] **73. 감독 프리셋에 타임라인(체인징 포인트) 추가** — 중 · 10개 프리셋 전부 구현 완료, 사용자 확인 전.
 - [O] **74. 전술 지표 설명(개선 로드맵 §7.5)** — 중 · 5채널·압박 라인·콤팩트니스·오버로드·병목 5개 지표 전부 구현 완료, 사용자 확인 전.
 - [O] **75. 내 팀·선수단 템플릿(개선 로드맵 §7.2)** — 중 · 저장/불러오기/삭제 구현 완료, 사용자 확인 전.
+- [O] **76. 커뮤니티 리믹스(개선 로드맵 §7.3)** — 중 · 복제·출처 표시·허용 토글 구현 완료, 사용자 확인 전.
 
 ## 항목 상세
 
@@ -62,6 +63,14 @@
 - **버그 하나 발견해 같이 고침**: 74번 작업 때 `schemas.py`를 편집하며 `AnalyticsSummaryOut`의 `recent_user_views` 필드가 실수로 그 아래 새로 추가한 `RosterTemplateSummary` 쪽으로 잘려 붙었던 것을 이번 백엔드 테스트 실행 중 발견(`ResponseValidationError`) — 두 클래스 다 원래 자리로 필드를 되돌려 수정. `python -m pytest` 전체 재통과로 확인.
 - **실배포 검증**: tacticraft.fly.dev에서 실제 저장된 분석(이정효 베스트 11, 수원삼성)을 열어 "내 팀 저장" → 이름 확인 다이얼로그 → 저장 → `/new`의 "내 팀으로 시작하기"에 "수원삼성 블루윙즈 · 선수 20명 · 2026-09-26 저장"으로 뜸 → 클릭하면 포메이션 그리드가 펼쳐짐 → 4-4-2 선택 → 에디터에 실제 선수 이름·등번호가 그 포메이션 좌표에 정확히 올라간 새 분석으로 진입하는 것까지 전 과정을 화면으로 확인.
 - **남은 일**: 없음. 사용자 본인 확인 대기 — 확인되면 `[C]`로 바꿔 `TO-DO-ARCHIVE.md`로 이동.
+
+### 76. 커뮤니티 리믹스(개선 로드맵 §7.3)
+
+- **배경**: 75번(내 팀 템플릿)까지 마친 뒤 "좋았어. 이어서 진행해줘" — 로드맵에 남은 마지막 후보였던 커뮤니티 리믹스에 착수.
+- **백엔드**: `Analysis`에 4개 컬럼 추가(`_ensure_column`으로 기존 배포 DB에도 반영) — `allow_remix`(기본 True, 원작자가 끌 수 있는 스위치), `remixed_from_id`(원본 FK, `ondelete=SET NULL` — 원본이 지워지면 링크만 끊긴다), `remixed_from_author`·`remixed_at`(리믹스 시점 스냅샷 — 원본이 지워지거나 원작자 이름이 바뀌어도 그대로 남는다). `crud.remix_analysis`가 원본 ORM 행(players/phases/positions/annotations/changing_points)을 전부 복제해 새 행을 만든다 — `upsert_analysis`(Pydantic 경유)를 재사용하지 않고 별도 함수로 뺐다(ORM 행을 Pydantic으로 왕복 변환하는 게 더 번거로움). 새 라우트 `POST /api/analyses/{id}/remix`(자기 분석 400, 못 보는 분석 404, allow_remix=False면 403, 성공하면 항상 visibility='private'로 시작) + `PATCH /api/analyses/{id}/remix-settings`(소유자만, `set_analysis_visibility`와 같은 전용 PATCH 패턴). `tests/test_remix.py` 6개(자기 리믹스 차단·비공개 차단·허용 꺼짐 차단·소유자만 설정 변경·복제 데이터 검증·원본 삭제 후 스냅샷 보존) 전부 통과.
+- **프론트**: `components/editor/AllowRemixToggle.tsx`(에디터 툴바, VisibilitySelect 옆 — "비공개"일 땐 숨김), `components/common/RemixButton.tsx`(공유 링크 `/share/:id`·`/s/:token`의 좋아요·신고 옆 — 자기 글이거나 allow_remix가 꺼져 있으면 안 보임, 성공하면 `loadAnalysis`로 에디터에 얹고 `/`로 이동), SharePage 제목 아래 리믹스 출처 표시("OO님의 전술을 리믹스함 · 원본 보기"). `useCommunity.ts`에 `useSetAnalysisRemixSettings`/`useRemixAnalysis` 추가, `analysisStore`에 `applyRemixSettings` 액션 추가(다른 메타데이터 액션들과 같은 패턴 — 되돌리기 히스토리에 안 남김).
+- **검증**: 백엔드 `pytest`(64개 전부 통과, 신규 6개 포함) / 프론트 `tsc --noEmit`(0 errors)/`eslint`(0 errors)/`npx vitest run`(235개 통과 — 이 기능은 순수 UI/API 연결이라 새 단위 테스트 없음, 프로젝트에 React 컴포넌트 테스트 관례 자체가 없어 기존 관례를 따름).
+- **남은 일**: 실배포 사이트에서 직접 확인 필요 — 공개 분석 리믹스 → 에디터 진입 → 원작자 정보·원본 링크 표시, 에디터의 리믹스 허용/금지 토글, 자기 분석·비공개 분석에서 리믹스 버튼이 안 보이는지. 확인되면 `[C]`로 바꿔 `TO-DO-ARCHIVE.md`로 이동.
 
 ## 기각 기록
 

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { fetchCommunityAnalyses, setAnalysisVisibility, toggleLike } from '@/lib/api'
+import { toast } from '@/hooks/use-toast'
+import { fetchCommunityAnalyses, remixAnalysis, setAnalysisRemixSettings, setAnalysisVisibility, toggleLike } from '@/lib/api'
 import type { Visibility } from '@/types/analysis'
 
 const COMMUNITY_KEY = ['community', 'analyses']
@@ -46,6 +47,36 @@ export function useSetAnalysisVisibility(analysisId: number) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: COMMUNITY_KEY })
       queryClient.invalidateQueries({ queryKey: ['analyses', analysisId] })
+    },
+  })
+}
+
+/** 리믹스 허용 토글(개선 로드맵 §7.3) — useSetAnalysisVisibility와 같은 이유로
+ * 이 분석의 상세 캐시만 무효화한다(커뮤니티 목록 카드엔 이 값이 안 실린다). */
+export function useSetAnalysisRemixSettings(analysisId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (allowRemix: boolean) => setAnalysisRemixSettings(analysisId, allowRemix),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['analyses', analysisId] })
+    },
+  })
+}
+
+/** 커뮤니티 리믹스(개선 로드맵 §7.3) — SharePage(/share/:id, /s/:token)의
+ * "리믹스" 버튼이 쓴다. 성공하면 내 저장 목록에 새 분석이 하나 생긴 것이므로
+ * 목록 캐시를 무효화한다 — 실제 이동은 호출부(ShareView)가 응답받은 새
+ * analysis.id로 담당한다. */
+export function useRemixAnalysis() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (analysisId: number) => remixAnalysis(analysisId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['analyses'] })
+    },
+    onError: (err) => {
+      const message = err instanceof Error ? err.message : '리믹스에 실패했습니다.'
+      toast({ variant: 'destructive', description: message })
     },
   })
 }

@@ -121,3 +121,48 @@ def delete_analysis(
     if existing.user_id != user.id:
         raise HTTPException(status_code=403, detail="본인이 저장한 분석만 삭제할 수 있습니다")
     crud.delete_analysis(db, analysis_id)
+
+
+@router.patch("/{analysis_id}/remix-settings", response_model=schemas.AnalysisSummary)
+def set_analysis_remix_settings(
+    analysis_id: int,
+    payload: schemas.AnalysisRemixSettingsIn,
+    db: Session = Depends(get_db),
+    user: models.User = Depends(auth.get_current_user),
+):
+    """리믹스 허용 여부 변경(개선 로드맵 §7.3) — set_analysis_visibility와
+    같은 이유로 이 필드 하나만 바꾸는 전용 엔드포인트를 쓴다."""
+    try:
+        existing = crud.get_analysis(db, analysis_id)
+    except crud.AnalysisNotFound:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+    if existing.user_id != user.id:
+        raise HTTPException(status_code=403, detail="본인이 저장한 분석만 설정을 바꿀 수 있습니다")
+    return crud.set_analysis_remix_settings(db, analysis_id, payload.allow_remix)
+
+
+@router.post("/{analysis_id}/remix", response_model=schemas.AnalysisOut, status_code=status.HTTP_201_CREATED)
+def remix_analysis(
+    analysis_id: int,
+    db: Session = Depends(get_db),
+    user: models.User = Depends(auth.get_current_user),
+):
+    """커뮤니티 리믹스(개선 로드맵 §7.3) — 지금 보고 있는 공개 전술을 내
+    분석으로 복제한다. 읽을 수 있는 분석만 리믹스할 수 있다(is_visible_to —
+    get_analysis와 같은 규칙), 원작자가 리믹스를 꺼뒀으면(allow_remix=False)
+    막는다. 자기 자신의 분석은 복제 저장(DuplicateButton)이 이미 있으므로
+    리믹스 대상에서 제외한다 — "출처 표시"가 의미 없는 자기 복제를 리믹스
+    이력에 남기지 않기 위해서다.
+    """
+    try:
+        source = crud.get_analysis(db, analysis_id)
+    except crud.AnalysisNotFound:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+    if source.user_id == user.id:
+        raise HTTPException(status_code=400, detail="자신의 분석은 리믹스할 수 없습니다. 복제 저장을 사용하세요.")
+    if not crud.is_visible_to(source, user.id):
+        raise HTTPException(status_code=404, detail="Analysis not found")
+    if not source.allow_remix:
+        raise HTTPException(status_code=403, detail="원작자가 리믹스를 허용하지 않았습니다")
+    row = crud.remix_analysis(db, source, requester_id=user.id)
+    return {**crud.to_analysis_dict(row), "is_owner": True, "share_token": row.share_token}

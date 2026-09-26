@@ -194,6 +194,7 @@ interface AnalysisStore {
     shareToken?: string | null
   }) => void
   applyVisibility: (visibility: Visibility) => void // 공개 범위 변경 성공 후 반영(개선 로드맵 §5.2)
+  applyRemixSettings: (allowRemix: boolean) => void // 리믹스 허용 여부 변경 성공 후 반영(개선 로드맵 §7.3)
   setPressingLineDragging: (v: boolean) => void
   undo: () => void
   redo: () => void
@@ -729,6 +730,15 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
     // 변경은 "편집"이 아니라 메타데이터 갱신이다.
     suppressHistory = true
     set({ analysis: { ...analysis, visibility } })
+    suppressHistory = false
+  },
+
+  applyRemixSettings: (allowRemix) => {
+    const { analysis } = get()
+    if (!analysis) return
+    // applyVisibility와 같은 이유로 되돌리기 히스토리에 안 남긴다.
+    suppressHistory = true
+    set({ analysis: { ...analysis, allowRemix } })
     suppressHistory = false
   },
 

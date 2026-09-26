@@ -307,6 +307,10 @@ def to_analysis_dict(row: models.Analysis) -> dict:
         "created_at": row.created_at,
         "updated_at": row.updated_at,
         "visibility": row.visibility,
+        "allow_remix": row.allow_remix,
+        "remixed_from_id": row.remixed_from_id,
+        "remixed_from_author": row.remixed_from_author,
+        "remixed_at": row.remixed_at,
     }
 
 
@@ -492,6 +496,125 @@ def set_analysis_visibility(db: Session, analysis_id: int, visibility: str) -> m
     db.commit()
     db.refresh(row)
     return row
+
+
+def set_analysis_remix_settings(db: Session, analysis_id: int, allow_remix: bool) -> models.Analysis:
+    row = _load(db, analysis_id)
+    row.allow_remix = allow_remix
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def _copy_phase(phase: models.Phase, player_map: dict[int, models.Player]) -> models.Phase:
+    """리믹스 전용 국면 복제 — `_build_phase`(schemas.PhaseIn을 받는다)와
+    입력 형태만 다를 뿐 같은 구조를 만든다. ORM 행(models.Phase)을 그대로
+    복제해야 해서 별도 함수로 뒀다."""
+    new_phase = models.Phase(
+        phase_type=phase.phase_type,
+        pressing_line_y=phase.pressing_line_y,
+        comment=phase.comment,
+    )
+    for pos in phase.positions:
+        new_phase.positions.append(
+            models.Position(
+                player=player_map[pos.player_id] if pos.player_id is not None else None,
+                side=pos.side,
+                slot=pos.slot,
+                x=pos.x,
+                y=pos.y,
+            )
+        )
+    for ann in phase.annotations:
+        new_phase.annotations.append(
+            models.Annotation(
+                client_id=ann.client_id,
+                ann_type=ann.ann_type,
+                from_x=ann.from_x,
+                from_y=ann.from_y,
+                to_x=ann.to_x,
+                to_y=ann.to_y,
+                curved=ann.curved,
+                carry=ann.carry,
+            )
+        )
+    return new_phase
+
+
+def remix_analysis(db: Session, source: models.Analysis, requester_id: int) -> models.Analysis:
+    """커뮤니티 리믹스(개선 로드맵 §7.3, "공개 전술을 내 분석으로 복제하되
+    원작자·원본 링크·복제 시점·복제 허용 여부를 보존한다"). 허용 여부·읽기
+    권한 확인은 라우터가 이미 끝냈다고 가정한다(analyses.py의 다른 쓰기
+    엔드포인트들과 같은 책임 분리).
+
+    `upsert_analysis`(schemas.AnalysisIn 경유)를 재사용하지 않는 이유 —
+    source가 이미 ORM 행이라 Pydantic 모델을 다시 만드는 왕복이 불필요하고,
+    특히 changing_points가 참조하는 phase는 반드시 방금 만든 "새" phase여야
+    하는데 그 매핑(phase_map)을 만들려면 어차피 이 함수가 필요하다.
+    """
+    now = _now()
+    author_name = "알 수 없음"
+    if source.user_id is not None:
+        author = db.get(models.User, source.user_id)
+        if author is not None:
+            author_name = author.username or author.email.split("@")[0]
+
+    new_row = models.Analysis(
+        created_at=now,
+        updated_at=now,
+        user_id=requester_id,
+        share_token=secrets.token_urlsafe(16),
+        match_name=f"{source.match_name} (리믹스)" if source.match_name else "(리믹스)",
+        home_team=source.home_team,
+        away_team=source.away_team,
+        match_date=source.match_date,
+        competition=source.competition,
+        analyzed_team=source.analyzed_team,
+        formation=source.formation,
+        summary=source.summary,
+        tags=list(source.tags or []),
+        thumbnail=source.thumbnail,
+        schema_version=source.schema_version,
+        # 리믹스 직후는 항상 비공개로 시작한다(개선 로드맵 §5.2와 같은
+        # "공개는 항상 opt-in" 원칙) — 원본이 공개였다고 사본까지 자동 공개되면
+        # 놀랄 수 있다.
+        visibility="private",
+        remixed_from_id=source.id,
+        remixed_from_author=author_name,
+        remixed_at=now,
+    )
+    db.add(new_row)
+    db.flush()
+
+    player_map: dict[int, models.Player] = {}
+    for p in source.players:
+        new_player = models.Player(
+            client_id=p.client_id, name=p.name, number=p.number, role=p.role, tactical_role=p.tactical_role
+        )
+        new_row.players.append(new_player)
+        player_map[p.id] = new_player
+    db.flush()  # player PK 확보 — _copy_phase가 player.id로 player_map을 찾는다
+
+    phase_map: dict[int, models.Phase] = {}
+    for phase in source.phases:
+        new_phase = _copy_phase(phase, player_map)
+        new_row.phases.append(new_phase)
+        phase_map[phase.id] = new_phase
+    db.flush()  # phase PK 확보 — changing_points가 그 phase를 참조한다
+
+    for cp in source.changing_points:
+        new_row.changing_points.append(
+            models.ChangingPoint(
+                client_id=cp.client_id,
+                label=cp.label,
+                minute=cp.minute,
+                order_index=cp.order_index,
+                phase=phase_map[cp.phase_id],
+            )
+        )
+
+    db.commit()
+    return _load(db, new_row.id)
 
 
 def list_public_analyses(

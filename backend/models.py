@@ -126,6 +126,20 @@ class Analysis(Base):
     # secrets.token_urlsafe로 한 번 발급되고 이후 바뀌지 않는다.
     share_token = Column(String, unique=True, index=True)
 
+    # 커뮤니티 리믹스(개선 로드맵 §7.3, "공개 전술을 내 분석으로 복제") —
+    # 원작자가 끌 수 있는 허용 스위치. 기본 True(공유하는 대다수는 참고를
+    # 반긴다는 가정) — VisibilitySelect 근처에 토글 UI가 있다.
+    allow_remix = Column(Boolean, nullable=False, default=True)
+    # 리믹스로 만들어진 분석의 출처 메타데이터. 원본이 나중에 삭제되면
+    # ondelete="SET NULL"로 링크만 끊기고(remixed_from_id가 NULL이 돼
+    # "/analyses/{id}" 링크를 더 이상 못 만든다), remixed_from_author·
+    # remixed_at은 그 시점 스냅샷이라 그대로 남아 "OO님의 전술을 리믹스함"
+    # 문구는 계속 보인다 — 원작자가 나중에 계정명을 바꿔도(닉네임 변경 기능은
+    # 없지만 향후 대비) 리믹스 당시 이름을 그대로 보존한다는 의도도 있다.
+    remixed_from_id = Column(Integer, ForeignKey("analyses.id", ondelete="SET NULL"))
+    remixed_from_author = Column(String)
+    remixed_at = Column(String)
+
     players = relationship(
         "Player",
         back_populates="analysis",
