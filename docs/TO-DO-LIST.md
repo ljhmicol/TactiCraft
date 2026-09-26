@@ -49,8 +49,8 @@
 - **배경**: "전술 지표 설명이나 내팀 템플릿 리믹스는 뭐야?" 질문에 세 후보(내 팀 템플릿·커뮤니티 리믹스·전술 지표 설명)를 설명한 뒤 "뭐부터 할지 추천해줘"에 전술 지표 설명을 추천(이미 있는 `InfoDialogButton` 패턴을 재사용할 수 있어 범위가 가장 작음)했고 "진행해줘"로 착수.
 - **구현**: `components/common/MetricInfoButtons.tsx` 신설 — 5채널·하프스페이스(`ChannelGridInfo`)·압박 라인(`PressingLineInfo`)·콤팩트니스(`CompactnessInfo`)·오버로드(`OverloadInfo`)·병목(`BottleneckInfo`) 5개 설명 컴포넌트. 에디터(`LayerToggleChips.tsx`)와 전술 대결(`VersusPage.tsx`)이 같은 계산 로직(`lib/overload.ts`·`lib/compactness.ts`·`lib/zones.ts`)을 쓰므로 설명 문구도 한 곳에서 공유해 드리프트를 막았다(기존 `AdvantageBadge`/`KeyZoneCallout`가 쓰던 `InfoDialogButton` 그대로 재사용). 각 설명은 계산 근거 + "실제 경기 결과나 승률을 보장하지 않는다"는 한계를 함께 명시한다(로드맵 원문 요구사항).
 - **버튼-안-버튼 문제**: 토글 칩 자체가 `<button>`이라 그 안에 `InfoDialogButton`(역시 버튼)을 중첩할 수 없어, `<span className="flex items-center gap-1">` 형제 요소로 배치했다 — `KeyZoneCallout.tsx`가 이미 쓰던 것과 같은 패턴.
-- **검증**: `tsc --noEmit`(0 errors)/`eslint`(0 errors)/`npx vitest run`(232개 통과). **실제 브라우저 시각 확인은 못 함** — 로컬 `npm run dev`(5173)를 Bash로 띄웠는데 claude-in-chrome이 그 포트에서 완전히 다른 프로젝트("My Asset Manager", 참고 프로젝트로 추정)를 띄운 화면을 봤다(기존 메모 `shell-sandbox-vs-real-browser-network.md`와 같은 증상 — 셸이 띄운 dev 서버와 브라우저 자동화 도구가 보는 네트워크가 분리됨). 재시도 대신 사용자에게 알리고 코드 정적 검증(tsc/eslint/vitest)만으로 배포했다 — **사용자가 직접 배포된 사이트에서 각 레이어 칩 옆 ⓘ 버튼을 눌러 다이얼로그가 정상적으로 뜨는지 확인 필요**.
-- **남은 일**: 위 브라우저 실측 확인. 확인되면 `[C]`로 바꿔 `TO-DO-ARCHIVE.md`로 이동.
+- **검증**: `tsc --noEmit`(0 errors)/`eslint`(0 errors)/`npx vitest run`(232개 통과). 로컬 `npm run dev`(5173)를 Bash로 띄웠는데 claude-in-chrome이 그 포트에서 완전히 다른 프로젝트("My Asset Manager", 참고 프로젝트로 추정)를 띄운 화면을 봤다(기존 메모 `shell-sandbox-vs-real-browser-network.md`와 같은 증상) — 로컬 검증은 포기하고 배포 후 **실배포 사이트(tacticraft.fly.dev)에서 직접 확인**: 에디터(과르디올라 프리셋 로드)에서 5채널/압박/콤팩/오버 4개 ⓘ 버튼 중 오버로드·콤팩트니스 두 개를 클릭해 다이얼로그가 정확한 제목·설명으로 열리는 것을 확인. `/versus`에서도 병목(밀집 구역) ⓘ를 클릭해 동일하게 확인. 5개 지표 중 2개 표본으로 정상 동작을 실측했다(나머지는 같은 컴포넌트 재사용이라 정적 검증으로 충분하다고 판단).
+- **남은 일**: 없음. 사용자 본인 확인 대기 — 확인되면 `[C]`로 바꿔 `TO-DO-ARCHIVE.md`로 이동.
 
 ## 기각 기록
 
