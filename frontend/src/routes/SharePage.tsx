@@ -65,18 +65,15 @@ type ViewKey = { kind: 'phase'; phase: PhaseType } | { kind: 'cp'; id: string }
  * 읽지 않는 `SharePngCard`를 따로 쓴다 — 레이어 토글을 이 페이지의 로컬
  * state로 props를 통해 넘긴다.
  *
- * "움직이는 카드" 다운로드(2026-09-26, "공유링크에서는 GIF가 없나?" →
- * "GIF를 선택한 타임라인 시점을 내보내고 싶던거였어" → "GIF 말고
- * 움직이는걸 보여줄 수 있는 형식이 또 뭐가있지?" → "바꿔줘")도 같은
- * 이유로 에디터의 `GifExportRunner`/`AnimatedShareCard`를 그대로 못 쓰고
+ * GIF 다운로드(2026-09-26, "공유링크에서는 GIF가 없나?" → "GIF를 선택한
+ * 타임라인 시점을 내보내고 싶던거였어")도 같은 이유로 에디터의
+ * `GifExportRunner`/`AnimatedShareCard`를 그대로 못 쓰고
  * `ShareGifExportRunner`/`AnimatedSharePngCard`를 따로 쓴다 — 에디터의
  * "3국면 한번에" 순환과 달리, 이 페이지는 범위 선택 UI 자체가 없고 지금
  * `view`가 가리키는 시점(국면 탭 또는 체인징 포인트 칩) 그대로만
  * 내보낸다 — PNG(`SharePngCard`)가 이미 그렇게 동작하는 것과 같다.
  * `allowRunLoop`는 기본 국면(체인징 포인트 미선택)에서만 false로 넘겨
- * PlayerNode.tsx의 "기본 국면은 항상 정지" 규칙을 그대로 지킨다. 인코딩은
- * `lib/exportVideo.ts`의 `encodeAnimation`이 맡는다(가능하면 mp4/webm,
- * 아니면 GIF).
+ * PlayerNode.tsx의 "기본 국면은 항상 정지" 규칙을 그대로 지킨다.
  *
  * 댓글(TO-DO 12번)도 여기 붙는다 — "공유된 분석에 의견"이라는 항목 설명과
  * 맞는 자리이자, EditorPage(자기 분석 편집)에 더 끼워 넣기엔 이미 레이아웃이
@@ -172,16 +169,16 @@ function ShareView({
     setGifRunning(true)
   }
 
-  const handleGifDone = (blob: Blob, extension: string) => {
-    downloadBlob(blob, `tacticore_${Date.now()}.${extension}`)
-    toast({ description: `${extension.toUpperCase()} 생성 완료 (${Math.round(blob.size / 1024)}KB)` })
+  const handleGifDone = (blob: Blob) => {
+    downloadBlob(blob, `tacticore_${Date.now()}.gif`)
+    toast({ description: `GIF 생성 완료 (${Math.round(blob.size / 1024)}KB)` })
     setGifRunning(false)
     setExportingGif(false)
   }
 
   const handleGifError = (err: unknown) => {
     const detail = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
-    toast({ variant: 'destructive', description: `움직이는 카드 내보내기에 실패했습니다. ${detail}` })
+    toast({ variant: 'destructive', description: `GIF 내보내기에 실패했습니다. ${detail}` })
     setGifRunning(false)
     setExportingGif(false)
   }
@@ -225,7 +222,7 @@ function ShareView({
             {exporting ? '내보내는 중…' : 'PNG 다운로드'}
           </Button>
           <Button size="sm" variant="outline" onClick={handleGifExport} disabled={exportingGif}>
-            {exportingGif ? '만드는 중…' : '움직이는 카드 다운로드'}
+            {exportingGif ? 'GIF 만드는 중…' : 'GIF 다운로드'}
           </Button>
         </div>
       </div>
