@@ -21,6 +21,7 @@ from routers import (
     comments as comments_router,
     community as community_router,
     moderation as moderation_router,
+    roster_templates as roster_templates_router,
     share as share_router,
 )
 
@@ -188,6 +189,7 @@ app.include_router(auth_router.router)
 app.include_router(comments_router.router)
 app.include_router(community_router.router)
 app.include_router(moderation_router.router)
+app.include_router(roster_templates_router.router)
 app.include_router(share_router.router)
 
 

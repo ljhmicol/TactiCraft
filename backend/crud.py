@@ -28,6 +28,10 @@ class ReportDuplicate(Exception):
     pass
 
 
+class RosterTemplateNotFound(Exception):
+    pass
+
+
 def _now() -> str:
     return datetime.now().isoformat(timespec="seconds")
 
@@ -812,3 +816,63 @@ def get_analytics_summary(db: Session, days: int = 30) -> dict:
             for pv, user in recent_user_views
         ],
     }
+
+
+# 내 팀·선수단 템플릿(개선 로드맵 §7.2) — 전부 로그인한 본인 소유로만
+# 드나든다(라우터가 소유권을 확인한다). players는 JSON 컬럼이라 pydantic
+# 모델 리스트를 그대로 dict 리스트로 넣으면 SQLAlchemy가 직렬화한다.
+
+
+def _roster_players_to_dicts(players: List[schemas.RosterTemplatePlayerIn]) -> list[dict]:
+    return [p.model_dump() for p in players]
+
+
+def list_roster_templates(db: Session, user_id: int) -> list[models.RosterTemplate]:
+    return (
+        db.query(models.RosterTemplate)
+        .filter(models.RosterTemplate.user_id == user_id)
+        .order_by(models.RosterTemplate.updated_at.desc())
+        .all()
+    )
+
+
+def get_roster_template(db: Session, template_id: int) -> models.RosterTemplate:
+    row = db.get(models.RosterTemplate, template_id)
+    if row is None:
+        raise RosterTemplateNotFound()
+    return row
+
+
+def create_roster_template(
+    db: Session, payload: schemas.RosterTemplateIn, user_id: int
+) -> models.RosterTemplate:
+    now = _now()
+    row = models.RosterTemplate(
+        user_id=user_id,
+        name=payload.name,
+        players=_roster_players_to_dicts(payload.players),
+        created_at=now,
+        updated_at=now,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def update_roster_template(
+    db: Session, template_id: int, payload: schemas.RosterTemplateIn
+) -> models.RosterTemplate:
+    row = get_roster_template(db, template_id)
+    row.name = payload.name
+    row.players = _roster_players_to_dicts(payload.players)
+    row.updated_at = _now()
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def delete_roster_template(db: Session, template_id: int) -> None:
+    row = get_roster_template(db, template_id)
+    db.delete(row)
+    db.commit()

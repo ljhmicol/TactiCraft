@@ -4,7 +4,10 @@ import { PitchFieldBackdrop } from '@/components/decor/PitchFieldBackdrop'
 import { FormationPicker } from '@/components/editor/FormationPicker'
 import { ManagerPresetPicker } from '@/components/editor/ManagerPresetPicker'
 import { MatchPresetPicker } from '@/components/editor/MatchPresetPicker'
+import { RosterTemplatePicker } from '@/components/editor/RosterTemplatePicker'
+import type { RosterTemplatePlayer } from '@/lib/api'
 import { loadSampleAnalysis } from '@/lib/loadSample'
+import { applyRosterTemplate } from '@/lib/rosterTemplate'
 import { createEmptyAnalysis, useAnalysisStore } from '@/store/analysisStore'
 
 /** /new — 포메이션 프리셋·감독 스타일 프리셋·실제 경기 명장면(TO-DO 9번) 선택 → / 로 이동 (2단계 §11.3). */
@@ -30,6 +33,21 @@ export function NewAnalysisPage() {
       analyzedTeam: 'home',
     })
     loadAnalysis(analysis)
+    navigate('/')
+  }
+
+  // 내 팀 템플릿(개선 로드맵 §7.2) — 템플릿엔 좌표가 없으므로 포메이션을
+  // 고르는 시점에 합쳐서(applyRosterTemplate) 빈 분석을 만든다.
+  const handleSelectRosterTemplate = (formation: string, players: RosterTemplatePlayer[]) => {
+    if (!confirmDiscardIfDirty()) return
+    const base = createEmptyAnalysis(formation, {
+      matchName: '',
+      homeTeam: '',
+      awayTeam: '',
+      matchDate: new Date().toISOString().slice(0, 10),
+      analyzedTeam: 'home',
+    })
+    loadAnalysis(applyRosterTemplate(base, players))
     navigate('/')
   }
 
@@ -62,6 +80,15 @@ export function NewAnalysisPage() {
             그 순간의 실제 위치, 나머지는 당시 확인된 포메이션으로 보완했습니다.
           </p>
           <MatchPresetPicker onSelect={handleSelectPreset} />
+        </section>
+
+        <section className="mb-12">
+          <h2 className="mb-2 text-lg font-semibold text-foreground">내 팀으로 시작하기</h2>
+          <p className="mb-6 text-sm text-muted-foreground">
+            에디터에서 &quot;내 팀 저장&quot;으로 만들어 둔 선수단(이름·등번호·포지션·역할)을 불러와 새 분석을
+            시작합니다. 나중에 이 템플릿을 수정해도 이미 만든 분석에는 영향을 주지 않습니다.
+          </p>
+          <RosterTemplatePicker onSelect={handleSelectRosterTemplate} />
         </section>
 
         <section>

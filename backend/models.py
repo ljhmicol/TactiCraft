@@ -404,3 +404,29 @@ class Like(Base):
     user = relationship("User")
 
     __table_args__ = (UniqueConstraint("analysis_id", "user_id", name="uq_likes_analysis_user"),)
+
+
+class RosterTemplate(Base):
+    """내 팀·선수단 템플릿(개선 로드맵 §7.2, "새 분석을 만들 때 저장된
+    선수단을 불러올 수 있게 한다"). 좌표·국면 없이 선수 명단(이름·등번호·
+    포지션·전술 역할)만 JSON으로 통째로 저장한다 — Player/Position처럼
+    정규화 테이블로 쪼개지 않는 이유는 이 템플릿이 분석과 달리 좌표·국면이
+    전혀 없어(적용 시점에 그때 고른 포메이션의 기본 좌표에 얹힐 뿐) 검색·필터
+    요구도 없기 때문이다(Analysis.tags와 같은 판단).
+
+    분석에 적용한 뒤에는 그 분석의 players 테이블에 값이 복사될 뿐 이
+    템플릿을 참조하지 않는다 — "템플릿 수정이 기존 분석을 임의로 변경하지
+    않게 한다"는 로드맵 요구사항을 외래키 없이 자연스럽게 만족한다. 새
+    테이블이라 create_all이 자동 생성한다(Comment/Like/PageView와 같은 이유)."""
+
+    __tablename__ = "roster_templates"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String, nullable=False)
+    # [{id, name, number, role?, tactical_role?}, ...] — schemas.RosterTemplatePlayerIn 참조.
+    players = Column(JSON, nullable=False, default=list)
+    created_at = Column(String, nullable=False)
+    updated_at = Column(String, nullable=False)
+
+    user = relationship("User")

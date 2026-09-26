@@ -20,6 +20,7 @@ import { Timeline } from '@/components/editor/Timeline'
 import { PlayerEditDialog } from '@/components/editor/PlayerEditDialog'
 import { PlayerForm } from '@/components/editor/PlayerForm'
 import { SaveButton } from '@/components/editor/SaveButton'
+import { SaveRosterTemplateButton } from '@/components/editor/SaveRosterTemplateButton'
 import { ShareLinkButton } from '@/components/editor/ShareLinkButton'
 import { ToolPalette } from '@/components/editor/ToolPalette'
 import { UndoRedoButtons } from '@/components/editor/UndoRedoButtons'
@@ -200,6 +201,7 @@ export function EditorPage() {
         <div className="flex flex-wrap items-center gap-3">
           <SaveButton analysis={analysis} />
           <DuplicateButton analysis={analysis} />
+          <SaveRosterTemplateButton analysis={analysis} />
           <ShareLinkButton analysis={analysis} />
           <VisibilitySelect analysis={analysis} />
           <ExportControls

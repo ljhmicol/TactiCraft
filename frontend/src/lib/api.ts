@@ -357,3 +357,44 @@ export interface AnalyticsSummary {
 export function fetchAnalyticsSummary(): Promise<AnalyticsSummary> {
   return apiFetch('/admin/analytics')
 }
+
+// 내 팀·선수단 템플릿(개선 로드맵 §7.2, "새 분석을 만들 때 저장된 선수단을
+// 불러올 수 있게 한다"). 좌표·국면 없이 명단만 저장한다 — Player와 거의
+// 같은 모양이지만 id가 없다(적용 시 프론트가 새 nanoid를 발급한다).
+export interface RosterTemplatePlayer {
+  name: string
+  number: number
+  role?: string
+  tacticalRole?: string
+}
+
+export interface RosterTemplateSummary {
+  id: number
+  name: string
+  playerCount: number
+  updatedAt: string
+}
+
+export interface RosterTemplate {
+  id: number
+  name: string
+  players: RosterTemplatePlayer[]
+  createdAt: string
+  updatedAt: string
+}
+
+export function fetchRosterTemplates(): Promise<RosterTemplateSummary[]> {
+  return apiFetch('/roster-templates')
+}
+
+export function fetchRosterTemplate(id: number): Promise<RosterTemplate> {
+  return apiFetch(`/roster-templates/${id}`)
+}
+
+export function createRosterTemplate(data: { name: string; players: RosterTemplatePlayer[] }): Promise<RosterTemplate> {
+  return apiFetch('/roster-templates', { method: 'POST', body: JSON.stringify(data) })
+}
+
+export function deleteRosterTemplate(id: number): Promise<void> {
+  return apiFetch(`/roster-templates/${id}`, { method: 'DELETE' })
+}

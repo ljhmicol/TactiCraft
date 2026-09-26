@@ -22,6 +22,7 @@
 - [O] **72. 접근성 개선(개선 로드맵 §6.4)** — 중 · 1~5단계 전부 구현 완료, 사용자 확인 전.
 - [O] **73. 감독 프리셋에 타임라인(체인징 포인트) 추가** — 중 · 10개 프리셋 전부 구현 완료, 사용자 확인 전.
 - [O] **74. 전술 지표 설명(개선 로드맵 §7.5)** — 중 · 5채널·압박 라인·콤팩트니스·오버로드·병목 5개 지표 전부 구현 완료, 사용자 확인 전.
+- [O] **75. 내 팀·선수단 템플릿(개선 로드맵 §7.2)** — 중 · 저장/불러오기/삭제 구현 완료, 사용자 확인 전.
 
 ## 항목 상세
 
@@ -51,6 +52,15 @@
 - **버튼-안-버튼 문제**: 토글 칩 자체가 `<button>`이라 그 안에 `InfoDialogButton`(역시 버튼)을 중첩할 수 없어, `<span className="flex items-center gap-1">` 형제 요소로 배치했다 — `KeyZoneCallout.tsx`가 이미 쓰던 것과 같은 패턴.
 - **검증**: `tsc --noEmit`(0 errors)/`eslint`(0 errors)/`npx vitest run`(232개 통과). 로컬 `npm run dev`(5173)를 Bash로 띄웠는데 claude-in-chrome이 그 포트에서 완전히 다른 프로젝트("My Asset Manager", 참고 프로젝트로 추정)를 띄운 화면을 봤다(기존 메모 `shell-sandbox-vs-real-browser-network.md`와 같은 증상) — 로컬 검증은 포기하고 배포 후 **실배포 사이트(tacticraft.fly.dev)에서 직접 확인**: 에디터(과르디올라 프리셋 로드)에서 5채널/압박/콤팩/오버 4개 ⓘ 버튼 중 오버로드·콤팩트니스 두 개를 클릭해 다이얼로그가 정확한 제목·설명으로 열리는 것을 확인. `/versus`에서도 병목(밀집 구역) ⓘ를 클릭해 동일하게 확인. 5개 지표 중 2개 표본으로 정상 동작을 실측했다(나머지는 같은 컴포넌트 재사용이라 정적 검증으로 충분하다고 판단).
 - **남은 일**: 없음. 사용자 본인 확인 대기 — 확인되면 `[C]`로 바꿔 `TO-DO-ARCHIVE.md`로 이동.
+
+### 75. 내 팀·선수단 템플릿(개선 로드맵 §7.2)
+
+- **배경**: 74번(전술 지표 설명) 완료 후 "다음거 진행해줘" — 이전에 추천한 순서(전술 지표 설명 → 내 팀 템플릿)를 그대로 이어감.
+- **백엔드**: `models.RosterTemplate`(새 테이블, create_all 자동 생성) — `user_id`, `name`, `players`(JSON, Analysis.tags와 같은 이유로 정규화 테이블 안 씀), `created_at`/`updated_at`. 외래키로 분석과 연결하지 않는다 — 적용 시점에 값을 그대로 복사해 넣을 뿐이라 "템플릿 수정이 기존 분석을 변경하지 않는다"는 로드맵 요구사항이 설계상 자동으로 성립한다. `routers/roster_templates.py`(list/get/create/update/delete, 전부 로그인 필요, get·update·delete는 소유자 본인 확인 — `routers/analyses.py`와 같은 패턴). `tests/test_roster_templates.py` 4개(로그인 필요/CRUD/타인 접근 차단) 전부 통과.
+- **프론트**: `lib/api.ts`에 타입+함수 추가, `hooks/useRosterTemplates.ts`(react-query, `useAnalyses.ts`와 같은 패턴). `components/editor/SaveRosterTemplateButton.tsx`(에디터 툴바에 "내 팀 저장" 버튼 — 지금 `analysis.players`를 이름만 스냅샷으로 저장). `components/editor/RosterTemplatePicker.tsx`(`/new`의 새 섹션 "내 팀으로 시작하기" — 템플릿을 고르면 그 아래 기존 `FormationPicker`가 펼쳐지고, 포메이션까지 고르면 `lib/rosterTemplate.ts`의 `applyRosterTemplate`이 템플릿 선수 명단을 `createEmptyAnalysis`가 만든 빈 분석의 앞 11자리에 이름·등번호·역할만 덮어쓴다(좌표·id는 그대로) — 11명 넘는 선수는 감독 프리셋의 벤치와 같은 방식으로 `players`에만 추가하고 `positions`에는 안 넣는다.
+- **검증**: 백엔드 `pytest`(58개 전부 통과, 신규 4개 포함) / 프론트 `tsc --noEmit`(0 errors)/`eslint`(0 errors)/`npx vitest run`(235개 통과, `rosterTemplate.test.ts` 신규 3개 포함).
+- **버그 하나 발견해 같이 고침**: 74번 작업 때 `schemas.py`를 편집하며 `AnalyticsSummaryOut`의 `recent_user_views` 필드가 실수로 그 아래 새로 추가한 `RosterTemplateSummary` 쪽으로 잘려 붙었던 것을 이번 백엔드 테스트 실행 중 발견(`ResponseValidationError`) — 두 클래스 다 원래 자리로 필드를 되돌려 수정. `python -m pytest` 전체 재통과로 확인.
+- **남은 일**: 실배포 사이트에서 직접 확인 필요(에디터 "내 팀 저장" → `/new`에서 불러오기 → 포메이션 선택까지). 확인되면 `[C]`로 바꿔 `TO-DO-ARCHIVE.md`로 이동.
 
 ## 기각 기록
 

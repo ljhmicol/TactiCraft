@@ -467,3 +467,35 @@ class AnalyticsSummaryOut(BaseModel):
     daily_views: List[DailyViewStat]
     top_paths: List[TopPathStat]
     recent_user_views: List[RecentUserView]
+
+
+# 내 팀·선수단 템플릿(개선 로드맵 §7.2). PlayerIn과 거의 같은 모양이지만
+# id가 필수가 아니다 — 템플릿을 새 분석에 적용하는 시점에 프론트가 새
+# nanoid를 발급하므로, 저장된 id를 그대로 재사용할 이유가 없다.
+class RosterTemplatePlayerIn(BaseModel):
+    name: str = Field(min_length=1)
+    number: int = Field(ge=1, le=99)
+    role: Optional[str] = None
+    tactical_role: Optional[str] = None
+
+
+class RosterTemplateIn(BaseModel):
+    name: str = Field(min_length=1)
+    players: List[RosterTemplatePlayerIn] = Field(min_length=1, max_length=23)
+
+
+class RosterTemplateOut(BaseModel):
+    id: int
+    name: str
+    players: List[RosterTemplatePlayerIn]
+    created_at: str
+    updated_at: str
+
+
+# 목록 화면은 선수 명단 전체가 필요 없다 — AnalysisSummary가 phases/players를
+# 안 돌려주는 것과 같은 이유(TO-DO 7).
+class RosterTemplateSummary(BaseModel):
+    id: int
+    name: str
+    player_count: int
+    updated_at: str
